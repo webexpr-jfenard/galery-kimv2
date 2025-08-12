@@ -149,6 +149,7 @@ class FavoritesService {
   private async getFavoritesFromSupabase(galleryId: string): Promise<FavoritePhoto[]> {
     try {
       console.log(`📂 Fetching ALL favorites for gallery ${galleryId} from Supabase (shared selection)...`);
+      console.log('🔍 Current user session:', userService.getCurrentSession());
       
       // Get all favorites for this gallery (no device filtering)
       const { data, error } = await supabaseService.client
@@ -162,26 +163,23 @@ class FavoritesService {
         return this.getFavoritesFromLocal(galleryId);
       }
 
-      // Group by photo_id to get unique favorites (in case multiple devices added same photo)
-      const uniqueFavorites = new Map<string, FavoritePhoto>();
-      (data || []).forEach(row => {
-        const photoId = row.photo_id;
-        if (!uniqueFavorites.has(photoId)) {
-          uniqueFavorites.set(photoId, {
-            id: row.id,
-            galleryId: row.gallery_id,
-            photoId: row.photo_id,
-            deviceId: row.device_id,
-            userId: row.user_id,
-            userName: row.user_name,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
-          });
-        }
-      });
+      console.log('📊 Raw data from Supabase:', data);
+      console.log('📊 Raw data length:', (data || []).length);
 
-      const favorites = Array.from(uniqueFavorites.values());
-      console.log(`✅ Loaded ${favorites.length} unique favorites from Supabase (shared selection)`);
+      // IMPORTANT: Don't group by photo_id! We want ALL favorites, not just unique photos!
+      // Multiple users can have the same photo as favorite
+      const favorites: FavoritePhoto[] = (data || []).map(row => ({
+        id: row.id,
+        galleryId: row.gallery_id,
+        photoId: row.photo_id,
+        deviceId: row.device_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+
+      console.log(`✅ Loaded ${favorites.length} ALL favorites from Supabase (multi-user support)`);
       return favorites;
       
     } catch (error) {
