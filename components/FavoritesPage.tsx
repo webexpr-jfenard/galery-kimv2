@@ -389,6 +389,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       {groupedPhotos[folderName].map((photo, photoIndex) => {
                         // Calculate the overall index for lightbox
                         const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
+                        // Find the favorite entry for this photo to get user info
+                        const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
                         
                         return (
                           <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -420,6 +422,15 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                 <div className="comment-indicator">
                                   <MessageSquare className="h-3 w-3" />
                                   {photoCommentCounts[photo.id]}
+                                </div>
+                              )}
+
+                              {/* User name indicator */}
+                              {favoriteEntry?.userName && (
+                                <div className="absolute bottom-2 left-2 right-2 z-10">
+                                  <div className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-full text-center backdrop-blur-sm">
+                                    ❤️ {favoriteEntry.userName}
+                                  </div>
                                 </div>
                               )}
 
@@ -476,46 +487,59 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
             ) : (
               // Show all photos in single grid
               <div className="masonry-grid">
-                {filteredFavoritePhotos.map((photo, index) => (
-                  <div key={photo.id} className="masonry-item animate-fadeIn">
-                    {/* Photo */}
-                    <div className="photo-container" onClick={() => openLightbox(index)}>
-                      <img
-                        src={photo.url}
-                        alt={getPhotoDisplayName(photo)}
-                        loading="lazy"
-                        className="photo-image"
-                      />
+                {filteredFavoritePhotos.map((photo, index) => {
+                  // Find the favorite entry for this photo to get user info
+                  const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
+                  
+                  return (
+                    <div key={photo.id} className="masonry-item animate-fadeIn">
+                      {/* Photo */}
+                      <div className="photo-container" onClick={() => openLightbox(index)}>
+                        <img
+                          src={photo.url}
+                          alt={getPhotoDisplayName(photo)}
+                          loading="lazy"
+                          className="photo-image"
+                        />
 
-                      {/* Photo name overlay */}
-                      <div className="photo-name-overlay">
-                        {getPhotoDisplayName(photo)}
-                      </div>
-
-                      {/* Remove from selection button */}
-                      <button
-                        className="favorite-indicator is-favorite"
-                        onClick={(e) => removeFromFavorites(photo.id, e)}
-                        title="Retirer de la sélection"
-                      >
-                        <Heart className="h-5 w-5 fill-current text-white" />
-                      </button>
-
-                      {/* Comment indicator */}
-                      {photoCommentCounts[photo.id] > 0 && (
-                        <div className="comment-indicator">
-                          <MessageSquare className="h-3 w-3" />
-                          {photoCommentCounts[photo.id]}
+                        {/* Photo name overlay */}
+                        <div className="photo-name-overlay">
+                          {getPhotoDisplayName(photo)}
                         </div>
-                      )}
 
-                      {/* Subfolder indicator */}
-                      {photo.subfolder && (
-                        <div className="subfolder-indicator">
-                          <Folder className="h-3 w-3 mr-1" />
-                          {photo.subfolder}
-                        </div>
-                      )}
+                        {/* Remove from selection button */}
+                        <button
+                          className="favorite-indicator is-favorite"
+                          onClick={(e) => removeFromFavorites(photo.id, e)}
+                          title="Retirer de la sélection"
+                        >
+                          <Heart className="h-5 w-5 fill-current text-white" />
+                        </button>
+
+                        {/* Comment indicator */}
+                        {photoCommentCounts[photo.id] > 0 && (
+                          <div className="comment-indicator">
+                            <MessageSquare className="h-3 w-3" />
+                            {photoCommentCounts[photo.id]}
+                          </div>
+                        )}
+
+                        {/* User name indicator */}
+                        {favoriteEntry?.userName && (
+                          <div className="absolute bottom-2 left-2 right-2 z-10">
+                            <div className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-full text-center backdrop-blur-sm">
+                              ❤️ {favoriteEntry.userName}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Subfolder indicator */}
+                        {photo.subfolder && (
+                          <div className="subfolder-indicator">
+                            <Folder className="h-3 w-3 mr-1" />
+                            {photo.subfolder}
+                          </div>
+                        )}
 
                       {/* Hover overlay with quick comment */}
                       <div className="photo-overlay">
@@ -553,7 +577,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
