@@ -132,7 +132,16 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       console.log('❤️ Loading shared selection...');
       const favoritesList = await favoritesService.getFavorites(galleryId);
       const selectedIds = new Set(favoritesList.map(f => f.photoId));
-      console.log(`✅ Loaded ${favoritesList.length} shared favorites`);
+      console.log(`✅ PhotoGallery loaded ${favoritesList.length} shared favorites`);
+      console.log('PhotoGallery detailed favorites:', favoritesList);
+      
+      // Debug: group by photo to see counts
+      const photoFavoriteCounts: Record<string, number> = {};
+      favoritesList.forEach(fav => {
+        photoFavoriteCounts[fav.photoId] = (photoFavoriteCounts[fav.photoId] || 0) + 1;
+      });
+      console.log('PhotoGallery photo favorite counts:', photoFavoriteCounts);
+      
       setSelection(selectedIds);
       setFavoritesList(favoritesList);
       

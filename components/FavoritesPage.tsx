@@ -70,7 +70,15 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       // Load shared favorites
       const favoritesList = await favoritesService.getFavorites(galleryId);
       setFavorites(favoritesList);
-      console.log(`✅ Loaded ${favoritesList.length} shared favorites`);
+      console.log(`✅ FavoritesPage loaded ${favoritesList.length} shared favorites`);
+      console.log('FavoritesPage detailed favorites:', favoritesList);
+      
+      // Debug: group by photo to see counts
+      const photoFavoriteCounts: Record<string, number> = {};
+      favoritesList.forEach(fav => {
+        photoFavoriteCounts[fav.photoId] = (photoFavoriteCounts[fav.photoId] || 0) + 1;
+      });
+      console.log('FavoritesPage photo favorite counts:', photoFavoriteCounts);
 
       // Load comments
       const commentsList = await favoritesService.getComments(galleryId);
