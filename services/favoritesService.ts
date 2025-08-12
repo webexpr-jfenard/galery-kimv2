@@ -238,12 +238,13 @@ class FavoritesService {
       throw new Error('Utilisateur non connecté');
     }
 
-    // Check if already exists (to prevent duplicates from different devices)
+    // Check if already exists for THIS USER (to prevent duplicates from different devices)
     const { data: existing } = await supabaseService.client
       .from(this.FAVORITES_TABLE)
       .select('id')
       .eq('gallery_id', galleryId)
       .eq('photo_id', photoId)
+      .eq('user_id', currentUser.userId)
       .limit(1);
 
     if (existing && existing.length > 0) {
@@ -352,21 +353,28 @@ class FavoritesService {
   }
 
   private async removeFromFavoritesSupabase(galleryId: string, photoId: string): Promise<boolean> {
-    console.log(`💔 Removing photo ${photoId} from shared favorites in Supabase...`);
+    console.log(`💔 Removing photo ${photoId} from user's favorites in Supabase...`);
     
-    // Remove ALL instances of this photo from favorites (from any device)
+    const currentUser = userService.getCurrentSession();
+    if (!currentUser) {
+      console.error('No user session found');
+      return false;
+    }
+    
+    // Remove only the current user's favorite
     const { error } = await supabaseService.client
       .from(this.FAVORITES_TABLE)
       .delete()
       .eq('gallery_id', galleryId)
-      .eq('photo_id', photoId);
+      .eq('photo_id', photoId)
+      .eq('user_id', currentUser.userId);
 
     if (error) {
       console.error('Error removing from favorites in Supabase:', error);
       return false;
     }
 
-    console.log('✅ Removed from shared favorites in Supabase');
+    console.log('✅ Removed from user favorites in Supabase');
     return true;
   }
 
