@@ -95,6 +95,23 @@ export function Lightbox({
     setShowUsersDropdown(false); // Hide users dropdown when navigating
   }, [currentIndex]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUsersDropdown) {
+        setShowUsersDropdown(false);
+      }
+    };
+
+    if (showUsersDropdown) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showUsersDropdown]);
+
   const handleCommentSubmit = async () => {
     if (!currentPhoto || !comment.trim()) return;
 
@@ -238,7 +255,12 @@ export function Lightbox({
           <div className="relative">
             <div 
               className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-full cursor-pointer hover:bg-purple-200 transition-colors"
-              onClick={() => currentPhotoFavorites.length > 1 && setShowUsersDropdown(!showUsersDropdown)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentPhotoFavorites.length > 1) {
+                  setShowUsersDropdown(!showUsersDropdown);
+                }
+              }}
             >
               <Heart className="h-4 w-4 fill-current" />
               <span className="text-sm font-medium">
@@ -255,7 +277,10 @@ export function Lightbox({
             
             {/* Dropdown for multiple users */}
             {currentPhotoFavorites.length > 1 && showUsersDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 min-w-[200px]">
+              <div 
+                className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 min-w-[200px]"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="text-xs font-medium text-gray-600 mb-2">
                   Ajouté aux favoris par :
                 </div>

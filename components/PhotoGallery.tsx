@@ -618,7 +618,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       </button>
                       
                       {/* Global selection indicator - shows if others have selected, positioned in same div */}
-                      {selection.has(photo.id) && !userSelection.has(photo.id) && (
+                      {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 1 && (
                         <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                           {favoritesList.filter(f => f.photoId === photo.id).length}
                         </div>
@@ -636,7 +636,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       </button>
                       
                       {/* Global selection indicator for non-logged users */}
-                      {selection.has(photo.id) && (
+                      {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 0 && (
                         <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                           {favoritesList.filter(f => f.photoId === photo.id).length}
                         </div>

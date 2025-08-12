@@ -483,13 +483,23 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                               </div>
 
                               {/* Remove from selection button - différencier selon l'utilisateur */}
-                              <button
-                                className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
-                                onClick={(e) => removeFromFavorites(photo.id, e)}
-                                title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                              >
-                                <Heart className="h-5 w-5 fill-current text-white" />
-                              </button>
+                              <div className="absolute top-2 right-2">
+                                <button
+                                  className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
+                                  onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                                  title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                                  disabled={!isUserFavorite}
+                                >
+                                  <Heart className="h-5 w-5 fill-current" />
+                                </button>
+                                
+                                {/* Compteur de favoris */}
+                                {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                                  <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                    {favorites.filter(f => f.photoId === photo.id).length}
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Comment indicator */}
                               {photoCommentCounts[photo.id] > 0 && (
@@ -576,13 +586,23 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                         </div>
 
                         {/* Remove from selection button - différencier selon l'utilisateur */}
-                        <button
-                          className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
-                          onClick={(e) => removeFromFavorites(photo.id, e)}
-                          title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                        >
-                          <Heart className="h-5 w-5 fill-current text-white" />
-                        </button>
+                        <div className="absolute top-2 right-2">
+                          <button
+                            className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
+                            onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                            title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                            disabled={!isUserFavorite}
+                          >
+                            <Heart className="h-5 w-5 fill-current" />
+                          </button>
+                          
+                          {/* Compteur de favoris */}
+                          {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                            <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                              {favorites.filter(f => f.photoId === photo.id).length}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Comment indicator */}
                         {photoCommentCounts[photo.id] > 0 && (
