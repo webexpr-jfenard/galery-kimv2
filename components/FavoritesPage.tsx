@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Lightbox } from "./Lightbox";
 import { SelectionSubmitButton } from "./SelectionSubmitButton";
+import { UserNameDialog } from "./UserNameDialog";
 import { 
   ArrowLeft, 
   Heart, 
@@ -17,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { favoritesService } from "../services/favoritesService";
+import { userService } from "../services/userService";
 import type { Gallery, Photo } from "../services/galleryService";
 import type { FavoritePhoto, Comment } from "../services/favoritesService";
 
@@ -38,6 +40,10 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  
+  // User name dialog state
+  const [showUserNameDialog, setShowUserNameDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{photoId: string, comment?: string} | null>(null);
 
   // Load data
   useEffect(() => {
@@ -127,6 +133,13 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   const addComment = async (photoId: string, comment: string) => {
     if (!comment.trim()) return;
 
+    // Check if user has a session
+    if (!userService.isUserLoggedIn()) {
+      setPendingAction({ photoId, comment: comment.trim() });
+      setShowUserNameDialog(true);
+      return;
+    }
+
     try {
       const newComment = await favoritesService.addComment(galleryId, photoId, comment.trim());
       
@@ -139,11 +152,46 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         [photoId]: (prev[photoId] || 0) + 1
       }));
       
-      toast.success('Commentaire ajouté');
+      const userName = userService.getCurrentUserName();
+      toast.success(`Commentaire ajouté${userName ? ` par ${userName}` : ''}`);
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
     }
+  };
+
+  // User name dialog handlers
+  const handleUserNameConfirm = async (userName: string) => {
+    try {
+      // Create user session
+      const deviceId = await favoritesService.getDeviceId();
+      userService.createSession(userName, deviceId);
+      
+      // Process pending action
+      if (pendingAction) {
+        if (pendingAction.comment) {
+          // Pending comment
+          await addComment(pendingAction.photoId, pendingAction.comment);
+        }
+        
+        // Clear pending action
+        setPendingAction(null);
+      }
+      
+      setShowUserNameDialog(false);
+      
+      // Reload data to show user names
+      await loadData();
+    } catch (error) {
+      console.error('Error creating user session:', error);
+      toast.error('Erreur lors de la création du profil utilisateur');
+    }
+  };
+
+  const handleUserNameCancel = () => {
+    setPendingAction(null);
+    setShowUserNameDialog(false);
+    toast.info('Action annulée');
   };
 
   const openLightbox = (photoIndex: number) => {
@@ -596,6 +644,13 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         comments={comments} // Pass all comments for lightbox display
         onToggleFavorite={removeFromFavorites}
         onAddComment={addComment}
+      />
+
+      {/* User Name Dialog */}
+      <UserNameDialog
+        open={showUserNameDialog}
+        onConfirm={handleUserNameConfirm}
+        onCancel={handleUserNameCancel}
       />
     </div>
   );
