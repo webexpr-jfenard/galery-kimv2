@@ -45,6 +45,16 @@ export function Lightbox({
   const currentPhotoFavorites = currentPhoto 
     ? favoriteDetails.filter(f => f.photoId === currentPhoto.id)
     : [];
+  
+  // Debug: check what we received
+  if (currentPhoto) {
+    console.log(`Lightbox for photo ${currentPhoto.id}:`, {
+      favoriteDetailsLength: favoriteDetails.length,
+      currentPhotoFavoritesLength: currentPhotoFavorites.length,
+      favoriteDetailsForPhoto: favoriteDetails.filter(f => f.photoId === currentPhoto.id),
+      allFavoriteDetails: favoriteDetails
+    });
+  }
 
   // Get comments for current photo
   const currentPhotoComments = currentPhoto 
@@ -257,7 +267,7 @@ export function Lightbox({
               className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-full cursor-pointer hover:bg-purple-200 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                if (currentPhotoFavorites.length > 1) {
+                if (currentPhotoFavorites.length >= 1) {
                   setShowUsersDropdown(!showUsersDropdown);
                 }
               }}
@@ -265,18 +275,18 @@ export function Lightbox({
               <Heart className="h-4 w-4 fill-current" />
               <span className="text-sm font-medium">
                 {currentPhotoFavorites.length === 1 
-                  ? (currentPhotoFavorites[0].userName || 'Anonyme')
+                  ? `${currentPhotoFavorites[0].userName || 'Anonyme'} (${currentPhotoFavorites.length})`
                   : `${currentPhotoFavorites.length} utilisateurs`}
               </span>
-              {currentPhotoFavorites.length > 1 && (
+              {currentPhotoFavorites.length >= 1 && (
                 <div className={`ml-2 text-purple-600 transition-transform ${showUsersDropdown ? 'rotate-180' : ''}`}>
                   ▼
                 </div>
               )}
             </div>
             
-            {/* Dropdown for multiple users */}
-            {currentPhotoFavorites.length > 1 && showUsersDropdown && (
+            {/* Dropdown for users */}
+            {currentPhotoFavorites.length >= 1 && showUsersDropdown && (
               <div 
                 className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 min-w-[200px]"
                 onClick={(e) => e.stopPropagation()}
