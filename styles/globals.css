@@ -609,7 +609,8 @@ html {
     padding: 80px 20px 120px 20px;
   }
 
-  .bg-background {background-color: white;}
+  .bg-background {background-color: white !important;}
+
 
   /* Responsive lightbox padding */
   @media (max-width: 768px) {
