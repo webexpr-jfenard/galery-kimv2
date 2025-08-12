@@ -125,7 +125,7 @@
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: hsl(var(--border) / 0.1);
     outline-color: hsl(var(--ring) / 0.5);
     --tw-backdrop-blur: ;
     --tw-backdrop-brightness: ;
@@ -608,6 +608,8 @@ html {
     animation: fadeIn 0.3s ease-in-out;
     padding: 80px 20px 120px 20px;
   }
+
+  .bg-background {background-color: white;}
 
   /* Responsive lightbox padding */
   @media (max-width: 768px) {
