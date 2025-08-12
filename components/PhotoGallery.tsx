@@ -210,11 +210,14 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           return;
         }
 
+        console.log('🔄 Before adding favorite - favoritesList length:', favoritesList.length);
         await favoritesService.addToFavorites(galleryId, photoId);
         
+        console.log('🔄 After adding favorite, before reload - favoritesList length:', favoritesList.length);
         // Reload all data to get fresh state (like in FavoritesPage)
         await loadGalleryData();
         
+        console.log('🔄 After reload - favoritesList length:', favoritesList.length);
         toast.success(`Ajouté à votre sélection`);
       }
       
