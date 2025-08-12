@@ -118,10 +118,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     try {
       await favoritesService.removeFromFavorites(galleryId, photoId);
       
-      // Update local state - only remove the current user's favorite
-      setFavorites(prev => prev.filter(
-        fav => !(fav.photoId === photoId && fav.userId === currentUser.userId)
-      ));
+      // Reload all data to get fresh state
+      await loadData();
       
       toast.success('Retiré de votre sélection');
     } catch (error) {
@@ -467,10 +465,6 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                         const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
                         const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
                         
-                        // Debug: log favorites info for this photo
-                        if (photoFavoritesCount > 1) {
-                          console.log(`Photo ${photo.id} has ${photoFavoritesCount} favorites:`, favorites.filter(f => f.photoId === photo.id));
-                        }
                         
                         return (
                           <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -582,10 +576,6 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
                   const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
                   
-                  // Debug: log favorites info for this photo
-                  if (photoFavoritesCount > 1) {
-                    console.log(`Photo ${photo.id} has ${photoFavoritesCount} favorites:`, favorites.filter(f => f.photoId === photo.id));
-                  }
                   
                   return (
                     <div key={photo.id} className="masonry-item animate-fadeIn">
