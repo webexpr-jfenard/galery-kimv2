@@ -285,15 +285,15 @@ export function Lightbox({
                   Ajouté aux favoris par :
                 </div>
                 <div className="space-y-1">
-                  {currentPhotoFavorites
-                    .map(f => f.userName || 'Anonyme')
-                    .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
-                    .map((userName, index) => (
-                      <div key={index} className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700">
-                        <User className="h-3 w-3 text-gray-400" />
-                        {userName}
-                      </div>
-                    ))}
+                  {currentPhotoFavorites.map((favorite, index) => (
+                    <div key={`${favorite.id}-${index}`} className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span>{favorite.userName || 'Anonyme'}</span>
+                      <span className="text-xs text-gray-400">
+                        ({favorite.deviceId.split('_')[1]?.substring(0, 4) || 'device'})
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

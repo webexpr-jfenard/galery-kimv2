@@ -465,6 +465,12 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                         const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
                         const currentUser = userService.getCurrentSession();
                         const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                        const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
+                        
+                        // Debug: log favorites info for this photo
+                        if (photoFavoritesCount > 1) {
+                          console.log(`Photo ${photo.id} has ${photoFavoritesCount} favorites:`, favorites.filter(f => f.photoId === photo.id));
+                        }
                         
                         return (
                           <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -484,21 +490,27 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
 
                               {/* Remove from selection button - différencier selon l'utilisateur */}
                               <div className="absolute top-2 right-2">
-                                <button
-                                  className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
-                                  onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
-                                  title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                                  disabled={!isUserFavorite}
-                                >
-                                  <Heart className="h-5 w-5 fill-current" />
-                                </button>
-                                
-                                {/* Compteur de favoris */}
-                                {favorites.filter(f => f.photoId === photo.id).length > 1 && (
-                                  <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                    {favorites.filter(f => f.photoId === photo.id).length}
-                                  </div>
-                                )}
+                                <div className="relative">
+                                  <button
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                                      isUserFavorite 
+                                        ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
+                                        : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
+                                    }`}
+                                    onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                                    title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                                    disabled={!isUserFavorite}
+                                  >
+                                    <Heart className="h-5 w-5 fill-current text-white" />
+                                  </button>
+                                  
+                                  {/* Compteur de favoris */}
+                                  {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                                    <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                      {favorites.filter(f => f.photoId === photo.id).length}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Comment indicator */}
@@ -568,6 +580,12 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
                   const currentUser = userService.getCurrentSession();
                   const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                  const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
+                  
+                  // Debug: log favorites info for this photo
+                  if (photoFavoritesCount > 1) {
+                    console.log(`Photo ${photo.id} has ${photoFavoritesCount} favorites:`, favorites.filter(f => f.photoId === photo.id));
+                  }
                   
                   return (
                     <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -587,21 +605,27 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
 
                         {/* Remove from selection button - différencier selon l'utilisateur */}
                         <div className="absolute top-2 right-2">
-                          <button
-                            className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
-                            onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
-                            title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                            disabled={!isUserFavorite}
-                          >
-                            <Heart className="h-5 w-5 fill-current" />
-                          </button>
-                          
-                          {/* Compteur de favoris */}
-                          {favorites.filter(f => f.photoId === photo.id).length > 1 && (
-                            <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                              {favorites.filter(f => f.photoId === photo.id).length}
-                            </div>
-                          )}
+                          <div className="relative">
+                            <button
+                              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                                isUserFavorite 
+                                  ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
+                                  : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
+                              }`}
+                              onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                              title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                              disabled={!isUserFavorite}
+                            >
+                              <Heart className="h-5 w-5 fill-current text-white" />
+                            </button>
+                            
+                            {/* Compteur de favoris */}
+                            {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                              <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                {favorites.filter(f => f.photoId === photo.id).length}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Comment indicator */}
