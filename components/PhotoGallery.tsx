@@ -5,6 +5,7 @@ import { Badge } from "./ui/badge";
 import { AuthDialog } from "./AuthDialog";
 import { Lightbox } from "./Lightbox";
 import { SelectionSubmitButton } from "./SelectionSubmitButton";
+import { UserNameDialog } from "./UserNameDialog";
 import { 
   ArrowLeft, 
   Heart, 
@@ -19,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
 import { favoritesService } from "../services/favoritesService";
+import { userService } from "../services/userService";
 import type { Gallery, Photo } from "../services/galleryService";
 import type { FavoritePhoto, Comment } from "../services/favoritesService";
 
@@ -48,6 +50,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  
+  // User name dialog state
+  const [showUserNameDialog, setShowUserNameDialog] = useState(false);
+  const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
 
   // Load gallery data
   useEffect(() => {
@@ -184,12 +190,20 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         
         toast.success('Retiré de la sélection');
       } else {
+        // Check if user has a session, if not show dialog
+        if (!userService.isUserLoggedIn()) {
+          setPendingFavoriteAction({ photoId, action: 'add' });
+          setShowUserNameDialog(true);
+          return;
+        }
+
         await favoritesService.addToFavorites(galleryId, photoId);
         
         // Update local state
         setSelection(prev => new Set([...prev, photoId]));
         
-        toast.success('Ajouté à la sélection');
+        const userName = userService.getCurrentUserName();
+        toast.success(`Ajouté à la sélection${userName ? ` par ${userName}` : ''}`);
       }
       
     } catch (error) {
@@ -198,10 +212,49 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     }
   };
 
+  // User name dialog handlers
+  const handleUserNameConfirm = async (userName: string) => {
+    try {
+      // Create user session
+      const deviceId = await favoritesService.getDeviceId();
+      userService.createSession(userName, deviceId);
+      
+      // Process pending favorite action
+      if (pendingFavoriteAction) {
+        const { photoId } = pendingFavoriteAction;
+        
+        await favoritesService.addToFavorites(galleryId, photoId);
+        setSelection(prev => new Set([...prev, photoId]));
+        
+        toast.success(`Ajouté à la sélection par ${userName}`);
+        
+        // Clear pending action
+        setPendingFavoriteAction(null);
+      }
+      
+      setShowUserNameDialog(false);
+    } catch (error) {
+      console.error('Error creating user session:', error);
+      toast.error('Erreur lors de la création du profil utilisateur');
+    }
+  };
+
+  const handleUserNameCancel = () => {
+    setPendingFavoriteAction(null);
+    setShowUserNameDialog(false);
+    toast.info('Ajout aux favoris annulé');
+  };
+
   const submitComment = async (photoId: string, comment: string) => {
     if (!comment.trim()) return;
 
     try {
+      // Check if user has a session for comments too
+      if (!userService.isUserLoggedIn()) {
+        toast.error('Veuillez d\'abord ajouter un favori pour vous identifier');
+        return;
+      }
+
       const newComment = await favoritesService.addComment(galleryId, photoId, comment.trim());
       
       // Update comments list
@@ -591,6 +644,13 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         comments={comments} // Pass all comments for lightbox display
         onToggleFavorite={toggleSelection}
         onAddComment={submitComment}
+      />
+
+      {/* User Name Dialog */}
+      <UserNameDialog
+        open={showUserNameDialog}
+        onConfirm={handleUserNameConfirm}
+        onCancel={handleUserNameCancel}
       />
     </div>
   );
