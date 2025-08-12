@@ -70,15 +70,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       // Load shared favorites
       const favoritesList = await favoritesService.getFavorites(galleryId);
       setFavorites(favoritesList);
-      console.log(`✅ FavoritesPage loaded ${favoritesList.length} shared favorites`);
-      console.log('FavoritesPage detailed favorites:', favoritesList);
-      
-      // Debug: group by photo to see counts
-      const photoFavoriteCounts: Record<string, number> = {};
-      favoritesList.forEach(fav => {
-        photoFavoriteCounts[fav.photoId] = (photoFavoriteCounts[fav.photoId] || 0) + 1;
-      });
-      console.log('FavoritesPage photo favorite counts:', photoFavoriteCounts);
+      console.log(`✅ Loaded ${favoritesList.length} shared favorites`);
 
       // Load comments
       const commentsList = await favoritesService.getComments(galleryId);
@@ -98,6 +90,46 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       toast.error('Failed to load favorites');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleFavorites = async (photoId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    // Check if user has a session
+    const currentUser = userService.getCurrentSession();
+    if (!currentUser) {
+      toast.error('Vous devez vous identifier pour modifier des favoris');
+      return;
+    }
+    
+    // Check if this photo is favorited by the current user
+    const userFavorite = favorites.find(
+      fav => fav.photoId === photoId && fav.userId === currentUser.userId
+    );
+    
+    if (userFavorite) {
+      // Remove favorite
+      try {
+        await favoritesService.removeFromFavorites(galleryId, photoId);
+        await loadData();
+        toast.success('Retiré de votre sélection');
+      } catch (error) {
+        console.error('Error removing from favorites:', error);
+        toast.error('Failed to remove from selection');
+      }
+    } else {
+      // Add favorite
+      try {
+        await favoritesService.addToFavorites(galleryId, photoId);
+        await loadData();
+        toast.success('Ajouté à votre sélection');
+      } catch (error) {
+        console.error('Error adding to favorites:', error);
+        toast.error('Failed to add to selection');
+      }
     }
   };
 
@@ -697,7 +729,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         favoriteDetails={favorites} // Pass favorite details for user info
         commentCounts={photoCommentCounts}
         comments={comments} // Pass all comments for lightbox display
-        onToggleFavorite={removeFromFavorites}
+        onToggleFavorite={toggleFavorites}
         onAddComment={addComment}
       />
 

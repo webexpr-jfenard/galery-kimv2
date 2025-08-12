@@ -132,15 +132,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       console.log('❤️ Loading shared selection...');
       const favoritesList = await favoritesService.getFavorites(galleryId);
       const selectedIds = new Set(favoritesList.map(f => f.photoId));
-      console.log(`✅ PhotoGallery loaded ${favoritesList.length} shared favorites`);
-      console.log('PhotoGallery detailed favorites:', favoritesList);
-      
-      // Debug: group by photo to see counts
-      const photoFavoriteCounts: Record<string, number> = {};
-      favoritesList.forEach(fav => {
-        photoFavoriteCounts[fav.photoId] = (photoFavoriteCounts[fav.photoId] || 0) + 1;
-      });
-      console.log('PhotoGallery photo favorite counts:', photoFavoriteCounts);
+      console.log(`✅ Loaded ${favoritesList.length} shared favorites`);
       
       setSelection(selectedIds);
       setFavoritesList(favoritesList);
@@ -206,30 +198,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         // User can only remove their own favorites
         await favoritesService.removeFromFavorites(galleryId, photoId);
         
-        // Update local state
-        setUserSelection(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(photoId);
-          return newSet;
-        });
-        
-        // Also update global selection if no other user has it as favorite
-        const currentUser = userService.getCurrentSession();
-        const otherUsersFavorites = favoritesList.filter(
-          f => f.photoId === photoId && f.userId !== currentUser?.userId
-        );
-        
-        if (otherUsersFavorites.length === 0) {
-          setSelection(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(photoId);
-            return newSet;
-          });
-        }
-        
-        setFavoritesList(prev => prev.filter(
-          f => !(f.photoId === photoId && f.userId === currentUser?.userId)
-        ));
+        // Reload all data to get fresh state (like in FavoritesPage)
+        await loadGalleryData();
         
         toast.success('Retiré de votre sélection');
       } else {
@@ -240,14 +210,11 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           return;
         }
 
-        const newFavorite = await favoritesService.addToFavorites(galleryId, photoId);
+        await favoritesService.addToFavorites(galleryId, photoId);
         
-        // Update local state
-        setUserSelection(prev => new Set([...prev, photoId]));
-        setSelection(prev => new Set([...prev, photoId]));
-        setFavoritesList(prev => [...prev, newFavorite]);
+        // Reload all data to get fresh state (like in FavoritesPage)
+        await loadGalleryData();
         
-        const userName = userService.getCurrentUserName();
         toast.success(`Ajouté à votre sélection`);
       }
       
