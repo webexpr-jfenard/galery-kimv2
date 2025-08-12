@@ -599,46 +599,49 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     {getPhotoDisplayName(photo)}
                   </div>
 
-                  {/* Selection indicator - shows user's own selection */}
-                  {/* Only show clickable heart if user is logged in */}
-                  {userService.isUserLoggedIn() ? (
-                    <button
-                      className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}
-                      onClick={(e) => toggleSelection(photo.id, e)}
-                      title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
-                    >
-                      <Heart 
-                        className={`h-5 w-5 transition-all ${
-                          userSelection.has(photo.id)
-                            ? 'fill-current text-white' // User selected - filled red heart
-                            : 'text-gray-600' // Not selected by user - gray
-                        }`} 
-                      />
-                    </button>
-                  ) : (
-                    // Show non-clickable heart for non-logged users
-                    <button
-                      className="favorite-indicator"
-                      onClick={(e) => toggleSelection(photo.id, e)}
-                      title="Cliquez pour vous identifier et ajouter aux favoris"
-                    >
-                      <Heart className="h-5 w-5 text-gray-600" />
-                    </button>
-                  )}
+                  {/* Favorite indicators container */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    {/* Selection indicator - shows user's own selection */}
+                    {/* Only show clickable heart if user is logged in */}
+                    {userService.isUserLoggedIn() ? (
+                      <button
+                        className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}
+                        onClick={(e) => toggleSelection(photo.id, e)}
+                        title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
+                      >
+                        <Heart 
+                          className={`h-5 w-5 transition-all ${
+                            userSelection.has(photo.id)
+                              ? 'fill-current text-white' // User selected - filled heart with white color
+                              : 'text-gray-600' // Not selected by user - gray
+                          }`} 
+                        />
+                      </button>
+                    ) : (
+                      // Show non-clickable heart for non-logged users
+                      <button
+                        className="favorite-indicator"
+                        onClick={(e) => toggleSelection(photo.id, e)}
+                        title="Cliquez pour vous identifier et ajouter aux favoris"
+                      >
+                        <Heart className="h-5 w-5 text-gray-600" />
+                      </button>
+                    )}
+
+                    {/* Global selection indicator - shows if others have selected, positioned next to heart */}
+                    {selection.has(photo.id) && !userSelection.has(photo.id) && (
+                      <div className="bg-purple-500/90 text-white text-xs px-2 py-1 rounded-full flex items-center">
+                        <Heart className="h-3 w-3 mr-1 fill-current" />
+                        {favoritesList.filter(f => f.photoId === photo.id).length}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Comment indicator */}
                   {photoCommentCounts[photo.id] > 0 && (
                     <div className="comment-indicator">
                       <MessageSquare className="h-3 w-3" />
                       {photoCommentCounts[photo.id]}
-                    </div>
-                  )}
-
-                  {/* Global selection indicator - shows if others have selected */}
-                  {selection.has(photo.id) && !userSelection.has(photo.id) && (
-                    <div className="absolute bottom-12 right-2 bg-purple-500/90 text-white text-xs px-2 py-1 rounded-full">
-                      <Heart className="h-3 w-3 inline mr-1 fill-current" />
-                      {favoritesList.filter(f => f.photoId === photo.id).length}
                     </div>
                   )}
 

@@ -37,6 +37,7 @@ export function Lightbox({
   const [comment, setComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showUsersDropdown, setShowUsersDropdown] = useState(false);
 
   const currentPhoto = currentIndex !== null ? photos[currentIndex] : null;
 
@@ -91,6 +92,7 @@ export function Lightbox({
   useEffect(() => {
     setComment('');
     setShowComments(false); // Hide comments when navigating
+    setShowUsersDropdown(false); // Hide users dropdown when navigating
   }, [currentIndex]);
 
   const handleCommentSubmit = async () => {
@@ -233,14 +235,43 @@ export function Lightbox({
       <div className="lightbox-controls">
         {/* Users who added to favorites */}
         {currentPhotoFavorites.length > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-full">
-            <Heart className="h-4 w-4 fill-current" />
-            <span className="text-sm font-medium">
-              {currentPhotoFavorites
-                .map(f => f.userName || 'Anonyme')
-                .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
-                .join(', ')}
-            </span>
+          <div className="relative">
+            <div 
+              className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-full cursor-pointer hover:bg-purple-200 transition-colors"
+              onClick={() => currentPhotoFavorites.length > 1 && setShowUsersDropdown(!showUsersDropdown)}
+            >
+              <Heart className="h-4 w-4 fill-current" />
+              <span className="text-sm font-medium">
+                {currentPhotoFavorites.length === 1 
+                  ? (currentPhotoFavorites[0].userName || 'Anonyme')
+                  : `${currentPhotoFavorites.length} utilisateurs`}
+              </span>
+              {currentPhotoFavorites.length > 1 && (
+                <div className={`ml-2 text-purple-600 transition-transform ${showUsersDropdown ? 'rotate-180' : ''}`}>
+                  ▼
+                </div>
+              )}
+            </div>
+            
+            {/* Dropdown for multiple users */}
+            {currentPhotoFavorites.length > 1 && showUsersDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-50 min-w-[200px]">
+                <div className="text-xs font-medium text-gray-600 mb-2">
+                  Ajouté aux favoris par :
+                </div>
+                <div className="space-y-1">
+                  {currentPhotoFavorites
+                    .map(f => f.userName || 'Anonyme')
+                    .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
+                    .map((userName, index) => (
+                      <div key={index} className="flex items-center gap-2 px-2 py-1 text-sm text-gray-700">
+                        <User className="h-3 w-3 text-gray-400" />
+                        {userName}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -249,15 +280,15 @@ export function Lightbox({
           onClick={() => onToggleFavorite(currentPhoto.id)}
           className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all font-medium ${
             isInSelection
-              ? 'bg-red-500 text-white hover:bg-red-600'
+              ? 'bg-green-500 text-white hover:bg-green-600' // Vert pour les favoris de l'utilisateur
               : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
           }`}
-          title={isInSelection ? 'Retirer de la sélection' : 'Ajouter à la sélection'}
+          title={isInSelection ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
         >
           <Heart 
             className={`h-4 w-4 ${isInSelection ? 'fill-current' : ''}`} 
           />
-          {isInSelection ? 'Dans la sélection' : 'Ajouter à la sélection'}
+          {isInSelection ? 'Votre favori' : 'Ajouter aux favoris'}
         </button>
 
         {/* Comment count & toggle button */}
