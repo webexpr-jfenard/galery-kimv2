@@ -139,7 +139,7 @@
   }
 
   body {
-    background-color: hsl(var(--background));
+    background-color: white;
     color: hsl(var(--foreground));
   }
 }
@@ -451,7 +451,7 @@ html {
   }
 
   .favorite-indicator.is-favorite {
-    background: rgba(239, 68, 68, 0.95);
+    background: rgba(34, 197, 94, 0.95); /* Vert pour les favoris de l'utilisateur */
     color: white;
     transform: scale(1.1);
   }
