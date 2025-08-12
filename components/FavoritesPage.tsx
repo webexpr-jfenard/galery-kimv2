@@ -244,8 +244,13 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     photo.subfolder?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Create selection set for lightbox
-  const selectionSet = new Set(favorites.map(fav => fav.photoId));
+  // Create selection set for lightbox - only user's own favorites
+  const currentUser = userService.getCurrentSession();
+  const userFavoritesSet = new Set(
+    favorites
+      .filter(fav => fav.userId === currentUser?.userId)
+      .map(fav => fav.photoId)
+  );
 
   // Get display name for photo (prioritize original name)
   const getPhotoDisplayName = (photo: Photo) => {
@@ -458,6 +463,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                         const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
                         // Find the favorite entry for this photo to get user info
                         const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
+                        const currentUser = userService.getCurrentSession();
+                        const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
                         
                         return (
                           <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -475,11 +482,11 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                 {getPhotoDisplayName(photo)}
                               </div>
 
-                              {/* Remove from selection button */}
+                              {/* Remove from selection button - différencier selon l'utilisateur */}
                               <button
-                                className="favorite-indicator is-favorite"
+                                className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
                                 onClick={(e) => removeFromFavorites(photo.id, e)}
-                                title="Retirer de la sélection"
+                                title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
                               >
                                 <Heart className="h-5 w-5 fill-current text-white" />
                               </button>
@@ -549,6 +556,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                 {filteredFavoritePhotos.map((photo, index) => {
                   // Find the favorite entry for this photo to get user info
                   const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
+                  const currentUser = userService.getCurrentSession();
+                  const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
                   
                   return (
                     <div key={photo.id} className="masonry-item animate-fadeIn">
@@ -566,11 +575,11 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                           {getPhotoDisplayName(photo)}
                         </div>
 
-                        {/* Remove from selection button */}
+                        {/* Remove from selection button - différencier selon l'utilisateur */}
                         <button
-                          className="favorite-indicator is-favorite"
+                          className={`favorite-indicator ${isUserFavorite ? 'is-favorite' : 'is-favorite-other'}`}
                           onClick={(e) => removeFromFavorites(photo.id, e)}
-                          title="Retirer de la sélection"
+                          title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
                         >
                           <Heart className="h-5 w-5 fill-current text-white" />
                         </button>
@@ -642,7 +651,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         currentIndex={lightboxIndex}
         onClose={closeLightbox}
         onNavigate={navigateLightbox}
-        favorites={selectionSet}
+        favorites={userFavoritesSet}
         favoriteDetails={favorites} // Pass favorite details for user info
         commentCounts={photoCommentCounts}
         comments={comments} // Pass all comments for lightbox display

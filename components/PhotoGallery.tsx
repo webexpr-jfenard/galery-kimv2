@@ -599,13 +599,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     {getPhotoDisplayName(photo)}
                   </div>
 
-                  {/* Favorite indicators container */}
-                  <div className="absolute top-2 right-2 flex items-center gap-1">
-                    {/* Selection indicator - shows user's own selection */}
-                    {/* Only show clickable heart if user is logged in */}
-                    {userService.isUserLoggedIn() ? (
+                  {/* Selection indicator - shows user's own selection */}
+                  {/* Only show clickable heart if user is logged in */}
+                  {userService.isUserLoggedIn() ? (
+                    <div className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}>
                       <button
-                        className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}
+                        className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
                         title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
                       >
@@ -617,25 +616,33 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                           }`} 
                         />
                       </button>
-                    ) : (
-                      // Show non-clickable heart for non-logged users
+                      
+                      {/* Global selection indicator - shows if others have selected, positioned in same div */}
+                      {selection.has(photo.id) && !userSelection.has(photo.id) && (
+                        <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                          {favoritesList.filter(f => f.photoId === photo.id).length}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Show non-clickable heart for non-logged users
+                    <div className="favorite-indicator">
                       <button
-                        className="favorite-indicator"
+                        className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
                         title="Cliquez pour vous identifier et ajouter aux favoris"
                       >
                         <Heart className="h-5 w-5 text-gray-600" />
                       </button>
-                    )}
-
-                    {/* Global selection indicator - shows if others have selected, positioned next to heart */}
-                    {selection.has(photo.id) && !userSelection.has(photo.id) && (
-                      <div className="bg-purple-500/90 text-white text-xs px-2 py-1 rounded-full flex items-center">
-                        <Heart className="h-3 w-3 mr-1 fill-current" />
-                        {favoritesList.filter(f => f.photoId === photo.id).length}
-                      </div>
-                    )}
-                  </div>
+                      
+                      {/* Global selection indicator for non-logged users */}
+                      {selection.has(photo.id) && (
+                        <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                          {favoritesList.filter(f => f.photoId === photo.id).length}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Comment indicator */}
                   {photoCommentCounts[photo.id] > 0 && (
