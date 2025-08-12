@@ -348,7 +348,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
           {/* Mobile-first responsive header */}
           <div className="flex flex-col space-y-4 lg:space-y-0">
