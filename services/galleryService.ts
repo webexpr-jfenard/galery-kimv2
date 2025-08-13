@@ -16,6 +16,8 @@ export interface Gallery {
   viewCount?: number;
   allowComments?: boolean;
   allowFavorites?: boolean;
+  featuredPhotoUrl?: string; // URL of the featured photo for gallery preview
+  featuredPhotoId?: string; // ID of the featured photo
 }
 
 export interface Photo {
@@ -234,7 +236,9 @@ class GalleryService {
         photoCount: row.photo_count || 0,
         viewCount: row.view_count || 0,
         allowComments: row.allow_comments !== false,
-        allowFavorites: row.allow_favorites !== false
+        allowFavorites: row.allow_favorites !== false,
+        featuredPhotoUrl: row.featured_photo_url || undefined,
+        featuredPhotoId: row.featured_photo_id || undefined
       }));
 
       console.log(`✅ Loaded ${galleries.length} galleries from Supabase`);
@@ -327,7 +331,9 @@ class GalleryService {
         photoCount: data.photo_count || 0,
         viewCount: data.view_count || 0,
         allowComments: data.allow_comments !== false,
-        allowFavorites: data.allow_favorites !== false
+        allowFavorites: data.allow_favorites !== false,
+        featuredPhotoUrl: data.featured_photo_url || undefined,
+        featuredPhotoId: data.featured_photo_id || undefined
       };
 
       console.log(`✅ Found gallery in Supabase: ${gallery.name}`);
@@ -426,7 +432,9 @@ class GalleryService {
         photoCount: 0,
         viewCount: 0,
         allowComments: options?.allowComments ?? true,
-        allowFavorites: options?.allowFavorites ?? true
+        allowFavorites: options?.allowFavorites ?? true,
+        featuredPhotoUrl: undefined,
+        featuredPhotoId: undefined
       };
 
       // With hardcoded credentials, always use Supabase
@@ -454,7 +462,9 @@ class GalleryService {
             photo_count: newGallery.photoCount,
             view_count: newGallery.viewCount,
             allow_comments: newGallery.allowComments,
-            allow_favorites: newGallery.allowFavorites
+            allow_favorites: newGallery.allowFavorites,
+            featured_photo_url: newGallery.featuredPhotoUrl || null,
+            featured_photo_id: newGallery.featuredPhotoId || null
           }]);
 
         if (error) {
@@ -527,6 +537,8 @@ class GalleryService {
         if (updates.viewCount !== undefined) supabaseUpdates.view_count = updates.viewCount;
         if (updates.allowComments !== undefined) supabaseUpdates.allow_comments = updates.allowComments;
         if (updates.allowFavorites !== undefined) supabaseUpdates.allow_favorites = updates.allowFavorites;
+        if (updates.featuredPhotoUrl !== undefined) supabaseUpdates.featured_photo_url = updates.featuredPhotoUrl || null;
+        if (updates.featuredPhotoId !== undefined) supabaseUpdates.featured_photo_id = updates.featuredPhotoId || null;
 
         const { data, error } = await supabaseService.client
           .from(this.GALLERIES_TABLE)
@@ -556,7 +568,9 @@ class GalleryService {
           photoCount: data.photo_count || 0,
           viewCount: data.view_count || 0,
           allowComments: data.allow_comments !== false,
-          allowFavorites: data.allow_favorites !== false
+          allowFavorites: data.allow_favorites !== false,
+          featuredPhotoUrl: data.featured_photo_url || undefined,
+          featuredPhotoId: data.featured_photo_id || undefined
         };
       } else {
         // Fallback to local storage
@@ -1182,6 +1196,57 @@ class GalleryService {
       return true;
     } catch (error) {
       console.error('Error deleting all photos:', error);
+      return false;
+    }
+  }
+
+  // Set featured photo for a gallery
+  async setFeaturedPhoto(galleryId: string, photoId: string): Promise<boolean> {
+    try {
+      const photos = await this.getPhotos(galleryId);
+      const photo = photos.find(p => p.id === photoId);
+      
+      if (!photo) {
+        console.error('Photo not found for featured photo selection');
+        return false;
+      }
+
+      // Update gallery with featured photo information
+      const updatedGallery = await this.updateGallery(galleryId, {
+        featuredPhotoUrl: photo.url,
+        featuredPhotoId: photoId
+      });
+
+      if (updatedGallery) {
+        console.log(`✅ Featured photo set for gallery ${galleryId}: ${photo.name}`);
+        return true;
+      } else {
+        console.error('Failed to update gallery with featured photo');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error setting featured photo:', error);
+      return false;
+    }
+  }
+
+  // Remove featured photo from a gallery
+  async removeFeaturedPhoto(galleryId: string): Promise<boolean> {
+    try {
+      const updatedGallery = await this.updateGallery(galleryId, {
+        featuredPhotoUrl: undefined,
+        featuredPhotoId: undefined
+      });
+
+      if (updatedGallery) {
+        console.log(`✅ Featured photo removed from gallery ${galleryId}`);
+        return true;
+      } else {
+        console.error('Failed to remove featured photo from gallery');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error removing featured photo:', error);
       return false;
     }
   }
