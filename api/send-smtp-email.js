@@ -1,8 +1,6 @@
 // API Route for sending emails with SMTP (Gmail, OVH, or other providers)
 // This file should be placed in /api folder for Vercel deployment
 
-const nodemailer = require('nodemailer');
-
 // CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +25,27 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // Dynamic import of nodemailer for Vercel Functions
+    let nodemailer;
+    try {
+      nodemailer = await import('nodemailer');
+      if (nodemailer.default) {
+        nodemailer = nodemailer.default;
+      }
+    } catch (importError) {
+      console.error('Failed to import nodemailer:', importError);
+      // Fallback to require
+      try {
+        nodemailer = require('nodemailer');
+      } catch (requireError) {
+        console.error('Failed to require nodemailer:', requireError);
+        return res.status(500).json({
+          error: 'Nodemailer module not available',
+          details: 'Please ensure nodemailer is installed in dependencies'
+        });
+      }
+    }
+
     // Check if SMTP configuration is available
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       console.error('SMTP configuration missing:', {
