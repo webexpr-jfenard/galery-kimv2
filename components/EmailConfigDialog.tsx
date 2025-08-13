@@ -78,8 +78,23 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   };
 
   const handleTestEmail = () => {
-    // Sauvegarder temporairement la config actuelle pour le test
-    const tempConfig = { ...config };
+    // Validation de base
+    if (!config.photographerEmail || !config.photographerEmail.trim()) {
+      toast.error('Veuillez entrer un email de photographe');
+      return;
+    }
+
+    // Créer une configuration temporaire complète
+    const tempConfig: EmailConfig = {
+      photographerEmail: config.photographerEmail,
+      photographerName: config.photographerName || 'Photographe',
+      fromName: config.fromName || 'Galerie Photo',
+      subject: config.subject || 'Nouvelle sélection client - {{galleryName}}',
+      replyTo: config.replyTo || '',
+      enableNotifications: true
+    };
+
+    // Sauvegarder temporairement
     const originalConfig = emailService.getEmailConfig();
     emailService.saveEmailConfig(tempConfig);
 
@@ -106,6 +121,9 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       } else {
         toast.error('Impossible de générer l\'email de test');
       }
+    } catch (error) {
+      console.error('Erreur test email:', error);
+      toast.error('Erreur lors du test email');
     } finally {
       // Restaurer la config originale
       if (originalConfig) {
@@ -115,8 +133,15 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   };
 
   const generatePreview = () => {
-    // Configuration temporaire pour la génération de l'aperçu
-    const tempConfig = { ...config };
+    // Créer une configuration temporaire complète
+    const tempConfig: EmailConfig = {
+      photographerEmail: config.photographerEmail || 'photographe@example.com',
+      photographerName: config.photographerName || 'Photographe',
+      fromName: config.fromName || 'Galerie Photo',
+      subject: config.subject || 'Nouvelle sélection client - {{galleryName}}',
+      replyTo: config.replyTo || '',
+      enableNotifications: config.enableNotifications
+    };
     
     const testNotification = {
       galleryId: 'test-gallery',
@@ -131,19 +156,42 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       exportDate: new Date().toLocaleDateString('fr-FR')
     };
 
-    // Sauvegarder temporairement la config pour la génération
-    const originalConfig = emailService.getEmailConfig();
-    emailService.saveEmailConfig(tempConfig);
+    // Générer le contenu directement avec la config temporaire
+    const photographerName = tempConfig.photographerName || 'Photographe';
+    const fromName = tempConfig.fromName || 'Galerie Photo';
     
-    try {
-      const emailContent = emailService.generateEmailContent(testNotification);
-      return emailContent;
-    } finally {
-      // Restaurer la config originale
-      if (originalConfig) {
-        emailService.saveEmailConfig(originalConfig);
-      }
+    // Subject
+    let subject: string;
+    if (tempConfig.subject && tempConfig.subject.trim()) {
+      subject = tempConfig.subject.replace('{{galleryName}}', testNotification.galleryName);
+    } else {
+      subject = `Nouvelle sélection client - ${testNotification.galleryName}`;
     }
+
+    // Body simplifié pour l'aperçu
+    const bodyLines: string[] = [];
+    bodyLines.push(`Bonjour ${photographerName},`);
+    bodyLines.push('');
+    bodyLines.push('Vous avez reçu une nouvelle sélection client !');
+    bodyLines.push('');
+    bodyLines.push(`Galerie: ${testNotification.galleryName}`);
+    bodyLines.push(`Photos sélectionnées: ${testNotification.selectionCount}`);
+    bodyLines.push(`Date de soumission: ${testNotification.exportDate}`);
+    bodyLines.push('');
+    bodyLines.push('INFORMATIONS CLIENT:');
+    bodyLines.push(`Nom: ${testNotification.clientInfo?.name}`);
+    bodyLines.push(`Email: ${testNotification.clientInfo?.email}`);
+    bodyLines.push('');
+    bodyLines.push(`Fichier: ${testNotification.fileName}`);
+    bodyLines.push(`Téléchargement: ${testNotification.downloadUrl}`);
+    bodyLines.push('');
+    bodyLines.push(`Cordialement, ${fromName}`);
+
+    return {
+      subject,
+      body: bodyLines.join('\n'),
+      bodyHtml: ''
+    };
   };
 
   const previewContent = showPreview ? generatePreview() : null;
