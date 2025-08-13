@@ -7,10 +7,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/send-smtp-email.js": {
-      "maxDuration": 10
-    },
-    "api/send-email.ts": {
+    "api/send-gmail.js": {
       "maxDuration": 10
     }
   }
