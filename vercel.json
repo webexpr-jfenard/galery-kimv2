@@ -5,5 +5,14 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/send-smtp-email.ts": {
+      "maxDuration": 10,
+      "includeFiles": "node_modules/nodemailer/**"
+    },
+    "api/send-email.ts": {
+      "maxDuration": 10
+    }
+  }
 }
