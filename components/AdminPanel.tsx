@@ -7,7 +7,7 @@ import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
@@ -707,44 +707,44 @@ export function AdminPanel() {
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                {/* Create Gallery Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                {/* Create Gallery Dialog */}
+                <Dialog>
+                  <DialogTrigger asChild>
                     <Button className="whitespace-nowrap">
                       <Plus className="h-4 w-4 mr-2" />
                       Create Gallery
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[400px] p-0">
-                    <div className="p-4">
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5" />
+                        Create New Gallery
+                      </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
                       <div className="space-y-4">
-                        <div className="pb-2 border-b">
-                          <h4 className="font-medium text-sm">Create New Gallery</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Create a new photo gallery with custom settings
-                          </p>
+                        <div className="space-y-2">
+                          <Label htmlFor="dialog-name" className="text-sm font-medium">
+                            Gallery Name *
+                          </Label>
+                          <Input
+                            id="dialog-name"
+                            placeholder="e.g., Wedding - John & Jane"
+                            value={newGallery.name}
+                            onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
+                          />
                         </div>
                         
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="dropdown-name" className="text-sm font-medium">
-                              Gallery Name *
-                            </Label>
-                            <Input
-                              id="dropdown-name"
-                              placeholder="e.g., Wedding - John & Jane"
-                              value={newGallery.name}
-                              onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="dropdown-bucketFolder" className="flex items-center gap-2 text-sm font-medium">
+                            <Label htmlFor="dialog-bucketFolder" className="flex items-center gap-2 text-sm font-medium">
                               <Folder className="h-4 w-4" />
                               Bucket Folder
                             </Label>
                             <Input
-                              id="dropdown-bucketFolder"
+                              id="dialog-bucketFolder"
                               placeholder="e.g., wedding-john-jane-2024"
                               value={newGallery.bucketFolder}
                               onChange={(e) => setNewGallery(prev => ({ ...prev, bucketFolder: e.target.value }))}
@@ -755,91 +755,91 @@ export function AdminPanel() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="dropdown-bucketName" className="text-sm font-medium">
+                            <Label htmlFor="dialog-bucketName" className="text-sm font-medium">
                               Bucket Name
                             </Label>
                             <Input
-                              id="dropdown-bucketName"
+                              id="dialog-bucketName"
                               placeholder="photos"
                               value={newGallery.bucketName}
                               onChange={(e) => setNewGallery(prev => ({ ...prev, bucketName: e.target.value }))}
                             />
                           </div>
+                        </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="dropdown-password" className="flex items-center gap-2 text-sm font-medium">
-                              <Key className="h-4 w-4" />
-                              Password Protection
-                            </Label>
-                            <Input
-                              id="dropdown-password"
-                              type="password"
-                              placeholder="Leave empty for public gallery"
-                              value={newGallery.password}
-                              onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
+                        <div className="space-y-2">
+                          <Label htmlFor="dialog-password" className="flex items-center gap-2 text-sm font-medium">
+                            <Key className="h-4 w-4" />
+                            Password Protection
+                          </Label>
+                          <Input
+                            id="dialog-password"
+                            type="password"
+                            placeholder="Leave empty for public gallery"
+                            value={newGallery.password}
+                            onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="dialog-description" className="text-sm font-medium">Description</Label>
+                          <Textarea
+                            id="dialog-description"
+                            placeholder="Optional gallery description..."
+                            value={newGallery.description}
+                            onChange={(e) => setNewGallery(prev => ({ ...prev, description: e.target.value }))}
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="dialog-isPublic" className="text-sm font-medium">Public Gallery</Label>
+                            <Switch
+                              id="dialog-isPublic"
+                              checked={newGallery.isPublic}
+                              onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, isPublic: checked }))}
                             />
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="dropdown-description" className="text-sm font-medium">Description</Label>
-                            <Textarea
-                              id="dropdown-description"
-                              placeholder="Optional gallery description..."
-                              value={newGallery.description}
-                              onChange={(e) => setNewGallery(prev => ({ ...prev, description: e.target.value }))}
-                              rows={2}
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="dialog-allowComments" className="text-sm font-medium">Allow Comments</Label>
+                            <Switch
+                              id="dialog-allowComments"
+                              checked={newGallery.allowComments}
+                              onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, allowComments: checked }))}
                             />
                           </div>
 
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="dropdown-isPublic" className="text-sm font-medium">Public Gallery</Label>
-                              <Switch
-                                id="dropdown-isPublic"
-                                checked={newGallery.isPublic}
-                                onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, isPublic: checked }))}
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="dropdown-allowComments" className="text-sm font-medium">Allow Comments</Label>
-                              <Switch
-                                id="dropdown-allowComments"
-                                checked={newGallery.allowComments}
-                                onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, allowComments: checked }))}
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="dropdown-allowFavorites" className="text-sm font-medium">Allow Favorites</Label>
-                              <Switch
-                                id="dropdown-allowFavorites"
-                                checked={newGallery.allowFavorites}
-                                onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, allowFavorites: checked }))}
-                              />
-                            </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="dialog-allowFavorites" className="text-sm font-medium">Allow Favorites</Label>
+                            <Switch
+                              id="dialog-allowFavorites"
+                              checked={newGallery.allowFavorites}
+                              onCheckedChange={(checked) => setNewGallery(prev => ({ ...prev, allowFavorites: checked }))}
+                            />
                           </div>
+                        </div>
 
-                          <div className="pt-3 border-t">
-                            <Button onClick={createGallery} disabled={isCreating} className="w-full">
-                              {isCreating ? (
-                                <>
-                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                  Creating...
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Create Gallery
-                                </>
-                              )}
-                            </Button>
-                          </div>
+                        <div className="pt-4 border-t">
+                          <Button onClick={createGallery} disabled={isCreating} className="w-full">
+                            {isCreating ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Gallery
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </DialogContent>
+                </Dialog>
 
                 {/* Search */}
                 <div className="relative w-full sm:w-80">
