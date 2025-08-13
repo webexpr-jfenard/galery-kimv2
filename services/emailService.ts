@@ -282,7 +282,7 @@ class EmailService {
       photographerEmail: '',
       photographerName: 'Photographe',
       fromName: 'Galerie Photo',
-      subject: 'Nouvelle sélection client - {{galleryName}}',
+      subject: '',  // Empty by default to avoid template issues
       replyTo: '',
       enableNotifications: true
     };

@@ -228,26 +228,52 @@ class SelectionService {
       console.log('✅ Selection exported successfully:', fileName);
 
       // Send email notification if configured
-      if (emailService.isConfigured() && downloadUrl) {
+      const { resendEmailService } = await import('./resendEmailService');
+      
+      // Check if Resend is configured first, then fallback to traditional email
+      const useResend = resendEmailService.isConfigured();
+      const useTraditionalEmail = !useResend && emailService.isConfigured();
+      
+      if ((useResend || useTraditionalEmail) && downloadUrl) {
         try {
-          const notification: SelectionNotification = {
-            galleryId,
-            galleryName,
-            selectionCount: selectedPhotos.length,
-            clientInfo,
-            downloadUrl,
-            fileName,
-            exportDate: new Date().toLocaleDateString('fr-FR')
-          };
+          if (useResend) {
+            // Use Resend for automatic email sending
+            console.log('📧 Sending email via Resend...');
+            const resendResult = await resendEmailService.sendSelectionNotification(
+              galleryName,
+              selectedPhotos.length,
+              downloadUrl,
+              fileName,
+              clientInfo
+            );
+            
+            if (resendResult.success) {
+              console.log('✅ Email sent automatically via Resend!');
+            } else {
+              console.warn('⚠️ Resend email failed:', resendResult.error);
+              // Could fallback to traditional email here if desired
+            }
+          } else {
+            // Use traditional mailto approach
+            const notification: SelectionNotification = {
+              galleryId,
+              galleryName,
+              selectionCount: selectedPhotos.length,
+              clientInfo,
+              downloadUrl,
+              fileName,
+              exportDate: new Date().toLocaleDateString('fr-FR')
+            };
 
-          const emailResult = await emailService.sendNotification(notification);
-          
-          if (emailResult.success && emailResult.mailtoLink) {
-            console.log('📧 Email notification prepared - opening email client...');
-            // Open default email client with pre-filled email
-            window.open(emailResult.mailtoLink);
-          } else if (emailResult.error) {
-            console.warn('⚠️ Email notification failed:', emailResult.error);
+            const emailResult = await emailService.sendNotification(notification);
+            
+            if (emailResult.success && emailResult.mailtoLink) {
+              console.log('📧 Email notification prepared - opening email client...');
+              // Open default email client with pre-filled email
+              window.open(emailResult.mailtoLink);
+            } else if (emailResult.error) {
+              console.warn('⚠️ Email notification failed:', emailResult.error);
+            }
           }
         } catch (emailError) {
           console.warn('⚠️ Email notification error:', emailError);
