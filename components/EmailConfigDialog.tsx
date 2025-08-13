@@ -87,10 +87,19 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       const fromName = config.fromName || 'Galerie Photo';
       const galleryNameExample = 'Galerie de Test';
       
-      // Subject
-      let subject = 'Nouvelle sélection client - Galerie de Test';
+      // Subject - safe handling
+      let subject = `Nouvelle sélection client - ${galleryNameExample}`;
       if (config.subject && config.subject.trim()) {
-        subject = config.subject.replace(/\{\{galleryName\}\}/g, galleryNameExample);
+        // Try to replace template if present, otherwise use as-is
+        if (config.subject.includes('{{') && config.subject.includes('}}')) {
+          try {
+            subject = config.subject.replace(/\{\{galleryName\}\}/g, galleryNameExample);
+          } catch (e) {
+            subject = config.subject; // Use as-is if replacement fails
+          }
+        } else {
+          subject = config.subject; // Use custom subject as-is
+        }
       }
 
       // Body
@@ -246,12 +255,12 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
                 </Label>
                 <Input
                   id="subject"
-                  placeholder="Nouvelle sélection client - {{galleryName}}"
+                  placeholder={'Nouvelle sélection client - [Nom de la galerie]'}
                   value={config.subject || ''}
                   onChange={(e) => setConfig(prev => ({ ...prev, subject: e.target.value }))}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Utilisez <Badge variant="outline" className="text-xs mx-1">{{galleryName}}</Badge> pour inclure le nom de la galerie
+                  Le nom de la galerie sera automatiquement ajouté au sujet de l'email
                 </p>
               </div>
 
