@@ -1,8 +1,7 @@
 import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
-import { emailService } from './emailService';
+import { GmailService, type GmailConfig } from './gmailService';
 import type { FavoritePhoto, Comment } from './favoritesService';
-import type { SelectionNotification } from './emailService';
 
 interface SelectionExport {
   galleryId: string;
@@ -49,9 +48,15 @@ class SelectionService {
     if (exportData.clientInfo && (exportData.clientInfo.name || exportData.clientInfo.email)) {
       lines.push('INFORMATIONS CLIENT:');
       lines.push('-'.repeat(30));
-      if (exportData.clientInfo.name) lines.push(`Nom: ${exportData.clientInfo.name}`);
-      if (exportData.clientInfo.email) lines.push(`Email: ${exportData.clientInfo.email}`);
-      if (exportData.clientInfo.phone) lines.push(`Téléphone: ${exportData.clientInfo.phone}`);
+      if (exportData.clientInfo.name) {
+        lines.push(`Nom: ${exportData.clientInfo.name}`);
+      }
+      if (exportData.clientInfo.email) {
+        lines.push(`Email: ${exportData.clientInfo.email}`);
+      }
+      if (exportData.clientInfo.phone) {
+        lines.push(`Téléphone: ${exportData.clientInfo.phone}`);
+      }
       lines.push('');
     }
     
@@ -59,376 +64,304 @@ class SelectionService {
     lines.push('-'.repeat(30));
     
     exportData.selectedPhotos.forEach((photo, index) => {
-      lines.push(`${index + 1}. ${photo.originalName || photo.photoName}`);
-      lines.push(`   ID: ${photo.photoId}`);
+      lines.push(`${index + 1}. ${photo.photoName}`);
+      if (photo.originalName !== photo.photoName) {
+        lines.push(`   Fichier original: ${photo.originalName}`);
+      }
       lines.push(`   URL: ${photo.url}`);
       
-      // Show users who selected this photo (if multi-user data available)
-      if (exportData.multiUserData) {
-        const photoData = exportData.multiUserData.find(p => p.photoId === photo.photoId);
-        if (photoData && photoData.users.length > 0) {
-          lines.push('   Sélectionnée par:');
-          photoData.users.forEach(user => {
-            const userName = user.userName || 'Utilisateur anonyme';
-            lines.push(`   - ${userName}`);
-          });
-        }
-      }
-      
-      if (photo.comments.length > 0) {
-        lines.push('   Commentaires:');
+      if (photo.comments && photo.comments.length > 0) {
+        lines.push(`   Commentaires:`);
         photo.comments.forEach(comment => {
           lines.push(`   - ${comment}`);
         });
       }
       lines.push('');
     });
+
+    if (exportData.multiUserData && exportData.multiUserData.length > 0) {
+      lines.push('DÉTAILS PAR UTILISATEUR:');
+      lines.push('-'.repeat(30));
+      
+      exportData.multiUserData.forEach(photoData => {
+        const photo = exportData.selectedPhotos.find(p => p.photoId === photoData.photoId);
+        if (photo) {
+          lines.push(`Photo: ${photo.photoName}`);
+          
+          if (photoData.users.length > 0) {
+            lines.push(`Sélectionnée par: ${photoData.users.map(u => u.userName || 'Utilisateur anonyme').join(', ')}`);
+          }
+          
+          if (photoData.comments.length > 0) {
+            lines.push(`Commentaires détaillés:`);
+            photoData.comments.forEach(c => {
+              lines.push(`- ${c.comment} (${c.userName || 'Anonyme'})`);
+            });
+          }
+          lines.push('');
+        }
+      });
+    }
     
     lines.push('='.repeat(60));
-    lines.push('Fichier généré automatiquement par le système de galerie photo');
-    lines.push(`Généré le: ${new Date().toLocaleString('fr-FR')}`);
+    lines.push('Fin de la sélection');
     lines.push('='.repeat(60));
     
     return lines.join('\n');
   }
 
-  // Export selection to Supabase storage
-  async exportSelection(
-    galleryId: string,
-    galleryName: string,
-    clientInfo?: { name?: string; email?: string; phone?: string }
-  ): Promise<{ success: boolean; error?: string; fileName?: string; downloadUrl?: string }> {
+  // Upload selection file to Supabase
+  private async uploadSelection(fileName: string, textContent: string): Promise<{ success: boolean; downloadUrl?: string; fileName: string; isTemporary?: boolean }> {
     try {
-      console.log('📋 Exporting selection for gallery:', galleryId);
-
-      // Get selected photos (favorites) - includes ALL favorites from ALL users
-      const allFavorites = await favoritesService.getFavorites(galleryId);
-      
-      if (allFavorites.length === 0) {
-        return { success: false, error: 'Aucune photo sélectionnée à exporter' };
+      const supabaseClient = supabaseService.getClient();
+      if (!supabaseClient) {
+        throw new Error('Supabase client not available');
       }
 
-      // Group favorites by photo ID to get unique photos with user info
-      const photoSelections: Record<string, {
-        photoId: string;
-        users: { userName?: string; userId?: string }[];
-        firstSelected: string;
-      }> = {};
+      // Try to upload to Supabase storage
+      const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+      const file = new File([blob], fileName, { type: 'text/plain' });
 
-      allFavorites.forEach(fav => {
-        if (!photoSelections[fav.photoId]) {
-          photoSelections[fav.photoId] = {
-            photoId: fav.photoId,
-            users: [],
-            firstSelected: fav.createdAt
-          };
-        }
-        
-        // Add user who selected this photo
-        photoSelections[fav.photoId].users.push({
-          userName: fav.userName,
-          userId: fav.userId
-        });
-        
-        // Keep earliest selection date
-        if (fav.createdAt < photoSelections[fav.photoId].firstSelected) {
-          photoSelections[fav.photoId].firstSelected = fav.createdAt;
-        }
-      });
-
-      // Get all comments for the gallery
-      const comments = await favoritesService.getComments(galleryId);
+      // Use selections folder in the main bucket to avoid RLS issues
+      const filePath = `selections/${fileName}`;
       
-      // Group comments by photo ID
-      const commentsByPhoto: Record<string, Array<{ comment: string; userName?: string }>> = {};
-      comments.forEach(comment => {
-        if (!commentsByPhoto[comment.photoId]) {
-          commentsByPhoto[comment.photoId] = [];
-        }
-        commentsByPhoto[comment.photoId].push({
-          comment: comment.comment,
-          userName: comment.userName
+      const { data, error } = await supabaseClient.storage
+        .from(this.SELECTIONS_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
         });
-      });
 
-      // Get photo details from gallery service
-      const { galleryService } = await import('./galleryService');
-      const photos = await galleryService.getPhotos(galleryId);
+      if (error) {
+        console.warn('Supabase upload failed, using blob URL fallback:', error);
+        // Fallback: create blob URL for temporary download
+        const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+        return { success: true, fileName, downloadUrl, isTemporary: true };
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabaseClient.storage
+        .from(this.SELECTIONS_BUCKET)
+        .getPublicUrl(filePath);
+
+      return {
+        success: true,
+        downloadUrl: publicUrlData.publicUrl,
+        fileName
+      };
+
+    } catch (error) {
+      console.error('Upload error:', error);
       
-      // Create photo lookup map
-      const photoMap = new Map(photos.map(photo => [photo.id, photo]));
+      // Fallback to blob URL
+      const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+      const downloadUrl = URL.createObjectURL(blob);
+      return { success: true, fileName, downloadUrl, isTemporary: true };
+    }
+  }
 
-      // Prepare export data with unique photos
-      const selectedPhotos = Object.values(photoSelections).map(selection => {
-        const photo = photoMap.get(selection.photoId);
-        const photoComments = commentsByPhoto[selection.photoId] || [];
-        
+  // Main export function
+  async exportSelection(
+    galleryId: string,
+    clientName?: string,
+    clientEmail?: string,
+    clientPhone?: string
+  ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    try {
+      console.log('Starting selection export for gallery:', galleryId);
+
+      // Get all favorites for this gallery
+      const favorites = await favoritesService.getAllFavorites(galleryId);
+      
+      if (!favorites || favorites.length === 0) {
         return {
-          photoId: selection.photoId,
-          photoName: photo?.name || 'Photo sans nom',
-          originalName: photo?.originalName || photo?.name || 'Photo sans nom',
-          url: photo?.url || '',
-          users: selection.users,
-          comments: photoComments.map(c => 
-            c.userName ? `${c.userName}: ${c.comment}` : c.comment
-          )
+          success: false,
+          error: 'Aucune photo sélectionnée trouvée pour cette galerie'
         };
+      }
+
+      console.log(`Found ${favorites.length} selected photos`);
+
+      // Get all comments for this gallery
+      const allComments = await favoritesService.getAllComments(galleryId);
+      
+      // Group data by photo for multi-user view
+      const photoGroups = new Map<string, {
+        users: { userName?: string; userId?: string }[];
+        comments: { comment: string; userName?: string }[];
+      }>();
+
+      favorites.forEach(fav => {
+        if (!photoGroups.has(fav.photo_id)) {
+          photoGroups.set(fav.photo_id, { users: [], comments: [] });
+        }
+        const group = photoGroups.get(fav.photo_id)!;
+        
+        // Add user if not already present
+        const userExists = group.users.some(u => u.userId === fav.user_id);
+        if (!userExists) {
+          group.users.push({
+            userName: fav.user_name || undefined,
+            userId: fav.user_id
+          });
+        }
       });
 
+      // Add comments to photo groups
+      allComments.forEach(comment => {
+        if (photoGroups.has(comment.photo_id)) {
+          photoGroups.get(comment.photo_id)!.comments.push({
+            comment: comment.comment,
+            userName: comment.user_name || undefined
+          });
+        }
+      });
+
+      // Process each unique photo
+      const uniquePhotos = Array.from(new Set(favorites.map(f => f.photo_id)));
+      const selectedPhotos: SelectionExport['selectedPhotos'] = [];
+
+      for (const photoId of uniquePhotos) {
+        const firstFav = favorites.find(f => f.photo_id === photoId);
+        if (!firstFav) continue;
+
+        // Get all comments for this photo
+        const photoComments = allComments
+          .filter(c => c.photo_id === photoId)
+          .map(c => c.user_name ? `${c.comment} (${c.user_name})` : c.comment);
+
+        selectedPhotos.push({
+          photoId: photoId,
+          photoName: firstFav.photo_name,
+          originalName: firstFav.original_name || firstFav.photo_name,
+          url: firstFav.photo_url,
+          comments: photoComments
+        });
+      }
+
+      // Prepare export data
       const exportData: SelectionExport = {
         galleryId,
-        galleryName,
-        exportDate: new Date().toLocaleDateString('fr-FR'),
-        selectedPhotos: selectedPhotos.map(photo => ({
-          photoId: photo.photoId,
-          photoName: photo.photoName,
-          originalName: photo.originalName,
-          url: photo.url,
-          comments: photo.comments
-        })),
-        totalSelected: selectedPhotos.length,
-        clientInfo,
-        multiUserData: selectedPhotos.map(photo => ({
-          photoId: photo.photoId,
-          users: photo.users,
-          comments: (commentsByPhoto[photo.photoId] || []).map(c => ({
-            comment: c.comment,
-            userName: c.userName
-          }))
+        galleryName: galleryId, // Using galleryId as name for now
+        exportDate: new Date().toLocaleString('fr-FR'),
+        selectedPhotos,
+        totalSelected: favorites.length,
+        clientInfo: (clientName || clientEmail || clientPhone) ? {
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone
+        } : undefined,
+        multiUserData: Array.from(photoGroups.entries()).map(([photoId, data]) => ({
+          photoId,
+          users: data.users,
+          comments: data.comments
         }))
       };
 
       // Generate text content
       const textContent = this.generateSelectionText(exportData);
       
-      // Create filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const clientName = clientInfo?.name ? `-${clientInfo.name.replace(/[^a-zA-Z0-9]/g, '')}` : '';
-      const fileName = `selection-${galleryId}${clientName}-${timestamp}.txt`;
+      // Create filename
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `selection-${galleryId}-${timestamp}.txt`;
+
+      // Upload file
+      const uploadResult = await this.uploadSelection(fileName, textContent);
       
-      // Use selections folder in the main bucket to avoid RLS issues
-      const filePath = `selections/${galleryId}/${fileName}`;
-
-      // Upload to Supabase with public access
-      const uploadResult = await supabaseService.uploadTextFile(
-        this.SELECTIONS_BUCKET,
-        filePath,
-        textContent,
-        { upsert: true }
-      );
-
       if (!uploadResult.success) {
-        // If upload fails due to RLS, create a downloadable blob URL as fallback
-        console.warn('⚠️ Supabase upload failed, using blob URL fallback:', uploadResult.error);
-        
-        const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
-        const downloadUrl = URL.createObjectURL(blob);
-        
-        return {
-          success: true,
-          fileName,
-          downloadUrl,
-          isTemporary: true // Flag to indicate this is a temporary URL
-        };
+        throw new Error('Failed to create selection file');
       }
 
-      // Get download URL from Supabase
-      const downloadUrl = supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, filePath);
+      console.log('Selection file created:', uploadResult.fileName);
 
-      console.log('✅ Selection exported successfully:', fileName);
+      // Send Gmail notification
+      const gmailConfig = this.getGmailConfig();
+      if (gmailConfig && gmailConfig.enableNotifications) {
+        console.log('Sending Gmail notification...');
+        
+        const gmailService = new GmailService(gmailConfig);
+        const emailResult = await gmailService.sendSelectionNotification(
+          galleryId,
+          clientName || '',
+          selectedPhotos,
+          uploadResult.downloadUrl!
+        );
 
-      // Send email notification if configured
-      const { resendEmailService } = await import('./resendEmailService');
-      const { smtpEmailService } = await import('./smtpEmailService');
-      
-      // Check email methods in priority order: SMTP > Resend > Traditional email
-      const useSMTP = smtpEmailService.isConfigured();
-      const useResend = !useSMTP && resendEmailService.isConfigured();
-      const useTraditionalEmail = !useSMTP && !useResend && emailService.isConfigured();
-      
-      if ((useSMTP || useResend || useTraditionalEmail) && downloadUrl) {
-        try {
-          if (useSMTP) {
-            // Use SMTP for automatic email sending
-            console.log('📧 Sending email via SMTP...');
-            const smtpResult = await smtpEmailService.sendSelectionNotification(
-              galleryName,
-              selectedPhotos.length,
-              downloadUrl,
-              fileName,
-              clientInfo
-            );
-            
-            if (smtpResult.success) {
-              console.log('✅ Email sent automatically via SMTP!');
-            } else {
-              console.warn('⚠️ SMTP email failed:', smtpResult.error);
-            }
-          } else if (useResend) {
-            // Use Resend for automatic email sending
-            console.log('📧 Sending email via Resend...');
-            const resendResult = await resendEmailService.sendSelectionNotification(
-              galleryName,
-              selectedPhotos.length,
-              downloadUrl,
-              fileName,
-              clientInfo
-            );
-            
-            if (resendResult.success) {
-              console.log('✅ Email sent automatically via Resend!');
-            } else {
-              console.warn('⚠️ Resend email failed:', resendResult.error);
-            }
-          } else {
-            // Use traditional mailto approach
-            const notification: SelectionNotification = {
-              galleryId,
-              galleryName,
-              selectionCount: selectedPhotos.length,
-              clientInfo,
-              downloadUrl,
-              fileName,
-              exportDate: new Date().toLocaleDateString('fr-FR')
-            };
-
-            const emailResult = await emailService.sendNotification(notification);
-            
-            if (emailResult.success && emailResult.mailtoLink) {
-              console.log('📧 Email notification prepared - opening email client...');
-              // Open default email client with pre-filled email
-              window.open(emailResult.mailtoLink);
-            } else if (emailResult.error) {
-              console.warn('⚠️ Email notification failed:', emailResult.error);
-            }
-          }
-        } catch (emailError) {
-          console.warn('⚠️ Email notification error:', emailError);
-          // Don't fail the export if email fails
+        if (emailResult.success) {
+          console.log('Gmail notification sent successfully');
+          return {
+            success: true,
+            downloadUrl: uploadResult.downloadUrl,
+            fileName: uploadResult.fileName,
+            messageId: emailResult.messageId
+          };
+        } else {
+          console.warn('Gmail notification failed:', emailResult.error);
+          // Continue with success even if email fails
         }
       }
-      
+
       return {
         success: true,
-        fileName,
-        downloadUrl: downloadUrl || undefined
+        downloadUrl: uploadResult.downloadUrl,
+        fileName: uploadResult.fileName
       };
 
     } catch (error) {
-      console.error('❌ Error exporting selection:', error);
-      return { 
-        success: false, 
-        error: 'Erreur lors de l\'export de la sélection' 
+      console.error('Export selection error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur lors de l\'export de la sélection'
       };
     }
   }
 
-  // Get selection history for a gallery
-  async getSelectionHistory(galleryId: string): Promise<{
-    success: boolean;
-    selections: { name: string; created_at: string; url: string }[];
-    error?: string;
-  }> {
+  // Get Gmail configuration from localStorage
+  private getGmailConfig(): GmailConfig | null {
     try {
-      if (!supabaseService.isReady()) {
-        return { success: false, selections: [], error: 'Supabase non configuré' };
+      const saved = localStorage.getItem('gmail-config');
+      if (saved) {
+        return JSON.parse(saved);
       }
-
-      // Try selections folder first, then fallback to old location for backward compatibility
-      let files = await supabaseService.listFiles(this.SELECTIONS_BUCKET, `selections/${galleryId}`);
-      if (!files || files.length === 0) {
-        files = await supabaseService.listFiles(this.SELECTIONS_BUCKET, galleryId);
-      }
-      
-      const selections = files
-        .filter(file => file.name.endsWith('.txt'))
-        .map(file => ({
-          name: file.name,
-          created_at: file.created_at,
-          url: supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, `selections/${galleryId}/${file.name}`) || 
-               supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, `${galleryId}/${file.name}`) || ''
-        }))
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      return { success: true, selections };
     } catch (error) {
-      console.error('Error getting selection history:', error);
-      return { 
-        success: false, 
-        selections: [], 
-        error: 'Erreur lors de la récupération de l\'historique' 
+      console.error('Failed to load Gmail config:', error);
+    }
+    return null;
+  }
+
+  // Clear all selections for a gallery
+  async clearSelection(galleryId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const deleteResult = await favoritesService.clearAllFavorites(galleryId);
+      
+      if (deleteResult.success) {
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: deleteResult.error || 'Erreur lors de la suppression des sélections'
+        };
+      }
+    } catch (error) {
+      console.error('Error clearing selection:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur lors de la suppression'
       };
     }
   }
 
-  // Quick export without client info
-  async quickExportSelection(galleryId: string, galleryName: string): Promise<{ 
-    success: boolean; 
-    error?: string; 
-    fileName?: string;
-    downloadUrl?: string;
-  }> {
-    return await this.exportSelection(galleryId, galleryName);
-  }
-
-  // Export with client information form
-  async exportSelectionWithClientInfo(
-    galleryId: string,
-    galleryName: string,
-    clientName?: string,
-    clientEmail?: string,
-    clientPhone?: string
-  ): Promise<{ success: boolean; error?: string; fileName?: string; downloadUrl?: string }> {
-    const clientInfo = {
-      name: clientName?.trim(),
-      email: clientEmail?.trim(),
-      phone: clientPhone?.trim()
-    };
-
-    // Remove empty fields
-    Object.keys(clientInfo).forEach(key => {
-      if (!clientInfo[key as keyof typeof clientInfo]) {
-        delete clientInfo[key as keyof typeof clientInfo];
-      }
-    });
-
-    return await this.exportSelection(galleryId, galleryName, clientInfo);
-  }
-
-  // Generate filename preview
-  generateFileName(galleryId: string, clientName?: string): string {
-    const timestamp = new Date().toISOString().split('T')[0];
-    const clientPart = clientName ? `-${clientName.replace(/[^a-zA-Z0-9]/g, '')}` : '';
-    return `selection-${galleryId}${clientPart}-${timestamp}.txt`;
-  }
-
-  // Validate client info
-  validateClientInfo(name?: string, email?: string, phone?: string): {
-    isValid: boolean;
-    errors: string[];
-  } {
-    const errors: string[] = [];
-
-    if (email && email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) {
-        errors.push('Format d\'email invalide');
-      }
+  // Get selection count for a gallery
+  async getSelectionCount(galleryId: string): Promise<number> {
+    try {
+      const favorites = await favoritesService.getAllFavorites(galleryId);
+      return favorites ? favorites.length : 0;
+    } catch (error) {
+      console.error('Error getting selection count:', error);
+      return 0;
     }
-
-    if (phone && phone.trim()) {
-      const phoneRegex = /^[\d\s\-\+\(\)\.]{8,}$/;
-      if (!phoneRegex.test(phone.trim().replace(/\s/g, ''))) {
-        errors.push('Format de téléphone invalide');
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
   }
 }
 
 export const selectionService = new SelectionService();
-export type { SelectionExport };
