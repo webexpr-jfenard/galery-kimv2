@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
-import { EmailConfigDialog } from "./EmailConfigDialog";
+import { GmailConfigDialog } from "./GmailConfigDialog";
 import { Alert, AlertDescription } from "./ui/alert";
 import { 
   Settings, 
@@ -48,7 +48,6 @@ import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { authService } from "../services/authService";
 import { supabaseService } from "../services/supabaseService";
-import { emailService } from "../services/emailService";
 import type { Gallery, SubfolderInfo } from "../services/galleryService";
 
 export function AdminPanel() {
@@ -558,10 +557,7 @@ export function AdminPanel() {
                   className="flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
-                  Email Config
-                  {emailService.isConfigured() && (
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  )}
+                  Gmail Config
                 </Button>
               </div>
             </CardHeader>
@@ -1106,7 +1102,7 @@ export function AdminPanel() {
       )}
 
       {showEmailConfig && (
-        <EmailConfigDialog
+        <GmailConfigDialog
           isOpen={showEmailConfig}
           onClose={() => setShowEmailConfig(false)}
         />
