@@ -610,6 +610,7 @@ html {
   }
 
   .bg-background {background-color: white !important;}
+  .bg-background-light {background-color: #f8f9fa !important;}
 
 
   /* Responsive lightbox padding */
