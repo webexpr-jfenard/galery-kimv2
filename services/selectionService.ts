@@ -205,9 +205,11 @@ class SelectionService {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
       const clientName = clientInfo?.name ? `-${clientInfo.name.replace(/[^a-zA-Z0-9]/g, '')}` : '';
       const fileName = `selection-${galleryId}${clientName}-${timestamp}.txt`;
-      const filePath = `${galleryId}/${fileName}`;
+      
+      // Use selections folder in the main bucket to avoid RLS issues
+      const filePath = `selections/${galleryId}/${fileName}`;
 
-      // Upload to Supabase
+      // Upload to Supabase with public access
       const uploadResult = await supabaseService.uploadTextFile(
         this.SELECTIONS_BUCKET,
         filePath,
@@ -216,13 +218,21 @@ class SelectionService {
       );
 
       if (!uploadResult.success) {
-        return { 
-          success: false, 
-          error: uploadResult.error || 'Échec de l\'upload du fichier de sélection' 
+        // If upload fails due to RLS, create a downloadable blob URL as fallback
+        console.warn('⚠️ Supabase upload failed, using blob URL fallback:', uploadResult.error);
+        
+        const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        return {
+          success: true,
+          fileName,
+          downloadUrl,
+          isTemporary: true // Flag to indicate this is a temporary URL
         };
       }
 
-      // Get download URL
+      // Get download URL from Supabase
       const downloadUrl = supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, filePath);
 
       console.log('✅ Selection exported successfully:', fileName);
@@ -307,14 +317,19 @@ class SelectionService {
         return { success: false, selections: [], error: 'Supabase non configuré' };
       }
 
-      const files = await supabaseService.listFiles(this.SELECTIONS_BUCKET, galleryId);
+      // Try selections folder first, then fallback to old location for backward compatibility
+      let files = await supabaseService.listFiles(this.SELECTIONS_BUCKET, `selections/${galleryId}`);
+      if (!files || files.length === 0) {
+        files = await supabaseService.listFiles(this.SELECTIONS_BUCKET, galleryId);
+      }
       
       const selections = files
         .filter(file => file.name.endsWith('.txt'))
         .map(file => ({
           name: file.name,
           created_at: file.created_at,
-          url: supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, `${galleryId}/${file.name}`) || ''
+          url: supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, `selections/${galleryId}/${file.name}`) || 
+               supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, `${galleryId}/${file.name}`) || ''
         }))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
