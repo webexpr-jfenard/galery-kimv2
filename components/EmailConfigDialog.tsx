@@ -78,32 +78,46 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   };
 
   const handleTestEmail = () => {
-    const testNotification = {
-      galleryId: 'test-gallery',
-      galleryName: 'Galerie de Test',
-      selectionCount: 3,
-      clientInfo: {
-        name: 'Client Test',
-        email: 'client@example.com',
-        phone: '06 12 34 56 78'
-      },
-      downloadUrl: 'https://example.com/selection-test.txt',
-      fileName: 'selection-test-gallery-2024-01-15.txt',
-      exportDate: new Date().toLocaleDateString('fr-FR')
-    };
+    // Sauvegarder temporairement la config actuelle pour le test
+    const tempConfig = { ...config };
+    const originalConfig = emailService.getEmailConfig();
+    emailService.saveEmailConfig(tempConfig);
 
-    const emailContent = emailService.generateEmailContent(testNotification);
-    const mailtoLink = emailService.generateMailtoLink(testNotification);
-    
-    if (mailtoLink) {
-      window.open(mailtoLink);
-      toast.success('Email de test ouvert dans votre client email');
-    } else {
-      toast.error('Impossible de générer l\'email de test');
+    try {
+      const testNotification = {
+        galleryId: 'test-gallery',
+        galleryName: 'Galerie de Test',
+        selectionCount: 3,
+        clientInfo: {
+          name: 'Client Test',
+          email: 'client@example.com',
+          phone: '06 12 34 56 78'
+        },
+        downloadUrl: 'https://example.com/selection-test.txt',
+        fileName: 'selection-test-gallery-2024-01-15.txt',
+        exportDate: new Date().toLocaleDateString('fr-FR')
+      };
+
+      const mailtoLink = emailService.generateMailtoLink(testNotification);
+      
+      if (mailtoLink) {
+        window.open(mailtoLink);
+        toast.success('Email de test ouvert dans votre client email');
+      } else {
+        toast.error('Impossible de générer l\'email de test');
+      }
+    } finally {
+      // Restaurer la config originale
+      if (originalConfig) {
+        emailService.saveEmailConfig(originalConfig);
+      }
     }
   };
 
   const generatePreview = () => {
+    // Configuration temporaire pour la génération de l'aperçu
+    const tempConfig = { ...config };
+    
     const testNotification = {
       galleryId: 'test-gallery',
       galleryName: 'Galerie de Test',
@@ -117,7 +131,19 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       exportDate: new Date().toLocaleDateString('fr-FR')
     };
 
-    return emailService.generateEmailContent(testNotification);
+    // Sauvegarder temporairement la config pour la génération
+    const originalConfig = emailService.getEmailConfig();
+    emailService.saveEmailConfig(tempConfig);
+    
+    try {
+      const emailContent = emailService.generateEmailContent(testNotification);
+      return emailContent;
+    } finally {
+      // Restaurer la config originale
+      if (originalConfig) {
+        emailService.saveEmailConfig(originalConfig);
+      }
+    }
   };
 
   const previewContent = showPreview ? generatePreview() : null;
@@ -131,7 +157,7 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
             Configuration des notifications email
           </DialogTitle>
           <DialogDescription>
-            Configurez les notifications automatiques pour recevoir les sélections clients par email.
+            Configurez l'email qui recevra toutes les notifications de sélections clients, peu importe la galerie.
           </DialogDescription>
         </DialogHeader>
 
@@ -141,7 +167,7 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
             <div className="space-y-1">
               <Label className="text-base font-medium">Notifications activées</Label>
               <p className="text-sm text-muted-foreground">
-                Recevoir automatiquement les sélections clients par email
+                Recevoir automatiquement toutes les sélections clients par email (toutes galeries)
               </p>
             </div>
             <Switch
@@ -324,9 +350,9 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
 
           <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg">
             <strong>ℹ️ Comment ça marche :</strong><br/>
-            Quand un client soumet sa sélection, votre client email par défaut s'ouvrira automatiquement 
+            Quand un client soumet sa sélection (de n'importe quelle galerie), votre client email par défaut s'ouvrira automatiquement 
             avec un email pré-rempli contenant tous les détails et le lien de téléchargement. 
-            Vous n'avez qu'à cliquer "Envoyer" !
+            Vous n'avez qu'à cliquer "Envoyer" ! L'email indiquera de quelle galerie provient la sélection.
           </div>
         </div>
       </DialogContent>
