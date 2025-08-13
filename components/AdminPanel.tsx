@@ -9,6 +9,7 @@ import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
 import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
+import { PhotoManager } from "./PhotoManager";
 import { Alert, AlertDescription } from "./ui/alert";
 import { 
   Settings, 
@@ -81,6 +82,9 @@ export function AdminPanel() {
   // Edit gallery state
   const [editingGallery, setEditingGallery] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Gallery>>({});
+  
+  // Photo management state
+  const [managingPhotosGallery, setManagingPhotosGallery] = useState<string | null>(null);
   
   // Upload state with subfolder support - FIXED: Individual subfolder state per gallery
   const [uploadingGallery, setUploadingGallery] = useState<string | null>(null);
@@ -958,6 +962,14 @@ export function AdminPanel() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setManagingPhotosGallery(gallery.id)}
+                            >
+                              <FileImage className="h-4 w-4 mr-2" />
+                              Manage Photos
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => startEditingGallery(gallery)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
@@ -1039,6 +1051,14 @@ export function AdminPanel() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Photo Manager Modal */}
+      {managingPhotosGallery && (
+        <PhotoManager
+          galleryId={managingPhotosGallery}
+          onClose={() => setManagingPhotosGallery(null)}
+        />
+      )}
     </div>
   );
 }
