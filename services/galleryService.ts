@@ -1,4 +1,5 @@
 import { supabaseService } from './supabaseService';
+import { favoritesService } from './favoritesService';
 import type { StorageFile } from './supabaseService';
 
 export interface Gallery {
@@ -1066,6 +1067,9 @@ class GalleryService {
 
       if (supabaseService.isReady()) {
         const health = await this.checkDatabaseHealth();
+        let dbDeleteSuccess = true;
+        let storageDeleteSuccess = true;
+        
         if (health.tablesExist) {
           // Delete from Supabase database first
           const { error: dbError } = await supabaseService.client
@@ -1074,17 +1078,41 @@ class GalleryService {
             .eq('id', photoId);
 
           if (dbError) {
-            console.error('Error deleting photo from database:', dbError);
+            console.error('❌ Error deleting photo from database:', dbError);
+            dbDeleteSuccess = false;
+          } else {
+            console.log('✅ Photo deleted from database');
           }
         }
 
         // Delete from Supabase storage
         if (photo.bucketPath && gallery.bucketName) {
+          console.log(`🗑️ Deleting photo file: ${gallery.bucketName}/${photo.bucketPath}`);
           const deleteResult = await supabaseService.deleteFile(gallery.bucketName, photo.bucketPath);
           if (!deleteResult.success) {
-            console.warn('Could not delete file from storage:', deleteResult.error);
+            console.error('❌ Failed to delete file from storage:', deleteResult.error);
+            storageDeleteSuccess = false;
+          } else {
+            console.log('✅ Photo file deleted from storage');
           }
         }
+        
+        // Log the overall result
+        if (!dbDeleteSuccess || !storageDeleteSuccess) {
+          console.warn(`⚠️ Photo deletion partially failed - DB: ${dbDeleteSuccess}, Storage: ${storageDeleteSuccess}`);
+          // Continue anyway to clean up local cache and related data
+        } else {
+          console.log('✅ Photo completely deleted from database and storage');
+        }
+      }
+
+      // Clean up related favorites and comments
+      console.log('🧹 Cleaning up related favorites and comments...');
+      const cleanupResult = await favoritesService.clearPhotoData(galleryId, photoId);
+      if (cleanupResult) {
+        console.log('✅ Related data cleaned up successfully');
+      } else {
+        console.warn('⚠️ Some related data may not have been cleaned up');
       }
 
       // Update gallery photo count and clear cache

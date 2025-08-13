@@ -745,6 +745,95 @@ class FavoritesService {
       return false;
     }
   }
+
+  // PHOTO CLEANUP METHODS - for when photos are deleted
+
+  async clearPhotoData(galleryId: string, photoId: string): Promise<boolean> {
+    try {
+      let favoritesCleared = false;
+      let commentsCleared = false;
+
+      // Clear favorites for this photo
+      const favoritesResult = await this.clearPhotoFavorites(galleryId, photoId);
+      favoritesCleared = favoritesResult;
+
+      // Clear comments for this photo  
+      const commentsResult = await this.clearPhotoComments(galleryId, photoId);
+      commentsCleared = commentsResult;
+
+      console.log(`🧹 Photo cleanup complete - Favorites: ${favoritesCleared}, Comments: ${commentsCleared}`);
+      return favoritesCleared && commentsCleared;
+    } catch (error) {
+      console.error('Error clearing photo data:', error);
+      return false;
+    }
+  }
+
+  async clearPhotoFavorites(galleryId: string, photoId: string): Promise<boolean> {
+    try {
+      if (supabaseService.isReady()) {
+        const { error } = await supabaseService.client
+          .from(this.FAVORITES_TABLE)
+          .delete()
+          .eq('gallery_id', galleryId)
+          .eq('photo_id', photoId);
+
+        if (error) {
+          console.error('Error clearing photo favorites from Supabase:', error);
+          return false;
+        }
+        console.log(`✅ Cleared all favorites for photo ${photoId}`);
+      }
+      
+      // Also clear local storage favorites for this photo
+      const stored = localStorage.getItem(this.LOCAL_FAVORITES_KEY);
+      if (stored) {
+        const allFavorites = JSON.parse(stored);
+        const galleryFavorites = allFavorites[galleryId] || [];
+        const updatedFavorites = galleryFavorites.filter((id: string) => id !== photoId);
+        allFavorites[galleryId] = updatedFavorites;
+        localStorage.setItem(this.LOCAL_FAVORITES_KEY, JSON.stringify(allFavorites));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error clearing photo favorites:', error);
+      return false;
+    }
+  }
+
+  async clearPhotoComments(galleryId: string, photoId: string): Promise<boolean> {
+    try {
+      if (supabaseService.isReady()) {
+        const { error } = await supabaseService.client
+          .from(this.COMMENTS_TABLE)
+          .delete()
+          .eq('gallery_id', galleryId)
+          .eq('photo_id', photoId);
+
+        if (error) {
+          console.error('Error clearing photo comments from Supabase:', error);
+          return false;
+        }
+        console.log(`✅ Cleared all comments for photo ${photoId}`);
+      }
+      
+      // Also clear local storage comments for this photo
+      const stored = localStorage.getItem(this.LOCAL_COMMENTS_KEY);
+      if (stored) {
+        const allComments = JSON.parse(stored);
+        const galleryComments = allComments[galleryId] || [];
+        const updatedComments = galleryComments.filter((comment: any) => comment.photoId !== photoId);
+        allComments[galleryId] = updatedComments;
+        localStorage.setItem(this.LOCAL_COMMENTS_KEY, JSON.stringify(allComments));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error clearing photo comments:', error);
+      return false;
+    }
+  }
 }
 
 export const favoritesService = new FavoritesService();
