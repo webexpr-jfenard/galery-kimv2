@@ -239,14 +239,32 @@ class SelectionService {
 
       // Send email notification if configured
       const { resendEmailService } = await import('./resendEmailService');
+      const { smtpEmailService } = await import('./smtpEmailService');
       
-      // Check if Resend is configured first, then fallback to traditional email
-      const useResend = resendEmailService.isConfigured();
-      const useTraditionalEmail = !useResend && emailService.isConfigured();
+      // Check email methods in priority order: SMTP > Resend > Traditional email
+      const useSMTP = smtpEmailService.isConfigured();
+      const useResend = !useSMTP && resendEmailService.isConfigured();
+      const useTraditionalEmail = !useSMTP && !useResend && emailService.isConfigured();
       
-      if ((useResend || useTraditionalEmail) && downloadUrl) {
+      if ((useSMTP || useResend || useTraditionalEmail) && downloadUrl) {
         try {
-          if (useResend) {
+          if (useSMTP) {
+            // Use SMTP for automatic email sending
+            console.log('📧 Sending email via SMTP...');
+            const smtpResult = await smtpEmailService.sendSelectionNotification(
+              galleryName,
+              selectedPhotos.length,
+              downloadUrl,
+              fileName,
+              clientInfo
+            );
+            
+            if (smtpResult.success) {
+              console.log('✅ Email sent automatically via SMTP!');
+            } else {
+              console.warn('⚠️ SMTP email failed:', smtpResult.error);
+            }
+          } else if (useResend) {
             // Use Resend for automatic email sending
             console.log('📧 Sending email via Resend...');
             const resendResult = await resendEmailService.sendSelectionNotification(
@@ -261,7 +279,6 @@ class SelectionService {
               console.log('✅ Email sent automatically via Resend!');
             } else {
               console.warn('⚠️ Resend email failed:', resendResult.error);
-              // Could fallback to traditional email here if desired
             }
           } else {
             // Use traditional mailto approach
