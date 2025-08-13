@@ -1,7 +1,7 @@
 // API Route for sending emails with SMTP (OVH or other providers)
 // This file should be placed in /api folder for Vercel deployment
 
-import nodemailer from 'nodemailer';
+const nodemailer = require('nodemailer');
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // CORS headers for browser requests
