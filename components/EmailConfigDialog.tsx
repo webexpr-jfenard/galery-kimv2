@@ -21,13 +21,17 @@ import {
 import { toast } from "sonner";
 import { emailService } from "../services/emailService";
 import { resendEmailService } from "../services/resendEmailService";
+import { smtpEmailService } from "../services/smtpEmailService";
 import type { EmailConfig } from "../services/emailService";
 import type { ResendConfig } from "../services/resendEmailService";
+import type { SMTPConfig } from "../services/smtpEmailService";
 
 interface EmailConfigDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+type EmailMethod = 'mailto' | 'resend' | 'smtp';
 
 export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   const [config, setConfig] = useState<EmailConfig>(emailService.getDefaultConfig());
@@ -37,7 +41,8 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
     photographerName: '',
     enableNotifications: true
   });
-  const [useResend, setUseResend] = useState(false);
+  const [smtpConfig, setSmtpConfig] = useState<SMTPConfig>(smtpEmailService.getDefaultConfig());
+  const [emailMethod, setEmailMethod] = useState<EmailMethod>('mailto');
   const [errors, setErrors] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -57,7 +62,7 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       const existingResendConfig = resendEmailService.getConfig();
       if (existingResendConfig) {
         setResendConfig(existingResendConfig);
-        setUseResend(true);
+        setEmailMethod('resend');
       } else {
         setResendConfig({
           fromEmail: '',
@@ -65,7 +70,20 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
           photographerName: '',
           enableNotifications: true
         });
-        setUseResend(false);
+      }
+      
+      // Load SMTP config
+      const existingSMTPConfig = smtpEmailService.getConfig();
+      if (existingSMTPConfig) {
+        setSmtpConfig(existingSMTPConfig);
+        setEmailMethod('smtp');
+      } else {
+        setSmtpConfig(smtpEmailService.getDefaultConfig());
+      }
+      
+      // Default to mailto if no other config found
+      if (!existingResendConfig && !existingSMTPConfig) {
+        setEmailMethod('mailto');
       }
       
       setErrors([]);
@@ -77,7 +95,7 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       setIsSaving(true);
       setErrors([]);
 
-      if (useResend) {
+      if (emailMethod === 'resend') {
         // Validate Resend configuration
         if (!resendConfig.fromEmail || !resendConfig.photographerEmail) {
           setErrors(['Email expéditeur et destinataire requis pour Resend']);
@@ -95,6 +113,28 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
         
         if (success) {
           toast.success('Configuration Resend sauvegardée !');
+          onClose();
+        } else {
+          toast.error('Erreur lors de la sauvegarde');
+        }
+      } else if (emailMethod === 'smtp') {
+        // Validate SMTP configuration
+        if (!smtpConfig.host || !smtpConfig.fromEmail || !smtpConfig.photographerEmail) {
+          setErrors(['Serveur SMTP, email expéditeur et destinataire requis']);
+          return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(smtpConfig.fromEmail) || !emailRegex.test(smtpConfig.photographerEmail)) {
+          setErrors(['Format d\'email invalide']);
+          return;
+        }
+
+        // Save SMTP configuration
+        const success = smtpEmailService.saveConfig(smtpConfig);
+        
+        if (success) {
+          toast.success('Configuration SMTP sauvegardée !');
           onClose();
         } else {
           toast.error('Erreur lors de la sauvegarde');
@@ -126,7 +166,7 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   };
 
   const handleTestEmail = async () => {
-    if (useResend) {
+    if (emailMethod === 'resend') {
       // Test Resend configuration
       if (!resendConfig.fromEmail || !resendConfig.photographerEmail) {
         toast.error('Veuillez configurer les emails expéditeur et destinataire');
@@ -138,13 +178,35 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
         const result = await resendEmailService.sendTestEmail();
         
         if (result.success) {
-          toast.success('Email de test envoyé automatiquement !');
+          toast.success('Email de test envoyé automatiquement via Resend !');
         } else {
-          toast.error(`Erreur envoi: ${result.error}`);
+          toast.error(`Erreur Resend: ${result.error}`);
         }
       } catch (error) {
         console.error('Erreur test Resend:', error);
         toast.error('Erreur lors du test Resend');
+      } finally {
+        setIsTesting(false);
+      }
+    } else if (emailMethod === 'smtp') {
+      // Test SMTP configuration
+      if (!smtpConfig.host || !smtpConfig.fromEmail || !smtpConfig.photographerEmail) {
+        toast.error('Veuillez configurer le serveur SMTP et les emails');
+        return;
+      }
+
+      setIsTesting(true);
+      try {
+        const result = await smtpEmailService.sendTestEmail();
+        
+        if (result.success) {
+          toast.success('Email de test envoyé automatiquement via SMTP !');
+        } else {
+          toast.error(`Erreur SMTP: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Erreur test SMTP:', error);
+        toast.error('Erreur lors du test SMTP');
       } finally {
         setIsTesting(false);
       }
@@ -248,31 +310,64 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
         <div className="space-y-6">
           {/* Method Selection */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-              <div className="space-y-1">
-                <Label className="text-base font-medium">Méthode d'envoi</Label>
-                <p className="text-sm text-muted-foreground">
-                  Choisissez comment envoyer les notifications email
-                </p>
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Méthode d'envoi</Label>
+              <p className="text-sm text-muted-foreground">
+                Choisissez comment envoyer les notifications email
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    emailMethod === 'mailto' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setEmailMethod('mailto')}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium">Client Email</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ouvre votre client email par défaut
+                  </p>
+                </div>
+                
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    emailMethod === 'resend' 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setEmailMethod('resend')}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Send className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">Resend</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Service cloud professionnel
+                  </p>
+                </div>
+                
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    emailMethod === 'smtp' 
+                      ? 'border-orange-500 bg-orange-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setEmailMethod('smtp')}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Settings className="h-4 w-4 text-orange-600" />
+                    <span className="font-medium">SMTP (OVH)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Serveur SMTP personnel
+                  </p>
+                </div>
               </div>
-              <Switch
-                checked={useResend}
-                onCheckedChange={setUseResend}
-              />
-            </div>
-            
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {useResend ? (
-                <>
-                  <Send className="h-4 w-4 text-green-600" />
-                  <span>Envoi automatique via Resend (recommandé)</span>
-                </>
-              ) : (
-                <>
-                  <Mail className="h-4 w-4 text-blue-600" />
-                  <span>Ouverture du client email local (mailto)</span>
-                </>
-              )}
             </div>
           </div>
 
@@ -285,10 +380,16 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
               </p>
             </div>
             <Switch
-              checked={useResend ? resendConfig.enableNotifications : config.enableNotifications}
+              checked={
+                emailMethod === 'resend' ? resendConfig.enableNotifications :
+                emailMethod === 'smtp' ? smtpConfig.enableNotifications :
+                config.enableNotifications
+              }
               onCheckedChange={(checked) => {
-                if (useResend) {
+                if (emailMethod === 'resend') {
                   setResendConfig(prev => ({ ...prev, enableNotifications: checked }));
+                } else if (emailMethod === 'smtp') {
+                  setSmtpConfig(prev => ({ ...prev, enableNotifications: checked }));
                 } else {
                   setConfig(prev => ({ ...prev, enableNotifications: checked }));
                 }
@@ -296,9 +397,13 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
             />
           </div>
 
-          {(useResend ? resendConfig.enableNotifications : config.enableNotifications) && (
+          {(
+            (emailMethod === 'resend' ? resendConfig.enableNotifications :
+             emailMethod === 'smtp' ? smtpConfig.enableNotifications :
+             config.enableNotifications)
+          ) && (
             <>
-              {useResend && (
+              {emailMethod === 'resend' && (
                 <>
                   {/* Resend Configuration */}
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -363,7 +468,120 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
                 </>
               )}
 
-              {!useResend && (
+              {emailMethod === 'smtp' && (
+                <>
+                  {/* SMTP Configuration */}
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <h3 className="text-sm font-medium text-orange-800 mb-3">Configuration SMTP (OVH / Autres)</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-host" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Serveur SMTP *
+                        </Label>
+                        <Input
+                          id="smtp-host"
+                          placeholder="ssl0.ovh.net"
+                          value={smtpConfig.host}
+                          onChange={(e) => setSmtpConfig(prev => ({ ...prev, host: e.target.value }))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Ex: ssl0.ovh.net pour OVH
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-port" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Port SMTP *
+                        </Label>
+                        <Input
+                          id="smtp-port"
+                          type="number"
+                          placeholder="587"
+                          value={smtpConfig.port}
+                          onChange={(e) => setSmtpConfig(prev => ({ ...prev, port: parseInt(e.target.value) || 587 }))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          587 pour TLS, 465 pour SSL
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-from-email" className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Email expéditeur *
+                        </Label>
+                        <Input
+                          id="smtp-from-email"
+                          type="email"
+                          placeholder="noreply@votre-domaine.com"
+                          value={smtpConfig.fromEmail}
+                          onChange={(e) => setSmtpConfig(prev => ({ ...prev, fromEmail: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-photographer-email" className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Email du photographe *
+                        </Label>
+                        <Input
+                          id="smtp-photographer-email"
+                          type="email"
+                          placeholder="photographe@example.com"
+                          value={smtpConfig.photographerEmail}
+                          onChange={(e) => setSmtpConfig(prev => ({ ...prev, photographerEmail: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-photographer-name" className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          Nom du photographe
+                        </Label>
+                        <Input
+                          id="smtp-photographer-name"
+                          placeholder="Votre nom"
+                          value={smtpConfig.photographerName || ''}
+                          onChange={(e) => setSmtpConfig(prev => ({ ...prev, photographerName: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            id="smtp-secure"
+                            type="checkbox"
+                            checked={smtpConfig.secure}
+                            onChange={(e) => setSmtpConfig(prev => ({ 
+                              ...prev, 
+                              secure: e.target.checked,
+                              port: e.target.checked ? 465 : 587
+                            }))}
+                          />
+                          <Label htmlFor="smtp-secure">Connexion sécurisée (SSL)</Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Cocher pour SSL (port 465), décocher pour TLS (port 587)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 bg-blue-50 p-3 rounded border border-blue-200">
+                      <p className="text-xs text-blue-700">
+                        <strong>⚠️ Configuration serveur requise:</strong><br/>
+                        1. Ajoutez SMTP_HOST, SMTP_USER, SMTP_PASS dans vos variables d'environnement<br/>
+                        2. SMTP_PORT et SMTP_SECURE sont optionnels (défauts: 587, false)<br/>
+                        3. Pour OVH: Host = ssl0.ovh.net, Port = 587, Secure = false
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {emailMethod === 'mailto' && (
                 <>
                   {/* Traditional Email Configuration */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -447,8 +665,14 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
               {/* Configuration Status */}
               <div className="bg-muted/30 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  {useResend ? (
+                  {emailMethod === 'resend' ? (
                     resendConfig.fromEmail && resendConfig.photographerEmail ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                    )
+                  ) : emailMethod === 'smtp' ? (
+                    smtpConfig.host && smtpConfig.fromEmail && smtpConfig.photographerEmail ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     ) : (
                       <AlertCircle className="h-4 w-4 text-orange-600" />
@@ -461,18 +685,24 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
                     )
                   )}
                   <span className="font-medium">
-                    {useResend ? (
+                    {emailMethod === 'resend' ? (
                       resendConfig.fromEmail && resendConfig.photographerEmail ? 'Configuration valide' : 'Configuration incomplète'
+                    ) : emailMethod === 'smtp' ? (
+                      smtpConfig.host && smtpConfig.fromEmail && smtpConfig.photographerEmail ? 'Configuration valide' : 'Configuration incomplète'
                     ) : (
                       emailService.validateEmailConfig(config).isValid ? 'Configuration valide' : 'Configuration incomplète'
                     )}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {useResend ? (
+                  {emailMethod === 'resend' ? (
                     resendConfig.fromEmail && resendConfig.photographerEmail
-                      ? 'Les notifications email automatiques sont prêtes.'
+                      ? 'Les notifications email automatiques via Resend sont prêtes.'
                       : 'Veuillez remplir les champs requis pour Resend.'
+                  ) : emailMethod === 'smtp' ? (
+                    smtpConfig.host && smtpConfig.fromEmail && smtpConfig.photographerEmail
+                      ? 'Les notifications email automatiques via SMTP sont prêtes.'
+                      : 'Veuillez remplir les champs requis pour SMTP.'
                   ) : (
                     emailService.validateEmailConfig(config).isValid 
                       ? 'Les notifications email sont prêtes à être envoyées.'
@@ -498,25 +728,48 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
           )}
 
           {/* Email Preview - Version Simplifiée */}
-          {(useResend ? resendConfig.enableNotifications && resendConfig.photographerEmail : config.enableNotifications && config.photographerEmail) && (
+          {(
+            (emailMethod === 'resend' ? resendConfig.enableNotifications && resendConfig.photographerEmail :
+             emailMethod === 'smtp' ? smtpConfig.enableNotifications && smtpConfig.photographerEmail :
+             config.enableNotifications && config.photographerEmail)
+          ) && (
             <div className="border-t pt-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-blue-800 mb-2">
-                  ✅ Configuration {useResend ? 'Resend' : 'Email'} Prête
+                  ✅ Configuration {
+                    emailMethod === 'resend' ? 'Resend' : 
+                    emailMethod === 'smtp' ? 'SMTP' : 
+                    'Email'
+                  } Prête
                 </h3>
                 <div className="text-sm text-blue-700 space-y-1">
-                  <p><strong>Destinataire:</strong> {useResend ? resendConfig.photographerEmail : config.photographerEmail}</p>
-                  <p><strong>Nom:</strong> {(useResend ? resendConfig.photographerName : config.photographerName) || 'Photographe'}</p>
-                  {useResend ? (
+                  <p><strong>Destinataire:</strong> {
+                    emailMethod === 'resend' ? resendConfig.photographerEmail :
+                    emailMethod === 'smtp' ? smtpConfig.photographerEmail :
+                    config.photographerEmail
+                  }</p>
+                  <p><strong>Nom:</strong> {
+                    (emailMethod === 'resend' ? resendConfig.photographerName :
+                     emailMethod === 'smtp' ? smtpConfig.photographerName :
+                     config.photographerName) || 'Photographe'
+                  }</p>
+                  {emailMethod === 'resend' ? (
                     <p><strong>Expéditeur:</strong> {resendConfig.fromEmail}</p>
+                  ) : emailMethod === 'smtp' ? (
+                    <>
+                      <p><strong>Expéditeur:</strong> {smtpConfig.fromEmail}</p>
+                      <p><strong>Serveur:</strong> {smtpConfig.host}:{smtpConfig.port}</p>
+                    </>
                   ) : (
                     <p><strong>Expéditeur:</strong> {config.fromName || 'Galerie Photo'}</p>
                   )}
                 </div>
                 <p className="text-xs text-blue-600 mt-2">
-                  💡 {useResend 
-                    ? 'Utilisez le bouton "Tester l\'email" pour envoyer un test automatiquement'
-                    : 'Utilisez le bouton "Tester l\'email" pour voir l\'aperçu complet dans votre client email'
+                  💡 {emailMethod === 'resend' ? 
+                    'Utilisez le bouton "Tester l\'email" pour envoyer un test automatiquement via Resend' :
+                    emailMethod === 'smtp' ?
+                    'Utilisez le bouton "Tester l\'email" pour envoyer un test automatiquement via SMTP' :
+                    'Utilisez le bouton "Tester l\'email" pour voir l\'aperçu complet dans votre client email'
                   }
                 </p>
               </div>
@@ -525,8 +778,10 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {(useResend ? 
+            {(emailMethod === 'resend' ? 
               resendConfig.enableNotifications && resendConfig.fromEmail && resendConfig.photographerEmail :
+              emailMethod === 'smtp' ?
+              smtpConfig.enableNotifications && smtpConfig.host && smtpConfig.fromEmail && smtpConfig.photographerEmail :
               config.enableNotifications && emailService.validateEmailConfig(config).isValid
             ) && (
               <Button
@@ -551,10 +806,16 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
 
           <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg">
             <strong>ℹ️ Comment ça marche :</strong><br/>
-            {useResend ? (
+            {emailMethod === 'resend' ? (
               <>
                 Quand un client soumet sa sélection (de n'importe quelle galerie), l'email est automatiquement envoyé 
                 à l'adresse configurée via Resend. Aucune action manuelle requise ! 
+                L'email contient tous les détails et le lien de téléchargement.
+              </>
+            ) : emailMethod === 'smtp' ? (
+              <>
+                Quand un client soumet sa sélection (de n'importe quelle galerie), l'email est automatiquement envoyé 
+                via votre serveur SMTP (OVH, etc.) à l'adresse configurée. Aucune action manuelle requise ! 
                 L'email contient tous les détails et le lien de téléchargement.
               </>
             ) : (
