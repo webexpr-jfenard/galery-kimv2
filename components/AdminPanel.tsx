@@ -477,7 +477,7 @@ export function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background-light">
       {/* Header - Responsive */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 lg:py-6">
