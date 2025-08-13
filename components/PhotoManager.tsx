@@ -15,7 +15,8 @@ import {
   Folder,
   Calendar,
   HardDrive,
-  RefreshCw
+  RefreshCw,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -41,6 +42,18 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   useEffect(() => {
     loadGalleryData();
   }, [galleryId, selectedSubfolder]);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   useEffect(() => {
     // Filter photos based on search term
@@ -109,7 +122,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     if (selectedPhotos.size === 0) return;
 
     const confirmed = confirm(
-      `Are you sure you want to delete ${selectedPhotos.size} selected photo(s)?\n\nThis action cannot be undone and will permanently remove the photos from storage.`
+      `Are you sure you want to delete ${selectedPhotos.size} selected photo(s)?\n\nThis will permanently remove:\n• All photo files from Supabase storage\n• All metadata from the database\n• Any related favorites and comments\n\nThis action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -157,7 +170,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
 
   const handleDeleteSingle = async (photo: Photo) => {
     const confirmed = confirm(
-      `Are you sure you want to delete "${photo.originalName || photo.name}"?\n\nThis action cannot be undone.`
+      `Are you sure you want to delete "${photo.originalName || photo.name}"?\n\nThis will permanently remove:\n• The photo file from storage\n• All metadata from the database\n• Any related favorites and comments\n\nThis action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -165,14 +178,14 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     try {
       const success = await galleryService.deletePhoto(galleryId, photo.id);
       if (success) {
-        toast.success('Photo deleted successfully');
+        toast.success('Photo and file deleted successfully from storage');
         await loadGalleryData();
       } else {
-        toast.error('Failed to delete photo');
+        toast.error('Failed to delete photo or file');
       }
     } catch (error) {
       console.error('Error deleting photo:', error);
-      toast.error('Failed to delete photo');
+      toast.error('Failed to delete photo or file');
     }
   };
 
@@ -214,26 +227,25 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        // Close when clicking outside the modal
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-background rounded-lg shadow-2xl border w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="border-b bg-card/50 px-6 py-4 shrink-0">
           <div className="flex flex-col space-y-4">
             {/* Top row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 min-w-0 flex-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onClose}
-                  className="shrink-0"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Admin
-                </Button>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <FileImage className="h-6 w-6 text-primary" />
+                  <h1 className="text-xl font-bold flex items-center gap-2">
+                    <FileImage className="h-5 w-5 text-primary" />
                     <span className="truncate">Manage Photos</span>
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -270,6 +282,14 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
@@ -288,12 +308,12 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
 
               {/* Subfolder filter */}
               {subfolders.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedSubfolder(undefined)}
-                    className={`${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                    className={`${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''} shrink-0`}
                   >
                     All Folders
                   </Button>
@@ -303,7 +323,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedSubfolder(subfolder)}
-                      className={`${selectedSubfolder === subfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                      className={`${selectedSubfolder === subfolder ? 'bg-primary text-primary-foreground' : ''} shrink-0`}
                     >
                       <Folder className="h-4 w-4 mr-1" />
                       <span className="max-w-[100px] truncate">{subfolder}</span>
@@ -345,10 +365,9 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
         {filteredPhotos.length === 0 ? (
           <div className="text-center py-16">
             {searchTerm ? (
@@ -374,7 +393,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
           </div>
         ) : viewMode === 'grid' ? (
           /* Grid View */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {filteredPhotos.map((photo) => (
               <div key={photo.id} className="group relative bg-card border rounded-lg overflow-hidden hover:shadow-lg transition-all">
                 {/* Selection checkbox */}
@@ -493,6 +512,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
