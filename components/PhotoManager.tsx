@@ -16,7 +16,8 @@ import {
   Calendar,
   HardDrive,
   RefreshCw,
-  X
+  X,
+  Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -189,6 +190,36 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     }
   };
 
+  const handleSetFeaturedPhoto = async (photo: Photo) => {
+    try {
+      const success = await galleryService.setFeaturedPhoto(galleryId, photo.id);
+      if (success) {
+        toast.success(`"${photo.originalName || photo.name}" set as featured photo`);
+        await loadGalleryData();
+      } else {
+        toast.error('Failed to set featured photo');
+      }
+    } catch (error) {
+      console.error('Error setting featured photo:', error);
+      toast.error('Failed to set featured photo');
+    }
+  };
+
+  const handleRemoveFeaturedPhoto = async () => {
+    try {
+      const success = await galleryService.removeFeaturedPhoto(galleryId);
+      if (success) {
+        toast.success('Featured photo removed');
+        await loadGalleryData();
+      } else {
+        toast.error('Failed to remove featured photo');
+      }
+    } catch (error) {
+      console.error('Error removing featured photo:', error);
+      toast.error('Failed to remove featured photo');
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -199,6 +230,10 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
 
   const getPhotoDisplayName = (photo: Photo) => {
     return photo.originalName || photo.name;
+  };
+
+  const isFeaturedPhoto = (photo: Photo) => {
+    return gallery?.featuredPhotoId === photo.id;
   };
 
   if (isLoading) {
@@ -292,6 +327,34 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 </Button>
               </div>
             </div>
+
+            {/* Featured Photo Status */}
+            {gallery?.featuredPhotoUrl && (
+              <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-orange-300 shrink-0">
+                  <img
+                    src={gallery.featuredPhotoUrl}
+                    alt="Featured photo"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-orange-600 fill-current" />
+                    <span className="text-sm font-medium text-orange-800">Featured Photo Set</span>
+                  </div>
+                  <p className="text-xs text-orange-600 truncate">This photo will be shown in the admin gallery list</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRemoveFeaturedPhoto}
+                  className="shrink-0 border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
             {/* Filters and search */}
             <div className="flex flex-col sm:flex-row gap-3">
@@ -406,6 +469,16 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   />
                 </div>
 
+                {/* Featured badge */}
+                {isFeaturedPhoto(photo) && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <Badge className="bg-orange-600 text-white text-xs px-2 py-1">
+                      <Star className="h-3 w-3 mr-1 fill-current" />
+                      Featured
+                    </Badge>
+                  </div>
+                )}
+
                 {/* Photo */}
                 <div className="aspect-square relative overflow-hidden">
                   <img
@@ -423,6 +496,15 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                       onClick={() => window.open(photo.url, '_blank')}
                     >
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleSetFeaturedPhoto(photo)}
+                      className={isFeaturedPhoto(photo) ? 'bg-orange-600 text-white' : ''}
+                      title={isFeaturedPhoto(photo) ? 'Featured photo' : 'Set as featured'}
+                    >
+                      <Star className={`h-4 w-4 ${isFeaturedPhoto(photo) ? 'fill-current' : ''}`} />
                     </Button>
                     <Button
                       size="sm"
@@ -489,6 +571,12 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                         {photo.subfolder}
                       </Badge>
                     )}
+                    {isFeaturedPhoto(photo) && (
+                      <Badge className="bg-orange-600 text-white text-xs">
+                        <Star className="h-3 w-3 mr-1 fill-current" />
+                        Featured
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
@@ -499,6 +587,15 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                     onClick={() => window.open(photo.url, '_blank')}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSetFeaturedPhoto(photo)}
+                    className={isFeaturedPhoto(photo) ? 'bg-orange-100 border-orange-300 text-orange-700' : ''}
+                    title={isFeaturedPhoto(photo) ? 'Featured photo' : 'Set as featured'}
+                  >
+                    <Star className={`h-4 w-4 ${isFeaturedPhoto(photo) ? 'fill-current text-orange-600' : ''}`} />
                   </Button>
                   <Button
                     size="sm"

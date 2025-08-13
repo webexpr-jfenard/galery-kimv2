@@ -38,7 +38,8 @@ import {
   HardDrive,
   AlertCircle,
   Info,
-  FolderOpen
+  FolderOpen,
+  Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -917,36 +918,58 @@ export function AdminPanel() {
                       // View mode
                       <>
                         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold truncate">{gallery.name}</h3>
-                              <div className="flex gap-2 shrink-0">
-                                {gallery.password && (
-                                  <Badge variant="secondary">
-                                    <Key className="h-3 w-3 mr-1" />
-                                    Protected
+                          <div className="flex gap-4 flex-1 min-w-0">
+                            {/* Featured photo thumbnail */}
+                            {gallery.featuredPhotoUrl ? (
+                              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-lg overflow-hidden border-2 border-orange-300 shrink-0 relative">
+                                <img
+                                  src={gallery.featuredPhotoUrl}
+                                  alt={`Featured photo for ${gallery.name}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute top-1 right-1">
+                                  <Badge className="bg-orange-600 text-white text-xs px-1 py-0.5">
+                                    <Star className="h-2 w-2 mr-0.5 fill-current" />
                                   </Badge>
-                                )}
-                                <Badge variant="outline">
-                                  ID: {gallery.id}
-                                </Badge>
+                                </div>
                               </div>
-                            </div>
-                            {gallery.description && (
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {gallery.description}
-                              </p>
+                            ) : (
+                              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 shrink-0 flex items-center justify-center">
+                                <FileImage className="h-8 w-8 lg:h-10 lg:w-10 text-muted-foreground/50" />
+                              </div>
                             )}
-                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                              <span>{gallery.photoCount || 0} photos</span>
-                              {gallery.bucketFolder && (
-                                <span className="flex items-center gap-1">
-                                  <Folder className="h-3 w-3" />
-                                  {gallery.bucketFolder}
-                                </span>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-lg font-semibold truncate">{gallery.name}</h3>
+                                <div className="flex gap-2 shrink-0">
+                                  {gallery.password && (
+                                    <Badge variant="secondary">
+                                      <Key className="h-3 w-3 mr-1" />
+                                      Protected
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline">
+                                    ID: {gallery.id}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {gallery.description && (
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {gallery.description}
+                                </p>
                               )}
-                              <span>{gallery.isPublic ? 'Public' : 'Private'}</span>
-                              <span>Created {new Date(gallery.createdAt).toLocaleDateString()}</span>
+                              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                                <span>{gallery.photoCount || 0} photos</span>
+                                {gallery.bucketFolder && (
+                                  <span className="flex items-center gap-1">
+                                    <Folder className="h-3 w-3" />
+                                    {gallery.bucketFolder}
+                                  </span>
+                                )}
+                                <span>{gallery.isPublic ? 'Public' : 'Private'}</span>
+                                <span>Created {new Date(gallery.createdAt).toLocaleDateString()}</span>
+                              </div>
                             </div>
                           </div>
                           
