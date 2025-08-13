@@ -6,80 +6,80 @@
 
 :root {
   --font-size: 14px;
-  --background: #ffffff;
-  --foreground: #202020;
-  --card: #ffffff;
-  --card-foreground: #202020;
-  --popover: #ffffff;
-  --popover-foreground: #202020;
-  --primary: #030213;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f2f6;
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --background: 0 0% 100%;
+  --foreground: 0 0% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 13%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 13%;
+  --primary: 240 86% 5%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 86% 5%;
+  --muted: 240 5% 93%;
+  --muted-foreground: 240 4% 51%;
+  --accent: 240 5% 91%;
+  --accent-foreground: 240 86% 5%;
+  --destructive: 348 83% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0% / 0.1;
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: 240 5% 95%;
+  --switch-background: 240 6% 79%;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #b3b3b3;
-  --chart-1: #ff7f00;
-  --chart-2: #3b82f6;
-  --chart-3: #1f2937;
-  --chart-4: #84cc16;
-  --chart-5: #f59e0b;
+  --ring: 0 0% 70%;
+  --chart-1: 30 100% 50%;
+  --chart-2: 217 91% 60%;
+  --chart-3: 210 40% 20%;
+  --chart-4: 84 81% 44%;
+  --chart-5: 38 92% 50%;
   --radius: 1rem;
-  --sidebar: #f9f9f9;
-  --sidebar-foreground: #202020;
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: #f9f9f9;
-  --sidebar-accent: #f1f1f1;
-  --sidebar-accent-foreground: #404040;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #b3b3b3;
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 0 0% 13%;
+  --sidebar-primary: 240 86% 5%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 0 0% 95%;
+  --sidebar-accent-foreground: 0 0% 25%;
+  --sidebar-border: 0 0% 90%;
+  --sidebar-ring: 0 0% 70%;
 }
 
 .dark {
-  --background: #202020;
-  --foreground: #f9f9f9;
-  --card: #202020;
-  --card-foreground: #f9f9f9;
-  --popover: #202020;
-  --popover-foreground: #f9f9f9;
-  --primary: #f9f9f9;
-  --primary-foreground: #2f2f2f;
-  --secondary: #404040;
-  --secondary-foreground: #f9f9f9;
-  --muted: #404040;
-  --muted-foreground: #b3b3b3;
-  --accent: #404040;
-  --accent-foreground: #f9f9f9;
-  --destructive: #dc2626;
-  --destructive-foreground: #fca5a5;
-  --border: #404040;
-  --input: #404040;
-  --ring: #737373;
+  --background: 0 0% 13%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 13%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 13%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 0 0% 18%;
+  --secondary: 0 0% 25%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 25%;
+  --muted-foreground: 0 0% 70%;
+  --accent: 0 0% 25%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 0 86% 80%;
+  --border: 0 0% 25%;
+  --input: 0 0% 25%;
+  --ring: 0 0% 45%;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #8b5cf6;
-  --chart-2: #10b981;
-  --chart-3: #f59e0b;
-  --chart-4: #ec4899;
-  --chart-5: #f97316;
-  --sidebar: #2f2f2f;
-  --sidebar-foreground: #f9f9f9;
-  --sidebar-primary: #8b5cf6;
-  --sidebar-primary-foreground: #f9f9f9;
-  --sidebar-accent: #404040;
-  --sidebar-accent-foreground: #f9f9f9;
-  --sidebar-border: #404040;
-  --sidebar-ring: #737373;
+  --chart-1: 262 83% 67%;
+  --chart-2: 158 64% 52%;
+  --chart-3: 38 92% 50%;
+  --chart-4: 330 81% 60%;
+  --chart-5: 25 95% 53%;
+  --sidebar: 0 0% 18%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-primary: 262 83% 67%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 0 0% 25%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 0 0% 25%;
+  --sidebar-ring: 0 0% 45%;
 }
 
 @theme inline {
@@ -125,8 +125,8 @@
 
 @layer base {
   * {
-    border-color: rgba(0, 0, 0, 0.1);
-    outline-color: rgba(0, 0, 0, 0.5);
+    border-color: hsl(var(--border));
+    outline-color: hsl(var(--ring));
     --tw-backdrop-blur: ;
     --tw-backdrop-brightness: ;
     --tw-backdrop-contrast: ;
@@ -139,8 +139,8 @@
   }
 
   body {
-    background-color: white;
-    color: #000000;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
