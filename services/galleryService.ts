@@ -1087,7 +1087,13 @@ class GalleryService {
 
         // Delete from Supabase storage
         if (photo.bucketPath && gallery.bucketName) {
-          console.log(`🗑️ Deleting photo file: ${gallery.bucketName}/${photo.bucketPath}`);
+          console.log(`🗑️ Photo deletion details:`);
+          console.log(`  - Photo ID: ${photo.id}`);
+          console.log(`  - Photo name: ${photo.name}`);
+          console.log(`  - Gallery bucket: "${gallery.bucketName}"`);
+          console.log(`  - Photo bucketPath: "${photo.bucketPath}"`);
+          console.log(`  - Full storage path: ${gallery.bucketName}/${photo.bucketPath}`);
+          
           const deleteResult = await supabaseService.deleteFile(gallery.bucketName, photo.bucketPath);
           if (!deleteResult.success) {
             console.error('❌ Failed to delete file from storage:', deleteResult.error);
@@ -1095,6 +1101,11 @@ class GalleryService {
           } else {
             console.log('✅ Photo file deleted from storage');
           }
+        } else {
+          console.warn('⚠️ Cannot delete from storage - missing info:');
+          console.warn(`  - bucketPath: "${photo.bucketPath}"`);
+          console.warn(`  - bucketName: "${gallery.bucketName}"`);
+          storageDeleteSuccess = false;
         }
         
         // Log the overall result

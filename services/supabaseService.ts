@@ -264,22 +264,53 @@ class SupabaseService {
     }
 
     try {
-      console.log(`🗑️ Deleting file ${bucketName}/${filePath}`);
+      console.log(`🗑️ Attempting to delete file from Storage:`);
+      console.log(`  - Bucket: "${bucketName}"`);
+      console.log(`  - Path: "${filePath}"`);
+      console.log(`  - Full path: ${bucketName}/${filePath}`);
       
+      // First, let's check if the file exists
+      const pathParts = filePath.split('/');
+      const fileName = pathParts.pop() || '';
+      const folderPath = pathParts.length > 0 ? pathParts.join('/') : '';
+      
+      const { data: listData, error: listError } = await this.client.storage
+        .from(bucketName)
+        .list(folderPath);
+      
+      if (listError) {
+        console.warn('⚠️ Could not list files in bucket:', listError.message);
+      } else {
+        const fileExists = listData?.some(file => file.name === fileName);
+        console.log(`📋 File exists in bucket: ${fileExists}`);
+        if (!fileExists) {
+          console.log('ℹ️ File does not exist in storage, considering as success');
+          return { success: true };
+        }
+      }
+      
+      // Proceed with deletion
       const { data, error } = await this.client.storage
         .from(bucketName)
         .remove([filePath]);
 
       if (error) {
-        console.error('❌ Delete error:', error.message);
-        return { success: false, error: error.message };
+        console.error('❌ Storage delete error:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          bucket: bucketName,
+          path: filePath
+        });
+        return { success: false, error: `Storage delete failed: ${error.message}` };
       }
 
-      console.log('✅ File deleted successfully');
+      console.log('✅ Storage delete response:', data);
+      console.log('✅ File deleted successfully from storage');
       return { success: true };
+      
     } catch (error) {
-      console.error('❌ Delete error:', error);
-      return { success: false, error: 'Delete failed' };
+      console.error('❌ Storage delete exception:', error);
+      return { success: false, error: `Delete exception: ${error}` };
     }
   }
 
