@@ -15,9 +15,14 @@ const corsHeaders = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(200).setHeaders(corsHeaders).end();
+    return res.status(200).end();
   }
 
   // Only allow POST requests
@@ -26,6 +31,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Check if API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(500).json({
+        error: 'RESEND_API_KEY environment variable not configured'
+      });
+    }
+
     const { to, from, subject, html, text, replyTo } = req.body;
 
     // Validate required fields
@@ -58,7 +70,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Return success response
     return res
       .status(200)
-      .setHeaders(corsHeaders)
       .json({ 
         success: true, 
         messageId: data.id 
@@ -71,7 +82,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error instanceof Error) {
       return res
         .status(500)
-        .setHeaders(corsHeaders)
         .json({ 
           error: error.message || 'Failed to send email' 
         });
@@ -79,7 +89,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res
       .status(500)
-      .setHeaders(corsHeaders)
       .json({ 
         error: 'Internal server error' 
       });
