@@ -10,6 +10,7 @@ import { Switch } from "./ui/switch";
 import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
+import { EmailConfigDialog } from "./EmailConfigDialog";
 import { Alert, AlertDescription } from "./ui/alert";
 import { 
   Settings, 
@@ -39,12 +40,14 @@ import {
   AlertCircle,
   Info,
   FolderOpen,
-  Star
+  Star,
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { authService } from "../services/authService";
 import { supabaseService } from "../services/supabaseService";
+import { emailService } from "../services/emailService";
 import type { Gallery, SubfolderInfo } from "../services/galleryService";
 
 export function AdminPanel() {
@@ -86,6 +89,7 @@ export function AdminPanel() {
   
   // Photo management state
   const [managingPhotosGallery, setManagingPhotosGallery] = useState<string | null>(null);
+  const [showEmailConfig, setShowEmailConfig] = useState(false);
   
   // Upload state with subfolder support - FIXED: Individual subfolder state per gallery
   const [uploadingGallery, setUploadingGallery] = useState<string | null>(null);
@@ -537,13 +541,28 @@ export function AdminPanel() {
         <div className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
-                <Cloud className="h-5 w-5" />
-                Supabase Cloud Storage
-              </CardTitle>
-              <CardDescription>
-                Your application is connected to Supabase cloud storage for gallery synchronization and photo management
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
+                    <Cloud className="h-5 w-5" />
+                    Supabase Cloud Storage
+                  </CardTitle>
+                  <CardDescription>
+                    Your application is connected to Supabase cloud storage for gallery synchronization and photo management
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEmailConfig(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email Config
+                  {emailService.isConfigured() && (
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Connection Status */}
@@ -1080,6 +1099,13 @@ export function AdminPanel() {
         <PhotoManager
           galleryId={managingPhotosGallery}
           onClose={() => setManagingPhotosGallery(null)}
+        />
+      )}
+
+      {showEmailConfig && (
+        <EmailConfigDialog
+          isOpen={showEmailConfig}
+          onClose={() => setShowEmailConfig(false)}
         />
       )}
     </div>
