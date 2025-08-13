@@ -86,9 +86,13 @@ class EmailService {
     const photographerName = config?.photographerName || 'Photographe';
     const fromName = config?.fromName || 'Galerie Photo';
     
-    // Subject
-    const subject = config?.subject?.replace('{{galleryName}}', notification.galleryName) || 
-      `Nouvelle sélection client - ${notification.galleryName}`;
+    // Subject - handle the template safely
+    let subject: string;
+    if (config?.subject && config.subject.trim()) {
+      subject = config.subject.replace('{{galleryName}}', notification.galleryName);
+    } else {
+      subject = `Nouvelle sélection client - ${notification.galleryName}`;
+    }
 
     // Plain text body
     const bodyLines: string[] = [];
