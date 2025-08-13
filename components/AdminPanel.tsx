@@ -809,7 +809,7 @@ export function AdminPanel() {
         </Card>
 
         {/* Galleries List - FIXED: Proper subfolder handling */}
-        <Card>
+        <Card className="bg-background-light">
           <CardHeader>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
@@ -832,7 +832,7 @@ export function AdminPanel() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="bg-background">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin mr-2" />
