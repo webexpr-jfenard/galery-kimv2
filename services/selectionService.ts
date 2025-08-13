@@ -1,6 +1,8 @@
 import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
+import { emailService } from './emailService';
 import type { FavoritePhoto, Comment } from './favoritesService';
+import type { SelectionNotification } from './emailService';
 
 interface SelectionExport {
   galleryId: string;
@@ -19,6 +21,11 @@ interface SelectionExport {
     email?: string;
     phone?: string;
   };
+  multiUserData?: {
+    photoId: string;
+    users: { userName?: string; userId?: string }[];
+    comments: { comment: string; userName?: string }[];
+  }[];
 }
 
 class SelectionService {
@@ -56,6 +63,18 @@ class SelectionService {
       lines.push(`   ID: ${photo.photoId}`);
       lines.push(`   URL: ${photo.url}`);
       
+      // Show users who selected this photo (if multi-user data available)
+      if (exportData.multiUserData) {
+        const photoData = exportData.multiUserData.find(p => p.photoId === photo.photoId);
+        if (photoData && photoData.users.length > 0) {
+          lines.push('   Sélectionnée par:');
+          photoData.users.forEach(user => {
+            const userName = user.userName || 'Utilisateur anonyme';
+            lines.push(`   - ${userName}`);
+          });
+        }
+      }
+      
       if (photo.comments.length > 0) {
         lines.push('   Commentaires:');
         photo.comments.forEach(comment => {
@@ -82,39 +101,101 @@ class SelectionService {
     try {
       console.log('📋 Exporting selection for gallery:', galleryId);
 
-      // Get selected photos (favorites)
-      const favorites = await favoritesService.getFavorites(galleryId);
+      // Get selected photos (favorites) - includes ALL favorites from ALL users
+      const allFavorites = await favoritesService.getFavorites(galleryId);
       
-      if (favorites.length === 0) {
+      if (allFavorites.length === 0) {
         return { success: false, error: 'Aucune photo sélectionnée à exporter' };
       }
 
-      // Get comments
+      // Group favorites by photo ID to get unique photos with user info
+      const photoSelections: Record<string, {
+        photoId: string;
+        users: { userName?: string; userId?: string }[];
+        firstSelected: string;
+      }> = {};
+
+      allFavorites.forEach(fav => {
+        if (!photoSelections[fav.photoId]) {
+          photoSelections[fav.photoId] = {
+            photoId: fav.photoId,
+            users: [],
+            firstSelected: fav.createdAt
+          };
+        }
+        
+        // Add user who selected this photo
+        photoSelections[fav.photoId].users.push({
+          userName: fav.userName,
+          userId: fav.userId
+        });
+        
+        // Keep earliest selection date
+        if (fav.createdAt < photoSelections[fav.photoId].firstSelected) {
+          photoSelections[fav.photoId].firstSelected = fav.createdAt;
+        }
+      });
+
+      // Get all comments for the gallery
       const comments = await favoritesService.getComments(galleryId);
       
-      // Group comments by photo
-      const commentsByPhoto: Record<string, string[]> = {};
+      // Group comments by photo ID
+      const commentsByPhoto: Record<string, Array<{ comment: string; userName?: string }>> = {};
       comments.forEach(comment => {
         if (!commentsByPhoto[comment.photoId]) {
           commentsByPhoto[comment.photoId] = [];
         }
-        commentsByPhoto[comment.photoId].push(comment.text);
+        commentsByPhoto[comment.photoId].push({
+          comment: comment.comment,
+          userName: comment.userName
+        });
       });
 
-      // Prepare export data
+      // Get photo details from gallery service
+      const { galleryService } = await import('./galleryService');
+      const photos = await galleryService.getPhotos(galleryId);
+      
+      // Create photo lookup map
+      const photoMap = new Map(photos.map(photo => [photo.id, photo]));
+
+      // Prepare export data with unique photos
+      const selectedPhotos = Object.values(photoSelections).map(selection => {
+        const photo = photoMap.get(selection.photoId);
+        const photoComments = commentsByPhoto[selection.photoId] || [];
+        
+        return {
+          photoId: selection.photoId,
+          photoName: photo?.name || 'Photo sans nom',
+          originalName: photo?.originalName || photo?.name || 'Photo sans nom',
+          url: photo?.url || '',
+          users: selection.users,
+          comments: photoComments.map(c => 
+            c.userName ? `${c.userName}: ${c.comment}` : c.comment
+          )
+        };
+      });
+
       const exportData: SelectionExport = {
         galleryId,
         galleryName,
         exportDate: new Date().toLocaleDateString('fr-FR'),
-        selectedPhotos: favorites.map(fav => ({
-          photoId: fav.photoId,
-          photoName: fav.photoName || 'Photo sans nom',
-          originalName: fav.originalName || fav.photoName || 'Photo sans nom',
-          url: fav.photoUrl || '',
-          comments: commentsByPhoto[fav.photoId] || []
+        selectedPhotos: selectedPhotos.map(photo => ({
+          photoId: photo.photoId,
+          photoName: photo.photoName,
+          originalName: photo.originalName,
+          url: photo.url,
+          comments: photo.comments
         })),
-        totalSelected: favorites.length,
-        clientInfo
+        totalSelected: selectedPhotos.length,
+        clientInfo,
+        multiUserData: selectedPhotos.map(photo => ({
+          photoId: photo.photoId,
+          users: photo.users,
+          comments: (commentsByPhoto[photo.photoId] || []).map(c => ({
+            comment: c.comment,
+            userName: c.userName
+          }))
+        }))
       };
 
       // Generate text content
@@ -145,6 +226,34 @@ class SelectionService {
       const downloadUrl = supabaseService.getPublicUrl(this.SELECTIONS_BUCKET, filePath);
 
       console.log('✅ Selection exported successfully:', fileName);
+
+      // Send email notification if configured
+      if (emailService.isConfigured() && downloadUrl) {
+        try {
+          const notification: SelectionNotification = {
+            galleryId,
+            galleryName,
+            selectionCount: selectedPhotos.length,
+            clientInfo,
+            downloadUrl,
+            fileName,
+            exportDate: new Date().toLocaleDateString('fr-FR')
+          };
+
+          const emailResult = await emailService.sendNotification(notification);
+          
+          if (emailResult.success && emailResult.mailtoLink) {
+            console.log('📧 Email notification prepared - opening email client...');
+            // Open default email client with pre-filled email
+            window.open(emailResult.mailtoLink);
+          } else if (emailResult.error) {
+            console.warn('⚠️ Email notification failed:', emailResult.error);
+          }
+        } catch (emailError) {
+          console.warn('⚠️ Email notification error:', emailError);
+          // Don't fail the export if email fails
+        }
+      }
       
       return {
         success: true,
