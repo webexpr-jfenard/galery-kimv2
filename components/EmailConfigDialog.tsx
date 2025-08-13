@@ -16,8 +16,7 @@ import {
   AlertCircle,
   Settings,
   Save,
-  TestTube,
-  Eye
+  TestTube
 } from "lucide-react";
 import { toast } from "sonner";
 import { emailService } from "../services/emailService";
@@ -32,7 +31,6 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
   const [config, setConfig] = useState<EmailConfig>(emailService.getDefaultConfig());
   const [errors, setErrors] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   // Load existing configuration when dialog opens
   useEffect(() => {
@@ -44,7 +42,6 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
         setConfig(emailService.getDefaultConfig());
       }
       setErrors([]);
-      setShowPreview(false);
     }
   }, [isOpen]);
 
@@ -84,117 +81,72 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
       return;
     }
 
-    // Créer une configuration temporaire complète
-    const tempConfig: EmailConfig = {
-      photographerEmail: config.photographerEmail,
-      photographerName: config.photographerName || 'Photographe',
-      fromName: config.fromName || 'Galerie Photo',
-      subject: config.subject || 'Nouvelle sélection client - {{galleryName}}',
-      replyTo: config.replyTo || '',
-      enableNotifications: true
-    };
-
-    // Sauvegarder temporairement
-    const originalConfig = emailService.getEmailConfig();
-    emailService.saveEmailConfig(tempConfig);
-
     try {
-      const testNotification = {
-        galleryId: 'test-gallery',
-        galleryName: 'Galerie de Test',
-        selectionCount: 3,
-        clientInfo: {
-          name: 'Client Test',
-          email: 'client@example.com',
-          phone: '06 12 34 56 78'
-        },
-        downloadUrl: 'https://example.com/selection-test.txt',
-        fileName: 'selection-test-gallery-2024-01-15.txt',
-        exportDate: new Date().toLocaleDateString('fr-FR')
-      };
-
-      const mailtoLink = emailService.generateMailtoLink(testNotification);
+      // Générer l'email de test directement sans utiliser le service
+      const photographerName = config.photographerName || 'Photographe';
+      const fromName = config.fromName || 'Galerie Photo';
+      const galleryNameExample = 'Galerie de Test';
       
-      if (mailtoLink) {
-        window.open(mailtoLink);
-        toast.success('Email de test ouvert dans votre client email');
-      } else {
-        toast.error('Impossible de générer l\'email de test');
+      // Subject
+      let subject = 'Nouvelle sélection client - Galerie de Test';
+      if (config.subject && config.subject.trim()) {
+        subject = config.subject.replace(/\{\{galleryName\}\}/g, galleryNameExample);
       }
+
+      // Body
+      const bodyLines = [
+        `Bonjour ${photographerName},`,
+        '',
+        'Vous avez reçu une nouvelle sélection client !',
+        '',
+        'DÉTAILS DE LA SÉLECTION',
+        '========================================',
+        'Galerie: Galerie de Test',
+        'Photos sélectionnées: 3',
+        'Date de soumission: ' + new Date().toLocaleDateString('fr-FR'),
+        '',
+        'INFORMATIONS CLIENT:',
+        'Nom: Client Test',
+        'Email: client@example.com',
+        'Téléphone: 06 12 34 56 78',
+        '',
+        'FICHIER DE SÉLECTION:',
+        'Nom: selection-test-gallery-' + new Date().toISOString().split('T')[0] + '.txt',
+        'Téléchargement: https://example.com/selection-test.txt',
+        '',
+        'Vous pouvez télécharger le fichier de sélection pour voir le détail des photos choisies.',
+        '',
+        `Cordialement,`,
+        `${fromName}`,
+        '',
+        '---',
+        'Cet email a été généré automatiquement par votre système de galerie photo.'
+      ];
+
+      const body = bodyLines.join('\n');
+
+      // Créer le lien mailto
+      const params = new URLSearchParams({
+        to: config.photographerEmail,
+        subject: subject,
+        body: body
+      });
+
+      if (config.replyTo && config.replyTo.trim()) {
+        params.set('cc', config.replyTo);
+      }
+
+      const mailtoLink = `mailto:?${params.toString()}`;
+      
+      window.open(mailtoLink);
+      toast.success('Email de test ouvert dans votre client email');
+      
     } catch (error) {
       console.error('Erreur test email:', error);
       toast.error('Erreur lors du test email');
-    } finally {
-      // Restaurer la config originale
-      if (originalConfig) {
-        emailService.saveEmailConfig(originalConfig);
-      }
     }
   };
 
-  const generatePreview = () => {
-    // Créer une configuration temporaire complète
-    const tempConfig: EmailConfig = {
-      photographerEmail: config.photographerEmail || 'photographe@example.com',
-      photographerName: config.photographerName || 'Photographe',
-      fromName: config.fromName || 'Galerie Photo',
-      subject: config.subject || 'Nouvelle sélection client - {{galleryName}}',
-      replyTo: config.replyTo || '',
-      enableNotifications: config.enableNotifications
-    };
-    
-    const testNotification = {
-      galleryId: 'test-gallery',
-      galleryName: 'Galerie de Test',
-      selectionCount: 3,
-      clientInfo: {
-        name: 'Client Test',
-        email: 'client@example.com'
-      },
-      downloadUrl: 'https://example.com/selection-test.txt',
-      fileName: 'selection-test-gallery-2024-01-15.txt',
-      exportDate: new Date().toLocaleDateString('fr-FR')
-    };
-
-    // Générer le contenu directement avec la config temporaire
-    const photographerName = tempConfig.photographerName || 'Photographe';
-    const fromName = tempConfig.fromName || 'Galerie Photo';
-    
-    // Subject
-    let subject: string;
-    if (tempConfig.subject && tempConfig.subject.trim()) {
-      subject = tempConfig.subject.replace('{{galleryName}}', testNotification.galleryName);
-    } else {
-      subject = `Nouvelle sélection client - ${testNotification.galleryName}`;
-    }
-
-    // Body simplifié pour l'aperçu
-    const bodyLines: string[] = [];
-    bodyLines.push(`Bonjour ${photographerName},`);
-    bodyLines.push('');
-    bodyLines.push('Vous avez reçu une nouvelle sélection client !');
-    bodyLines.push('');
-    bodyLines.push(`Galerie: ${testNotification.galleryName}`);
-    bodyLines.push(`Photos sélectionnées: ${testNotification.selectionCount}`);
-    bodyLines.push(`Date de soumission: ${testNotification.exportDate}`);
-    bodyLines.push('');
-    bodyLines.push('INFORMATIONS CLIENT:');
-    bodyLines.push(`Nom: ${testNotification.clientInfo?.name}`);
-    bodyLines.push(`Email: ${testNotification.clientInfo?.email}`);
-    bodyLines.push('');
-    bodyLines.push(`Fichier: ${testNotification.fileName}`);
-    bodyLines.push(`Téléchargement: ${testNotification.downloadUrl}`);
-    bodyLines.push('');
-    bodyLines.push(`Cordialement, ${fromName}`);
-
-    return {
-      subject,
-      body: bodyLines.join('\n'),
-      bodyHtml: ''
-    };
-  };
-
-  const previewContent = showPreview ? generatePreview() : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -338,39 +290,20 @@ export function EmailConfigDialog({ isOpen, onClose }: EmailConfigDialogProps) {
             </Alert>
           )}
 
-          {/* Email Preview */}
+          {/* Email Preview - Version Simplifiée */}
           {config.enableNotifications && config.photographerEmail && (
             <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium">Aperçu de l'email</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPreview(!showPreview)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  {showPreview ? 'Masquer' : 'Afficher'} l'aperçu
-                </Button>
-              </div>
-
-              {showPreview && previewContent && (
-                <div className="bg-muted/30 p-4 rounded-lg space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Destinataire:</p>
-                    <p className="text-sm">{config.photographerEmail}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Sujet:</p>
-                    <p className="text-sm">{previewContent.subject}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Contenu:</p>
-                    <div className="bg-white p-3 rounded border text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
-                      {previewContent.body.substring(0, 500)}...
-                    </div>
-                  </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="text-sm font-medium text-blue-800 mb-2">✅ Configuration Email Prête</h3>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <p><strong>Destinataire:</strong> {config.photographerEmail}</p>
+                  <p><strong>Nom:</strong> {config.photographerName || 'Photographe'}</p>
+                  <p><strong>Expéditeur:</strong> {config.fromName || 'Galerie Photo'}</p>
                 </div>
-              )}
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 Utilisez le bouton "Tester l'email" pour voir l'aperçu complet dans votre client email
+                </p>
+              </div>
             </div>
           )}
 
