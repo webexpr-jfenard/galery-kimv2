@@ -832,7 +832,7 @@ export function AdminPanel() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="bg-background">
+          <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin mr-2" />
@@ -845,7 +845,7 @@ export function AdminPanel() {
             ) : (
               <div className="space-y-4">
                 {filteredGalleries.map((gallery) => (
-                  <div key={gallery.id} className="border rounded-lg p-4 lg:p-6 space-y-4">
+                  <div key={gallery.id} className="border rounded-lg p-4 lg:p-6 space-y-4 bg-background">
                     {editingGallery === gallery.id ? (
                       // Edit mode
                       <div className="space-y-4">
