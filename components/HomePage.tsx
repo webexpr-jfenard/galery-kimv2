@@ -37,8 +37,8 @@ export function HomePage() {
       </div>
 
       {/* Main Content - Centered */}
-      <div className="flex items-center justify-center min-h-screen p-4 bg-[rgba(255,255,255,1)]">
-        <div className="w-full max-w-md text-center space-y-8">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-background-light">
+        <div className="w-full max-w-md text-center space-y-8 p-24">
           {/* Logo/Brand */}
           <div className="space-y-4">
             <div className="w-20 h-20  rounded-full flex items-center justify-center mx-auto">
