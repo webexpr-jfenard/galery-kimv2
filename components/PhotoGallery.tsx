@@ -15,7 +15,8 @@ import {
   Filter,
   Folder,
   FolderOpen,
-  Grid
+  Grid,
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -49,6 +50,9 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Search
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Photo names display
+  const [showPhotoNames, setShowPhotoNames] = useState(false);
   
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -457,6 +461,29 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               
               {/* Action buttons - responsive */}
               <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                {/* Show photo names toggle */}
+                <Button
+                  variant={showPhotoNames ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowPhotoNames(!showPhotoNames)}
+                  className="hidden md:flex"
+                  title="Afficher les noms des photos"
+                >
+                  <Tag className="h-4 w-4 mr-2" />
+                  Noms
+                </Button>
+
+                {/* Mobile names toggle */}
+                <Button
+                  variant={showPhotoNames ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowPhotoNames(!showPhotoNames)}
+                  className="md:hidden"
+                  title="Afficher les noms des photos"
+                >
+                  <Tag className="h-4 w-4" />
+                </Button>
+                
                 <Button
                   variant="outline"
                   size="sm"
@@ -574,7 +601,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   />
 
                   {/* Photo name overlay - NEW */}
-                  <div className="photo-name-overlay">
+                  <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
                     {getPhotoDisplayName(photo)}
                   </div>
 

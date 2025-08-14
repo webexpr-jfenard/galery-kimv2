@@ -16,7 +16,8 @@ import {
   Folder,
   Grid,
   List,
-  Eye
+  Eye,
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -43,6 +44,9 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   
   // Search
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Photo names display
+  const [showPhotoNames, setShowPhotoNames] = useState(false);
   
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -490,26 +494,53 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   )}
                 </div>
 
-                {/* Admin View Controls */}
-                {isAdmin && (
+                <div className="flex items-center gap-4">
+                  {/* Show photo names toggle */}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground mr-2">Vue:</span>
                     <Button
-                      variant={viewMode === 'grid' ? 'default' : 'outline'}
+                      variant={showPhotoNames ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setViewMode('grid')}
+                      onClick={() => setShowPhotoNames(!showPhotoNames)}
+                      className="hidden sm:flex"
+                      title="Afficher les noms des photos"
                     >
-                      <Grid className="h-4 w-4" />
+                      <Tag className="h-4 w-4 mr-2" />
+                      Noms
                     </Button>
+
+                    {/* Mobile names toggle */}
                     <Button
-                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      variant={showPhotoNames ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setViewMode('list')}
+                      onClick={() => setShowPhotoNames(!showPhotoNames)}
+                      className="sm:hidden"
+                      title="Afficher les noms des photos"
                     >
-                      <List className="h-4 w-4" />
+                      <Tag className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
+
+                  {/* Admin View Controls */}
+                  {isAdmin && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground mr-2">Vue:</span>
+                      <Button
+                        variant={viewMode === 'grid' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('grid')}
+                      >
+                        <Grid className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === 'list' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('list')}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -732,7 +763,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                 />
 
                                 {/* Photo name overlay */}
-                                <div className="photo-name-overlay">
+                                <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
                                   {getPhotoDisplayName(photo)}
                                 </div>
 
@@ -843,7 +874,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                           />
 
                           {/* Photo name overlay */}
-                          <div className="photo-name-overlay">
+                          <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
                             {getPhotoDisplayName(photo)}
                           </div>
 
