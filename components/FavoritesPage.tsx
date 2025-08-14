@@ -13,12 +13,16 @@ import {
   Download,
   Share2,
   Trash2,
-  Folder
+  Folder,
+  Grid,
+  List,
+  Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
+import { authService } from "../services/authService";
 import type { Gallery, Photo } from "../services/galleryService";
 import type { FavoritePhoto, Comment } from "../services/favoritesService";
 
@@ -34,6 +38,8 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [photoCommentCounts, setPhotoCommentCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,6 +50,11 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<{photoId: string, comment?: string} | null>(null);
+
+  // Check admin status
+  useEffect(() => {
+    setIsAdmin(authService.isAdminAuthenticated());
+  }, []);
 
   // Load data
   useEffect(() => {
@@ -454,266 +465,470 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
           </div>
         ) : (
           <>
-            {/* Stats */}
+            {/* Stats and Admin Controls */}
             <div className="mb-6">
-              <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4 text-red-500" />
-                  <span>{filteredFavoritePhotos.length} photos sélectionnées</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-blue-500" />
-                  <span>{comments.length} commentaires</span>
-                </div>
-                {folderNames.length > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 lg:gap-6">
+                <div className="flex flex-wrap items-center gap-3 lg:gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
-                    <Folder className="h-4 w-4 text-green-500" />
-                    <span>{folderNames.length} dossiers</span>
+                    <Heart className="h-4 w-4 text-red-500" />
+                    <span>{filteredFavoritePhotos.length} photos sélectionnées</span>
                   </div>
-                )}
-                {searchTerm && (
-                  <Badge variant="outline">
-                    Recherche: "{searchTerm}"
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-blue-500" />
+                    <span>{comments.length} commentaires</span>
+                  </div>
+                  {folderNames.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Folder className="h-4 w-4 text-green-500" />
+                      <span>{folderNames.length} dossiers</span>
+                    </div>
+                  )}
+                  {searchTerm && (
+                    <Badge variant="outline">
+                      Recherche: "{searchTerm}"
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Admin View Controls */}
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground mr-2">Vue:</span>
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                    >
+                      <Grid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Gallery Grid - Organized by folder if multiple folders exist */}
-            {folderNames.length > 1 ? (
-              // Show grouped by folders
-              <div className="space-y-8">
-                {folderNames.map((folderName) => (
-                  <div key={folderName}>
-                    {/* Folder header */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <Folder className="h-5 w-5 text-green-600" />
-                      <h3 className="text-lg font-semibold">{folderName}</h3>
-                      <Badge variant="secondary">
-                        {groupedPhotos[folderName].length}
-                      </Badge>
-                    </div>
+            {/* Gallery Display - Grid or List view based on admin preference */}
+            {viewMode === 'list' && isAdmin ? (
+              // Admin List View - Compact list with thumbnails and names
+              <div className="space-y-4">
+                {folderNames.length > 1 ? (
+                  // Grouped by folders for list view
+                  folderNames.map((folderName) => (
+                    <div key={folderName} className="bg-card rounded-lg border">
+                      {/* Folder header */}
+                      <div className="flex items-center gap-2 p-4 border-b">
+                        <Folder className="h-5 w-5 text-green-600" />
+                        <h3 className="text-lg font-semibold">{folderName}</h3>
+                        <Badge variant="secondary">
+                          {groupedPhotos[folderName].length}
+                        </Badge>
+                      </div>
 
-                    {/* Photos in this folder */}
-                    <div className="masonry-grid">
-                      {groupedPhotos[folderName].map((photo, photoIndex) => {
-                        // Calculate the overall index for lightbox
-                        const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
-                        // Find the favorite entry for this photo to get user info
-                        const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
-                        const currentUser = userService.getCurrentSession();
-                        const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
-                        const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
-                        
-                        
-                        return (
-                          <div key={photo.id} className="masonry-item animate-fadeIn">
-                            {/* Photo */}
-                            <div className="photo-container" onClick={() => openLightbox(overallIndex)}>
-                              <img
-                                src={photo.url}
-                                alt={getPhotoDisplayName(photo)}
-                                loading="lazy"
-                                className="photo-image"
-                              />
+                      {/* Photos list */}
+                      <div className="divide-y">
+                        {groupedPhotos[folderName].map((photo, photoIndex) => {
+                          const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
+                          const currentUser = userService.getCurrentSession();
+                          const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                          const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
 
-                              {/* Photo name overlay */}
-                              <div className="photo-name-overlay">
-                                {getPhotoDisplayName(photo)}
+                          return (
+                            <div key={photo.id} className="flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors">
+                              {/* Thumbnail */}
+                              <div 
+                                className="w-16 h-16 rounded-lg overflow-hidden border-2 border-muted cursor-pointer shrink-0"
+                                onClick={() => openLightbox(overallIndex)}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={getPhotoDisplayName(photo)}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
 
-                              {/* Remove from selection button - différencier selon l'utilisateur */}
-                              <div className="absolute top-2 right-2">
-                                <div className="relative">
-                                  <button
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                                      isUserFavorite 
-                                        ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
-                                        : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
-                                    }`}
-                                    onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
-                                    title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                                    disabled={!isUserFavorite}
-                                  >
-                                    <Heart className="h-5 w-5 fill-current text-white" />
-                                  </button>
-                                  
-                                  {/* Compteur de favoris */}
-                                  {favorites.filter(f => f.photoId === photo.id).length > 1 && (
-                                    <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                      {favorites.filter(f => f.photoId === photo.id).length}
-                                    </div>
+                              {/* Photo info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-medium text-sm truncate cursor-pointer" onClick={() => openLightbox(overallIndex)}>
+                                    {getPhotoDisplayName(photo)}
+                                  </p>
+                                  {photoFavoritesCount > 1 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {photoFavoritesCount} users
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  {photo.subfolder && photo.subfolder !== folderName && (
+                                    <span className="flex items-center gap-1">
+                                      <Folder className="h-3 w-3" />
+                                      {photo.subfolder}
+                                    </span>
+                                  )}
+                                  {photoCommentCounts[photo.id] > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <MessageSquare className="h-3 w-3" />
+                                      {photoCommentCounts[photo.id]} comments
+                                    </span>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Comment indicator */}
-                              {photoCommentCounts[photo.id] > 0 && (
-                                <div className="comment-indicator">
-                                  <MessageSquare className="h-3 w-3" />
-                                  {photoCommentCounts[photo.id]}
-                                </div>
-                              )}
-
-
-                              {/* Subfolder indicator - only if different from current section */}
-                              {photo.subfolder && photo.subfolder !== folderName && (
-                                <div className="subfolder-indicator">
-                                  <Folder className="h-3 w-3 mr-1" />
-                                  {photo.subfolder}
-                                </div>
-                              )}
-
-                              {/* Hover overlay with quick comment */}
-                              <div className="photo-overlay">
-                                <div></div>
-                                <div className="quick-comment-form">
-                                  <input
-                                    type="text"
-                                    placeholder="Ajouter un commentaire..."
-                                    className="quick-comment-input"
-                                    onKeyPress={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const target = e.target as HTMLInputElement;
-                                        if (target.value.trim()) {
-                                          addComment(photo.id, target.value);
-                                          target.value = '';
-                                        }
-                                      }
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <button
-                                    className="quick-comment-submit"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
-                                      if (input?.value.trim()) {
-                                        addComment(photo.id, input.value);
-                                        input.value = '';
-                                      }
-                                    }}
-                                  >
-                                    <MessageSquare className="h-3 w-3" />
-                                  </button>
-                                </div>
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openLightbox(overallIndex)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant={isUserFavorite ? "default" : "secondary"}
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isUserFavorite) {
+                                      removeFromFavorites(photo.id);
+                                    }
+                                  }}
+                                  disabled={!isUserFavorite}
+                                  title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                                >
+                                  <Heart className={`h-4 w-4 ${isUserFavorite ? 'fill-current' : ''}`} />
+                                </Button>
                               </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // Single list for all photos
+                  <div className="bg-card rounded-lg border">
+                    <div className="divide-y">
+                      {filteredFavoritePhotos.map((photo, index) => {
+                        const currentUser = userService.getCurrentSession();
+                        const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                        const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
+
+                        return (
+                          <div key={photo.id} className="flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors">
+                            {/* Thumbnail */}
+                            <div 
+                              className="w-16 h-16 rounded-lg overflow-hidden border-2 border-muted cursor-pointer shrink-0"
+                              onClick={() => openLightbox(index)}
+                            >
+                              <img
+                                src={photo.url}
+                                alt={getPhotoDisplayName(photo)}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            {/* Photo info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-medium text-sm truncate cursor-pointer" onClick={() => openLightbox(index)}>
+                                  {getPhotoDisplayName(photo)}
+                                </p>
+                                {photoFavoritesCount > 1 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {photoFavoritesCount} users
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                {photo.subfolder && (
+                                  <span className="flex items-center gap-1">
+                                    <Folder className="h-3 w-3" />
+                                    {photo.subfolder}
+                                  </span>
+                                )}
+                                {photoCommentCounts[photo.id] > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <MessageSquare className="h-3 w-3" />
+                                    {photoCommentCounts[photo.id]} comments
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openLightbox(index)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant={isUserFavorite ? "default" : "secondary"}
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isUserFavorite) {
+                                    removeFromFavorites(photo.id);
+                                  }
+                                }}
+                                disabled={!isUserFavorite}
+                                title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                              >
+                                <Heart className={`h-4 w-4 ${isUserFavorite ? 'fill-current' : ''}`} />
+                              </Button>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             ) : (
-              // Show all photos in single grid
-              <div className="masonry-grid">
-                {filteredFavoritePhotos.map((photo, index) => {
-                  // Find the favorite entry for this photo to get user info
-                  const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
-                  const currentUser = userService.getCurrentSession();
-                  const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
-                  const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
-                  
-                  
-                  return (
-                    <div key={photo.id} className="masonry-item animate-fadeIn">
-                      {/* Photo */}
-                      <div className="photo-container" onClick={() => openLightbox(index)}>
-                        <img
-                          src={photo.url}
-                          alt={getPhotoDisplayName(photo)}
-                          loading="lazy"
-                          className="photo-image"
-                        />
+              // Grid View (Default for users, optional for admins)
+              folderNames.length > 1 ? (
+                // Show grouped by folders
+                <div className="space-y-8">
+                  {folderNames.map((folderName) => (
+                    <div key={folderName}>
+                      {/* Folder header */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <Folder className="h-5 w-5 text-green-600" />
+                        <h3 className="text-lg font-semibold">{folderName}</h3>
+                        <Badge variant="secondary">
+                          {groupedPhotos[folderName].length}
+                        </Badge>
+                      </div>
 
-                        {/* Photo name overlay */}
-                        <div className="photo-name-overlay">
-                          {getPhotoDisplayName(photo)}
-                        </div>
+                      {/* Photos in this folder */}
+                      <div className="masonry-grid">
+                        {groupedPhotos[folderName].map((photo, photoIndex) => {
+                          // Calculate the overall index for lightbox
+                          const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
+                          // Find the favorite entry for this photo to get user info
+                          const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
+                          const currentUser = userService.getCurrentSession();
+                          const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                          const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
+                          
+                          
+                          return (
+                            <div key={photo.id} className="masonry-item animate-fadeIn">
+                              {/* Photo */}
+                              <div className="photo-container" onClick={() => openLightbox(overallIndex)}>
+                                <img
+                                  src={photo.url}
+                                  alt={getPhotoDisplayName(photo)}
+                                  loading="lazy"
+                                  className="photo-image"
+                                />
 
-                        {/* Remove from selection button - différencier selon l'utilisateur */}
-                        <div className="absolute top-2 right-2">
-                          <div className="relative">
-                            <button
-                              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                                isUserFavorite 
-                                  ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
-                                  : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
-                              }`}
-                              onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
-                              title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
-                              disabled={!isUserFavorite}
-                            >
-                              <Heart className="h-5 w-5 fill-current text-white" />
-                            </button>
-                            
-                            {/* Compteur de favoris */}
-                            {favorites.filter(f => f.photoId === photo.id).length > 1 && (
-                              <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                {favorites.filter(f => f.photoId === photo.id).length}
+                                {/* Photo name overlay */}
+                                <div className="photo-name-overlay">
+                                  {getPhotoDisplayName(photo)}
+                                </div>
+
+                                {/* Remove from selection button - différencier selon l'utilisateur */}
+                                <div className="absolute top-2 right-2">
+                                  <div className="relative">
+                                    <button
+                                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                                        isUserFavorite 
+                                          ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
+                                          : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
+                                      }`}
+                                      onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                                      title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                                      disabled={!isUserFavorite}
+                                    >
+                                      <Heart className="h-5 w-5 fill-current text-white" />
+                                    </button>
+                                    
+                                    {/* Compteur de favoris */}
+                                    {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                                      <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                        {favorites.filter(f => f.photoId === photo.id).length}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Comment indicator */}
+                                {photoCommentCounts[photo.id] > 0 && (
+                                  <div className="comment-indicator">
+                                    <MessageSquare className="h-3 w-3" />
+                                    {photoCommentCounts[photo.id]}
+                                  </div>
+                                )}
+
+
+                                {/* Subfolder indicator - only if different from current section */}
+                                {photo.subfolder && photo.subfolder !== folderName && (
+                                  <div className="subfolder-indicator">
+                                    <Folder className="h-3 w-3 mr-1" />
+                                    {photo.subfolder}
+                                  </div>
+                                )}
+
+                                {/* Hover overlay with quick comment */}
+                                <div className="photo-overlay">
+                                  <div></div>
+                                  <div className="quick-comment-form">
+                                    <input
+                                      type="text"
+                                      placeholder="Ajouter un commentaire..."
+                                      className="quick-comment-input"
+                                      onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const target = e.target as HTMLInputElement;
+                                          if (target.value.trim()) {
+                                            addComment(photo.id, target.value);
+                                            target.value = '';
+                                          }
+                                        }
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                      className="quick-comment-submit"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+                                        if (input?.value.trim()) {
+                                          addComment(photo.id, input.value);
+                                          input.value = '';
+                                        }
+                                      }}
+                                    >
+                                      <MessageSquare className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Comment indicator */}
-                        {photoCommentCounts[photo.id] > 0 && (
-                          <div className="comment-indicator">
-                            <MessageSquare className="h-3 w-3" />
-                            {photoCommentCounts[photo.id]}
-                          </div>
-                        )}
-
-
-                        {/* Subfolder indicator */}
-                        {photo.subfolder && (
-                          <div className="subfolder-indicator">
-                            <Folder className="h-3 w-3 mr-1" />
-                            {photo.subfolder}
-                          </div>
-                        )}
-
-                      {/* Hover overlay with quick comment */}
-                      <div className="photo-overlay">
-                        <div></div>
-                        <div className="quick-comment-form">
-                          <input
-                            type="text"
-                            placeholder="Ajouter un commentaire..."
-                            className="quick-comment-input"
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                const target = e.target as HTMLInputElement;
-                                if (target.value.trim()) {
-                                  addComment(photo.id, target.value);
-                                  target.value = '';
-                                }
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Show all photos in single grid
+                <div className="masonry-grid">
+                  {filteredFavoritePhotos.map((photo, index) => {
+                    // Find the favorite entry for this photo to get user info
+                    const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);
+                    const currentUser = userService.getCurrentSession();
+                    const isUserFavorite = favorites.some(fav => fav.photoId === photo.id && fav.userId === currentUser?.userId);
+                    const photoFavoritesCount = favorites.filter(f => f.photoId === photo.id).length;
+                    
+                    
+                    return (
+                      <div key={photo.id} className="masonry-item animate-fadeIn">
+                        {/* Photo */}
+                        <div className="photo-container" onClick={() => openLightbox(index)}>
+                          <img
+                            src={photo.url}
+                            alt={getPhotoDisplayName(photo)}
+                            loading="lazy"
+                            className="photo-image"
                           />
-                          <button
-                            className="quick-comment-submit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
-                              if (input?.value.trim()) {
-                                addComment(photo.id, input.value);
-                                input.value = '';
-                              }
-                            }}
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                          </button>
+
+                          {/* Photo name overlay */}
+                          <div className="photo-name-overlay">
+                            {getPhotoDisplayName(photo)}
+                          </div>
+
+                          {/* Remove from selection button - différencier selon l'utilisateur */}
+                          <div className="absolute top-2 right-2">
+                            <div className="relative">
+                              <button
+                                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                                  isUserFavorite 
+                                    ? 'bg-green-500/95 hover:bg-green-600 transform scale-110' 
+                                    : 'bg-purple-500/95 cursor-not-allowed opacity-70 transform scale-110'
+                                }`}
+                                onClick={(e) => isUserFavorite ? removeFromFavorites(photo.id, e) : e.stopPropagation()}
+                                title={isUserFavorite ? "Retirer de votre sélection" : "Favori d'un autre utilisateur"}
+                                disabled={!isUserFavorite}
+                              >
+                                <Heart className="h-5 w-5 fill-current text-white" />
+                              </button>
+                              
+                              {/* Compteur de favoris */}
+                              {favorites.filter(f => f.photoId === photo.id).length > 1 && (
+                                <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                  {favorites.filter(f => f.photoId === photo.id).length}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Comment indicator */}
+                          {photoCommentCounts[photo.id] > 0 && (
+                            <div className="comment-indicator">
+                              <MessageSquare className="h-3 w-3" />
+                              {photoCommentCounts[photo.id]}
+                            </div>
+                          )}
+
+
+                          {/* Subfolder indicator */}
+                          {photo.subfolder && (
+                            <div className="subfolder-indicator">
+                              <Folder className="h-3 w-3 mr-1" />
+                              {photo.subfolder}
+                            </div>
+                          )}
+
+                        {/* Hover overlay with quick comment */}
+                        <div className="photo-overlay">
+                          <div></div>
+                          <div className="quick-comment-form">
+                            <input
+                              type="text"
+                              placeholder="Ajouter un commentaire..."
+                              className="quick-comment-input"
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  const target = e.target as HTMLInputElement;
+                                  if (target.value.trim()) {
+                                    addComment(photo.id, target.value);
+                                    target.value = '';
+                                  }
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <button
+                              className="quick-comment-submit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+                                if (input?.value.trim()) {
+                                  addComment(photo.id, input.value);
+                                  input.value = '';
+                                }
+                              }}
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </>
         )}
