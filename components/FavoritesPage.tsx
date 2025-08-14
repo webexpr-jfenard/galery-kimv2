@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -50,6 +50,58 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<{photoId: string, comment?: string} | null>(null);
+
+  // Masonry script loading
+  const masonryRef = useRef<HTMLDivElement>(null);
+  const masonryInstanceRef = useRef<any>(null);
+
+  // Load masonry script and initialize
+  useEffect(() => {
+    const loadMasonry = async () => {
+      try {
+        // Dynamically import the masonry script
+        if (!(window as any).RowMasonry) {
+          const script = document.createElement('script');
+          script.src = '/masonry.js';
+          script.async = true;
+          document.head.appendChild(script);
+          
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+          });
+        }
+
+        // Initialize masonry when we have photos and the DOM element (only for grid view)
+        if (masonryRef.current && filteredFavoritePhotos.length > 0 && viewMode === 'grid' && (window as any).RowMasonry) {
+          // Clean up previous instance
+          if (masonryInstanceRef.current) {
+            masonryInstanceRef.current = null;
+          }
+          
+          // Small delay to ensure images are in DOM
+          setTimeout(() => {
+            if (masonryRef.current) {
+              masonryInstanceRef.current = new (window as any).RowMasonry(masonryRef.current);
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.warn('Failed to load masonry script:', error);
+      }
+    };
+
+    if (filteredFavoritePhotos.length > 0 && viewMode === 'grid') {
+      loadMasonry();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (masonryInstanceRef.current) {
+        masonryInstanceRef.current = null;
+      }
+    };
+  }, [filteredFavoritePhotos, viewMode]);
 
   // Check admin status
   useEffect(() => {
@@ -709,7 +761,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       </div>
 
                       {/* Photos in this folder */}
-                      <div className="masonry-grid">
+                      <div ref={masonryRef} className="masonry-grid">
                         {groupedPhotos[folderName].map((photo, photoIndex) => {
                           // Calculate the overall index for lightbox
                           const overallIndex = filteredFavoritePhotos.findIndex(p => p.id === photo.id);
@@ -822,7 +874,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                 </div>
               ) : (
                 // Show all photos in single grid
-                <div className="masonry-grid">
+                <div ref={masonryRef} className="masonry-grid">
                   {filteredFavoritePhotos.map((photo, index) => {
                     // Find the favorite entry for this photo to get user info
                     const favoriteEntry = favorites.find(fav => fav.photoId === photo.id);

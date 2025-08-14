@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -56,6 +56,58 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
+
+  // Masonry script loading
+  const masonryRef = useRef<HTMLDivElement>(null);
+  const masonryInstanceRef = useRef<any>(null);
+
+  // Load masonry script and initialize
+  useEffect(() => {
+    const loadMasonry = async () => {
+      try {
+        // Dynamically import the masonry script
+        if (!(window as any).RowMasonry) {
+          const script = document.createElement('script');
+          script.src = '/masonry.js';
+          script.async = true;
+          document.head.appendChild(script);
+          
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+          });
+        }
+
+        // Initialize masonry when we have photos and the DOM element
+        if (masonryRef.current && photos.length > 0 && (window as any).RowMasonry) {
+          // Clean up previous instance
+          if (masonryInstanceRef.current) {
+            masonryInstanceRef.current = null;
+          }
+          
+          // Small delay to ensure images are in DOM
+          setTimeout(() => {
+            if (masonryRef.current) {
+              masonryInstanceRef.current = new (window as any).RowMasonry(masonryRef.current);
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.warn('Failed to load masonry script:', error);
+      }
+    };
+
+    if (photos.length > 0) {
+      loadMasonry();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (masonryInstanceRef.current) {
+        masonryInstanceRef.current = null;
+      }
+    };
+  }, [photos]);
 
   // Load gallery data
   useEffect(() => {
@@ -561,7 +613,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             )}
           </div>
         ) : (
-          <div className="masonry-grid">
+          <div ref={masonryRef} className="masonry-grid">
             {filteredPhotos.map((photo, index) => (
               <div key={photo.id} className="masonry-item animate-fadeIn">
                 {/* Photo */}
