@@ -267,66 +267,81 @@ html {
   }
 }
 
-/* JavaScript-Enhanced Masonry Grid - Row Order + True Masonry */
+/* True Masonry Grid - CSS Columns (Best masonry effect) */
 @layer components {
   .masonry-grid {
-    position: relative;
-    width: 100%;
+    column-count: 1;
+    column-gap: 1rem;
+    column-fill: balance;
     padding: 1rem 0;
-    /* Height will be calculated by JavaScript */
   }
 
-  /* Items are positioned absolutely by JavaScript */
-  .masonry-grid.js-masonry .masonry-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    transition: all 0.3s ease;
-    /* Width will be calculated by JavaScript based on columns */
-  }
-
-  /* Fallback for when JavaScript hasn't loaded yet or fails */
-  .masonry-grid:not(.js-masonry) {
-    display: grid;
-    grid-template-columns: repeat(1, 1fr);
-    gap: 1rem;
-  }
-
+  /* Responsive columns - Better breakpoints for mobile-first design */
   @media (min-width: 480px) {
-    .masonry-grid:not(.js-masonry) {
-      grid-template-columns: repeat(2, 1fr);
+    .masonry-grid {
+      column-count: 2;
+      column-gap: 1rem;
     }
   }
 
   @media (min-width: 768px) {
-    .masonry-grid:not(.js-masonry) {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
+    .masonry-grid {
+      column-count: 2;
+      column-gap: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
-    .masonry-grid:not(.js-masonry) {
-      grid-template-columns: repeat(3, 1fr);
+    .masonry-grid {
+      column-count: 3;
+      column-gap: 1.5rem;
     }
   }
 
   @media (min-width: 1280px) {
-    .masonry-grid:not(.js-masonry) {
-      grid-template-columns: repeat(4, 1fr);
+    .masonry-grid {
+      column-count: 4;
+      column-gap: 1.5rem;
     }
   }
 
   @media (min-width: 1536px) {
-    .masonry-grid:not(.js-masonry) {
-      gap: 2rem;
+    .masonry-grid {
+      column-count: 4;
+      column-gap: 2rem;
     }
   }
 
-  /* Masonry item - default styles */
+  /* Masonry item - prevents breaking across columns */
   .masonry-item {
-    display: block;
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    display: inline-block;
     width: 100%;
+  }
+
+  @media (min-width: 480px) {
+    .masonry-item {
+      margin-bottom: 1rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .masonry-item {
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .masonry-item {
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .masonry-item {
+      margin-bottom: 2rem;
+    }
   }
 
   /* Photo container - maintains natural aspect ratio */
@@ -799,15 +814,13 @@ html {
 /* Enhanced Mobile Responsive Design */
 @media (max-width: 640px) {
   .masonry-grid {
+    column-count: 1;
+    column-gap: 0.75rem;
     padding: 0.5rem 0;
   }
 
-  .masonry-grid:not(.js-masonry) {
-    gap: 0.75rem;
-  }
-
   .masonry-item {
-    /* JavaScript will handle positioning */
+    margin-bottom: 0.75rem;
   }
 
   .photo-container {
