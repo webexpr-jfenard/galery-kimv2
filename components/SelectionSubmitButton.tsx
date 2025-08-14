@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { selectionService } from "../services/selectionService";
 import { favoritesService } from "../services/favoritesService";
+import { supabaseService } from "../services/supabaseService";
 
 interface SelectionSubmitButtonProps {
   galleryId: string;
@@ -38,7 +39,9 @@ export function SelectionSubmitButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectionCount, setSelectionCount] = useState(0);
+  const [completeSelectionCount, setCompleteSelectionCount] = useState(0);
   const [step, setStep] = useState<'info' | 'submitting' | 'success'>('info');
+  const [isCompleteSelection, setIsCompleteSelection] = useState(false);
   
   // Form state
   const [clientInfo, setClientInfo] = useState({
@@ -53,9 +56,14 @@ export function SelectionSubmitButton({
   const handleOpenDialog = async () => {
     try {
       const favorites = await favoritesService.getFavorites(galleryId);
-      setSelectionCount(favorites.length);
+      const currentUserId = await supabaseService.getCurrentUserId();
       
-      if (favorites.length === 0) {
+      // Count personal and complete selections
+      const personalFavorites = favorites.filter(f => f.user_id === currentUserId);
+      setSelectionCount(personalFavorites.length);
+      setCompleteSelectionCount(favorites.length);
+      
+      if (personalFavorites.length === 0 && favorites.length === 0) {
         toast.error('Aucune photo sélectionnée à soumettre');
         return;
       }
@@ -64,6 +72,7 @@ export function SelectionSubmitButton({
       setStep('info');
       setResult(null);
       setErrors([]);
+      setIsCompleteSelection(false);
     } catch (error) {
       console.error('Error loading selection count:', error);
       toast.error('Erreur lors du chargement de la sélection');
@@ -76,7 +85,7 @@ export function SelectionSubmitButton({
       setIsSubmitting(true);
       setStep('submitting');
       
-      const result = await selectionService.quickExportSelection(galleryId, galleryName);
+      const result = await selectionService.quickExportSelection(galleryId, galleryName, isCompleteSelection);
       
       if (result.success) {
         setResult(result);
@@ -118,7 +127,8 @@ export function SelectionSubmitButton({
         galleryName,
         clientInfo.name || undefined,
         clientInfo.email || undefined,
-        clientInfo.phone || undefined
+        clientInfo.phone || undefined,
+        isCompleteSelection
       );
       
       if (result.success) {
@@ -185,19 +195,62 @@ export function SelectionSubmitButton({
 
           {step === 'info' && (
             <div className="space-y-6">
+              {/* Selection Type Choice */}
+              {completeSelectionCount > selectionCount && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="personal-selection"
+                        name="selection-type"
+                        checked={!isCompleteSelection}
+                        onChange={() => setIsCompleteSelection(false)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="personal-selection" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Ma sélection personnelle</div>
+                        <div className="text-sm text-muted-foreground">
+                          {selectionCount} photo{selectionCount !== 1 ? 's' : ''} que vous avez sélectionnées
+                        </div>
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="complete-selection"
+                        name="selection-type"
+                        checked={isCompleteSelection}
+                        onChange={() => setIsCompleteSelection(true)}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor="complete-selection" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Sélection complète de la galerie</div>
+                        <div className="text-sm text-muted-foreground">
+                          {completeSelectionCount} photo{completeSelectionCount !== 1 ? 's' : ''} sélectionnées par tous les utilisateurs
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Selection Summary */}
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Ma sélection</span>
+                    <span className="font-medium">
+                      {isCompleteSelection ? 'Sélection complète' : 'Ma sélection'}
+                    </span>
                   </div>
                   <Badge variant="secondary">
-                    {selectionCount} photo{selectionCount !== 1 ? 's' : ''}
+                    {isCompleteSelection ? completeSelectionCount : selectionCount} photo{(isCompleteSelection ? completeSelectionCount : selectionCount) !== 1 ? 's' : ''}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Un fichier texte sera créé avec la liste de vos photos sélectionnées et vos commentaires.
+                  Un fichier texte sera créé avec la liste des photos sélectionnées{isCompleteSelection ? ' par tous les utilisateurs' : ''} et les commentaires.
                 </p>
               </div>
 
