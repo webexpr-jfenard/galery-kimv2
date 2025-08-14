@@ -249,13 +249,22 @@ class SelectionService {
         }
       });
 
+      // Get gallery photos to match with favorites
+      const galleryPhotos = await galleryService.getPhotos(galleryId);
+      console.log('📸 Gallery photos loaded:', galleryPhotos.length);
+      
       // Process each unique photo
-      const uniquePhotos = Array.from(new Set(filteredFavorites.map(f => f.photo_id)));
+      const uniquePhotos = Array.from(new Set(filteredFavorites.map(f => f.photoId || f.photo_id)));
       const selectedPhotos: SelectionExport['selectedPhotos'] = [];
 
       for (const photoId of uniquePhotos) {
-        const firstFav = filteredFavorites.find(f => f.photo_id === photoId);
+        const firstFav = filteredFavorites.find(f => (f.photoId || f.photo_id) === photoId);
         if (!firstFav) continue;
+
+        // Find the photo details from gallery photos - match by photo ID
+        const photoDetails = galleryPhotos.find(p => p.id === photoId);
+        const photoName = photoDetails?.originalName || photoDetails?.name || photoId.split('/').pop() || photoId;
+        console.log(`📸 Photo ${photoId}: name="${photoName}", details:`, photoDetails);
 
         // Get all comments for this photo
         const photoComments = filteredComments
@@ -264,9 +273,9 @@ class SelectionService {
 
         selectedPhotos.push({
           photoId: photoId,
-          photoName: firstFav.photo_name,
-          originalName: firstFav.original_name || firstFav.photo_name,
-          url: firstFav.photo_url,
+          photoName: photoName,
+          originalName: photoDetails?.originalName || photoName,
+          url: photoDetails?.url || photoId,
           comments: photoComments
         });
       }

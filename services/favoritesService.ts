@@ -10,6 +10,13 @@ export interface FavoritePhoto {
   userName?: string;
   createdAt: string;
   updatedAt: string;
+  // Extended fields from join
+  photo_id: string;
+  photo_name?: string;
+  photo_url?: string;
+  original_name?: string;
+  user_id?: string;
+  user_name?: string;
 }
 
 export interface Comment {
