@@ -90,7 +90,7 @@ ${this.config.photographerName || 'Photographe'}
   // Send email via Gmail API
   async sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
-      const response = await fetch('/api/send-gmail', {
+      const response = await fetch('/api/send-gmail-simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
