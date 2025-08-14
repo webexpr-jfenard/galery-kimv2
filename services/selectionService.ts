@@ -1,6 +1,7 @@
 import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
 import { galleryService } from './galleryService';
+import { userService } from './userService';
 import { GmailService, type GmailConfig, type PhotoSelection } from './gmailService';
 import type { FavoritePhoto, Comment } from './favoritesService';
 
@@ -188,9 +189,12 @@ class SelectionService {
       }
 
       // Filter by current user if not complete selection
+      const currentUserId = userService.getCurrentUserId();
       const filteredFavorites = isCompleteSelection 
         ? favorites 
-        : favorites.filter(f => f.user_id === supabaseService.getCurrentUserId());
+        : currentUserId 
+          ? favorites.filter(f => f.user_id === currentUserId)
+          : favorites;
 
       if (filteredFavorites.length === 0) {
         return {
@@ -209,7 +213,9 @@ class SelectionService {
       // Filter comments by user if not complete selection
       const filteredComments = isCompleteSelection 
         ? allComments 
-        : allComments.filter(c => c.user_id === supabaseService.getCurrentUserId());
+        : currentUserId
+          ? allComments.filter(c => c.user_id === currentUserId)
+          : allComments;
       
       // Group data by photo for multi-user view
       const photoGroups = new Map<string, {
