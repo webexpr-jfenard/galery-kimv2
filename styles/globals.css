@@ -267,56 +267,66 @@ html {
   }
 }
 
-/* Row-based Masonry Grid - Preserves Natural Ratios with Row-by-Row Order */
+/* JavaScript-Enhanced Masonry Grid - Row Order + True Masonry */
 @layer components {
   .masonry-grid {
+    position: relative;
+    width: 100%;
+    padding: 1rem 0;
+    /* Height will be calculated by JavaScript */
+  }
+
+  /* Items are positioned absolutely by JavaScript */
+  .masonry-grid.js-masonry .masonry-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: all 0.3s ease;
+    /* Width will be calculated by JavaScript based on columns */
+  }
+
+  /* Fallback for when JavaScript hasn't loaded yet or fails */
+  .masonry-grid:not(.js-masonry) {
     display: grid;
     grid-template-columns: repeat(1, 1fr);
     gap: 1rem;
-    padding: 1rem 0;
   }
 
-  /* Responsive columns - Better breakpoints for mobile-first design */
   @media (min-width: 480px) {
-    .masonry-grid {
+    .masonry-grid:not(.js-masonry) {
       grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
     }
   }
 
   @media (min-width: 768px) {
-    .masonry-grid {
+    .masonry-grid:not(.js-masonry) {
       grid-template-columns: repeat(2, 1fr);
       gap: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
-    .masonry-grid {
+    .masonry-grid:not(.js-masonry) {
       grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1280px) {
-    .masonry-grid {
+    .masonry-grid:not(.js-masonry) {
       grid-template-columns: repeat(4, 1fr);
-      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1536px) {
-    .masonry-grid {
-      grid-template-columns: repeat(4, 1fr);
+    .masonry-grid:not(.js-masonry) {
       gap: 2rem;
     }
   }
 
-  /* Masonry item - now works with grid instead of columns */
+  /* Masonry item - default styles */
   .masonry-item {
     display: block;
     width: 100%;
-    /* No margins needed - CSS Grid handles spacing with gap property */
   }
 
   /* Photo container - maintains natural aspect ratio */
@@ -789,13 +799,15 @@ html {
 /* Enhanced Mobile Responsive Design */
 @media (max-width: 640px) {
   .masonry-grid {
-    grid-template-columns: repeat(1, 1fr);
-    gap: 0.75rem;
     padding: 0.5rem 0;
   }
 
+  .masonry-grid:not(.js-masonry) {
+    gap: 0.75rem;
+  }
+
   .masonry-item {
-    /* Grid handles spacing automatically */
+    /* JavaScript will handle positioning */
   }
 
   .photo-container {
