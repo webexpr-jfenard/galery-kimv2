@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { selectionService } from "../services/selectionService";
 import { favoritesService } from "../services/favoritesService";
-import { supabaseService } from "../services/supabaseService";
+import { userService } from "../services/userService";
 
 interface SelectionSubmitButtonProps {
   galleryId: string;
@@ -56,10 +56,12 @@ export function SelectionSubmitButton({
   const handleOpenDialog = async () => {
     try {
       const favorites = await favoritesService.getFavorites(galleryId);
-      const currentUserId = await supabaseService.getCurrentUserId();
+      const currentUserId = userService.getCurrentUserId();
       
       // Count personal and complete selections
-      const personalFavorites = favorites.filter(f => f.user_id === currentUserId);
+      const personalFavorites = currentUserId 
+        ? favorites.filter(f => f.user_id === currentUserId)
+        : favorites;
       setSelectionCount(personalFavorites.length);
       setCompleteSelectionCount(favorites.length);
       
