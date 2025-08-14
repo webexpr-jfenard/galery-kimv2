@@ -7,7 +7,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/send-gmail.js": {
+    "api/send-gmail-final.js": {
       "maxDuration": 10
     }
   }
