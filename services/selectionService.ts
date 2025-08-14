@@ -1,6 +1,7 @@
 import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
-import { GmailService, type GmailConfig } from './gmailService';
+import { galleryService } from './galleryService';
+import { GmailService, type GmailConfig, type PhotoSelection } from './gmailService';
 import type { FavoritePhoto, Comment } from './favoritesService';
 
 interface SelectionExport {
@@ -166,10 +167,15 @@ class SelectionService {
     galleryId: string,
     clientName?: string,
     clientEmail?: string,
-    clientPhone?: string
+    clientPhone?: string,
+    isCompleteSelection: boolean = false
   ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
     try {
       console.log('Starting selection export for gallery:', galleryId);
+
+      // Get gallery info
+      const gallery = await galleryService.getGallery(galleryId);
+      const galleryName = gallery?.name || galleryId;
 
       // Get all favorites for this gallery
       const favorites = await favoritesService.getFavorites(galleryId);
@@ -181,10 +187,29 @@ class SelectionService {
         };
       }
 
-      console.log(`Found ${favorites.length} selected photos`);
+      // Filter by current user if not complete selection
+      const filteredFavorites = isCompleteSelection 
+        ? favorites 
+        : favorites.filter(f => f.user_id === supabaseService.getCurrentUserId());
+
+      if (filteredFavorites.length === 0) {
+        return {
+          success: false,
+          error: isCompleteSelection 
+            ? 'Aucune photo sélectionnée dans cette galerie'
+            : 'Aucune photo sélectionnée par vous dans cette galerie'
+        };
+      }
+
+      console.log(`Found ${filteredFavorites.length} selected photos (${isCompleteSelection ? 'complete' : 'personal'})`);
 
       // Get all comments for this gallery
       const allComments = await favoritesService.getComments(galleryId);
+      
+      // Filter comments by user if not complete selection
+      const filteredComments = isCompleteSelection 
+        ? allComments 
+        : allComments.filter(c => c.user_id === supabaseService.getCurrentUserId());
       
       // Group data by photo for multi-user view
       const photoGroups = new Map<string, {
@@ -192,7 +217,7 @@ class SelectionService {
         comments: { comment: string; userName?: string }[];
       }>();
 
-      favorites.forEach(fav => {
+      filteredFavorites.forEach(fav => {
         if (!photoGroups.has(fav.photo_id)) {
           photoGroups.set(fav.photo_id, { users: [], comments: [] });
         }
@@ -209,7 +234,7 @@ class SelectionService {
       });
 
       // Add comments to photo groups
-      allComments.forEach(comment => {
+      filteredComments.forEach(comment => {
         if (photoGroups.has(comment.photo_id)) {
           photoGroups.get(comment.photo_id)!.comments.push({
             comment: comment.comment,
@@ -219,15 +244,15 @@ class SelectionService {
       });
 
       // Process each unique photo
-      const uniquePhotos = Array.from(new Set(favorites.map(f => f.photo_id)));
+      const uniquePhotos = Array.from(new Set(filteredFavorites.map(f => f.photo_id)));
       const selectedPhotos: SelectionExport['selectedPhotos'] = [];
 
       for (const photoId of uniquePhotos) {
-        const firstFav = favorites.find(f => f.photo_id === photoId);
+        const firstFav = filteredFavorites.find(f => f.photo_id === photoId);
         if (!firstFav) continue;
 
         // Get all comments for this photo
-        const photoComments = allComments
+        const photoComments = filteredComments
           .filter(c => c.photo_id === photoId)
           .map(c => c.user_name ? `${c.comment} (${c.user_name})` : c.comment);
 
@@ -243,10 +268,10 @@ class SelectionService {
       // Prepare export data
       const exportData: SelectionExport = {
         galleryId,
-        galleryName: galleryId, // Using galleryId as name for now
+        galleryName: galleryName,
         exportDate: new Date().toLocaleString('fr-FR'),
         selectedPhotos,
-        totalSelected: favorites.length,
+        totalSelected: filteredFavorites.length,
         clientInfo: (clientName || clientEmail || clientPhone) ? {
           name: clientName,
           email: clientEmail,
@@ -264,7 +289,8 @@ class SelectionService {
       
       // Create filename
       const timestamp = new Date().toISOString().split('T')[0];
-      const fileName = `selection-${galleryId}-${timestamp}.txt`;
+      const selectionType = isCompleteSelection ? 'complete' : 'personal';
+      const fileName = `selection-${selectionType}-${galleryId}-${timestamp}.txt`;
 
       // Upload file
       const uploadResult = await this.uploadSelection(fileName, textContent);
@@ -281,11 +307,23 @@ class SelectionService {
         console.log('Sending Gmail notification...');
         
         const gmailService = new GmailService(gmailConfig);
+        
+        // Convert selectedPhotos to PhotoSelection format for Gmail
+        const photoSelections: PhotoSelection[] = selectedPhotos.map(photo => ({
+          photoId: photo.photoId,
+          photoName: photo.photoName,
+          originalName: photo.originalName,
+          url: photo.url,
+          comments: photo.comments
+        }));
+        
         const emailResult = await gmailService.sendSelectionNotification(
           galleryId,
+          galleryName,
           clientName || '',
-          selectedPhotos,
-          uploadResult.downloadUrl!
+          photoSelections,
+          uploadResult.downloadUrl!,
+          isCompleteSelection
         );
 
         if (emailResult.success) {
@@ -396,20 +434,21 @@ class SelectionService {
     galleryName: string,
     clientName?: string,
     clientEmail?: string,
-    clientPhone?: string
+    clientPhone?: string,
+    isCompleteSelection: boolean = false
   ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
     // Just call the main export function
-    return this.exportSelection(galleryId, clientName, clientEmail, clientPhone);
+    return this.exportSelection(galleryId, clientName, clientEmail, clientPhone, isCompleteSelection);
   }
 
   // Submit selection without client info (alias for backward compatibility)
-  async submitSelection(galleryId: string, galleryName: string): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
-    return this.exportSelection(galleryId);
+  async submitSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    return this.exportSelection(galleryId, undefined, undefined, undefined, isCompleteSelection);
   }
 
   // Quick export without client info (alias for backward compatibility)
-  async quickExportSelection(galleryId: string, galleryName: string): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
-    return this.exportSelection(galleryId);
+  async quickExportSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    return this.exportSelection(galleryId, undefined, undefined, undefined, isCompleteSelection);
   }
 }
 
