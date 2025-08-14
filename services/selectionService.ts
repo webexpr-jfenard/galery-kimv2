@@ -172,7 +172,7 @@ class SelectionService {
       console.log('Starting selection export for gallery:', galleryId);
 
       // Get all favorites for this gallery
-      const favorites = await favoritesService.getAllFavorites(galleryId);
+      const favorites = await favoritesService.getFavorites(galleryId);
       
       if (!favorites || favorites.length === 0) {
         return {
@@ -184,7 +184,7 @@ class SelectionService {
       console.log(`Found ${favorites.length} selected photos`);
 
       // Get all comments for this gallery
-      const allComments = await favoritesService.getAllComments(galleryId);
+      const allComments = await favoritesService.getComments(galleryId);
       
       // Group data by photo for multi-user view
       const photoGroups = new Map<string, {
@@ -355,7 +355,7 @@ class SelectionService {
   // Get selection count for a gallery
   async getSelectionCount(galleryId: string): Promise<number> {
     try {
-      const favorites = await favoritesService.getAllFavorites(galleryId);
+      const favorites = await favoritesService.getFavorites(galleryId);
       return favorites ? favorites.length : 0;
     } catch (error) {
       console.error('Error getting selection count:', error);
