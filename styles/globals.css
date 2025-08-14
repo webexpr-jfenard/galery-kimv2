@@ -267,80 +267,56 @@ html {
   }
 }
 
-/* True Masonry Grid - Preserves Natural Ratios - Updated to 4 columns with better responsive */
+/* Row-based Masonry Grid - Preserves Natural Ratios with Row-by-Row Order */
 @layer components {
   .masonry-grid {
-    column-count: 1;
-    column-gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1rem;
     padding: 1rem 0;
   }
 
   /* Responsive columns - Better breakpoints for mobile-first design */
   @media (min-width: 480px) {
     .masonry-grid {
-      column-count: 2;
-      column-gap: 1rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
     }
   }
 
   @media (min-width: 768px) {
     .masonry-grid {
-      column-count: 2;
-      column-gap: 1.5rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .masonry-grid {
-      column-count: 3;
-      column-gap: 1.5rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1280px) {
     .masonry-grid {
-      column-count: 4;
-      column-gap: 1.5rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1536px) {
     .masonry-grid {
-      column-count: 4;
-      column-gap: 2rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
     }
   }
 
-  /* Masonry item - prevents breaking across columns */
+  /* Masonry item - now works with grid instead of columns */
   .masonry-item {
-    break-inside: avoid;
-    margin-bottom: 1rem;
-    display: inline-block;
+    display: block;
     width: 100%;
-  }
-
-  @media (min-width: 480px) {
-    .masonry-item {
-      margin-bottom: 1rem;
-    }
-  }
-
-  @media (min-width: 768px) {
-    .masonry-item {
-      margin-bottom: 1.5rem;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .masonry-item {
-      margin-bottom: 1.5rem;
-    }
-  }
-
-  @media (min-width: 1536px) {
-    .masonry-item {
-      margin-bottom: 2rem;
-    }
+    /* No margins needed - CSS Grid handles spacing with gap property */
   }
 
   /* Photo container - maintains natural aspect ratio */
@@ -813,13 +789,13 @@ html {
 /* Enhanced Mobile Responsive Design */
 @media (max-width: 640px) {
   .masonry-grid {
-    column-count: 1;
-    column-gap: 0.75rem;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 0.75rem;
     padding: 0.5rem 0;
   }
 
   .masonry-item {
-    margin-bottom: 0.75rem;
+    /* Grid handles spacing automatically */
   }
 
   .photo-container {
