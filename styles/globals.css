@@ -396,6 +396,11 @@ html {
     opacity: 1;
   }
 
+  /* Always show photo names when toggle is active */
+  .photo-name-overlay.show-always {
+    opacity: 1 !important;
+  }
+
   /* Responsive font size for photo name */
   @media (min-width: 768px) {
     .photo-name-overlay {
