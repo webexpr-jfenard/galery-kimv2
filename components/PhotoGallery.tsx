@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -56,136 +56,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
-
-  // Masonry script loading
-  const masonryRef = useRef<HTMLDivElement>(null);
-  const masonryInstanceRef = useRef<any>(null);
-
-  // Inline masonry implementation
-  useEffect(() => {
-    const initMasonry = () => {
-      if (!masonryRef.current || photos.length === 0) return;
-
-      const container = masonryRef.current;
-      const items = Array.from(container.querySelectorAll('.masonry-item')) as HTMLElement[];
-      
-      if (items.length === 0) return;
-
-      // Add masonry class
-      container.classList.add('js-masonry');
-
-      const getColumnsCount = () => {
-        const width = window.innerWidth;
-        if (width >= 1280) return 4;
-        if (width >= 1024) return 3;
-        if (width >= 480) return 2;
-        return 1;
-      };
-
-      const getGap = () => {
-        const width = window.innerWidth;
-        if (width >= 1536) return 32;
-        if (width >= 768) return 24;
-        if (width < 640) return 12;
-        return 16;
-      };
-
-      const layoutMasonry = () => {
-        const columns = getColumnsCount();
-        const gap = getGap();
-        const containerWidth = container.clientWidth;
-        const columnWidth = (containerWidth - (gap * (columns - 1))) / columns;
-        
-        // Initialize column heights
-        const columnHeights = new Array(columns).fill(0);
-        
-        items.forEach((item, index) => {
-          // Calculate which column this item should go in (row-wise)
-          const columnIndex = index % columns;
-          
-          // Position the item
-          const x = columnIndex * (columnWidth + gap);
-          const y = columnHeights[columnIndex];
-          
-          item.style.position = 'absolute';
-          item.style.left = `${x}px`;
-          item.style.top = `${y}px`;
-          item.style.width = `${columnWidth}px`;
-          
-          // Update column height
-          const itemHeight = item.offsetHeight;
-          columnHeights[columnIndex] += itemHeight + gap;
-        });
-        
-        // Set container height
-        const maxHeight = Math.max(...columnHeights);
-        container.style.height = `${maxHeight}px`;
-      };
-
-      // Wait for images to load
-      const images = container.querySelectorAll('img');
-      let loadedCount = 0;
-      const totalImages = images.length;
-
-      if (totalImages === 0) {
-        layoutMasonry();
-        return;
-      }
-
-      const checkAllLoaded = () => {
-        loadedCount++;
-        if (loadedCount >= totalImages) {
-          layoutMasonry();
-        }
-      };
-
-      images.forEach(img => {
-        if (img.complete) {
-          checkAllLoaded();
-        } else {
-          img.addEventListener('load', checkAllLoaded);
-          img.addEventListener('error', checkAllLoaded);
-        }
-      });
-
-      // Handle resize
-      let resizeTimeout: NodeJS.Timeout;
-      const handleResize = () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(layoutMasonry, 150);
-      };
-
-      window.addEventListener('resize', handleResize);
-
-      // Store cleanup function
-      masonryInstanceRef.current = {
-        destroy: () => {
-          window.removeEventListener('resize', handleResize);
-          container.classList.remove('js-masonry');
-          container.style.height = '';
-          items.forEach(item => {
-            item.style.position = '';
-            item.style.left = '';
-            item.style.top = '';
-            item.style.width = '';
-          });
-        }
-      };
-    };
-
-    if (photos.length > 0) {
-      // Small delay to ensure DOM is ready
-      setTimeout(initMasonry, 100);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (masonryInstanceRef.current) {
-        masonryInstanceRef.current.destroy();
-        masonryInstanceRef.current = null;
-      }
-    };
-  }, [photos]);
 
   // Load gallery data
   useEffect(() => {
@@ -691,7 +561,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             )}
           </div>
         ) : (
-          <div ref={masonryRef} className="masonry-grid">
+          <div className="masonry-grid">
             {filteredPhotos.map((photo, index) => (
               <div key={photo.id} className="masonry-item animate-fadeIn">
                 {/* Photo */}
