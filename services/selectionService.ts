@@ -362,6 +362,55 @@ class SelectionService {
       return 0;
     }
   }
+
+  // Validate client information
+  validateClientInfo(name?: string, email?: string, phone?: string): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // Email validation if provided
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.push('Format d\'email invalide');
+      }
+    }
+
+    // Phone validation if provided (basic French format)
+    if (phone && phone.trim()) {
+      const phoneRegex = /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/;
+      const cleanPhone = phone.replace(/[\s.-]/g, '');
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        errors.push('Numéro de téléphone invalide');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  // Export selection with client information (alias for backward compatibility)
+  async exportSelectionWithClientInfo(
+    galleryId: string,
+    galleryName: string,
+    clientName?: string,
+    clientEmail?: string,
+    clientPhone?: string
+  ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    // Just call the main export function
+    return this.exportSelection(galleryId, clientName, clientEmail, clientPhone);
+  }
+
+  // Submit selection without client info (alias for backward compatibility)
+  async submitSelection(galleryId: string, galleryName: string): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    return this.exportSelection(galleryId);
+  }
+
+  // Quick export without client info (alias for backward compatibility)
+  async quickExportSelection(galleryId: string, galleryName: string): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+    return this.exportSelection(galleryId);
+  }
 }
 
 export const selectionService = new SelectionService();
