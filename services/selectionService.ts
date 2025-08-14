@@ -136,10 +136,9 @@ class SelectionService {
 
       if (error) {
         console.warn('Supabase upload failed, using blob URL fallback:', error);
-        // Fallback: create blob URL for temporary download
-        const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
-        const downloadUrl = URL.createObjectURL(blob);
-        return { success: true, fileName, downloadUrl, isTemporary: true };
+        // For emails, we need a persistent URL, not a blob URL
+        // Return error so caller knows the download link won't work in email
+        throw new Error(`Failed to upload to Supabase: ${error.message}`);
       }
 
       // Get public URL
@@ -147,9 +146,12 @@ class SelectionService {
         .from(this.SELECTIONS_BUCKET)
         .getPublicUrl(filePath);
 
+      const finalUrl = publicUrlData.publicUrl;
+      console.log('✅ Upload successful, public URL:', finalUrl);
+
       return {
         success: true,
-        downloadUrl: publicUrlData.publicUrl,
+        downloadUrl: finalUrl,
         fileName
       };
 
@@ -314,12 +316,17 @@ class SelectionService {
         throw new Error('Failed to create selection file');
       }
 
+      if (!uploadResult.downloadUrl) {
+        throw new Error('No download URL available for selection file');
+      }
+
       console.log('Selection file created:', uploadResult.fileName);
+      console.log('Download URL:', uploadResult.downloadUrl);
 
       // Send Gmail notification
       const gmailConfig = this.getGmailConfig();
       if (gmailConfig && gmailConfig.enableNotifications) {
-        console.log('Sending Gmail notification...');
+        console.log('Sending Gmail notification with download URL:', uploadResult.downloadUrl);
         
         const gmailService = new GmailService(gmailConfig);
         
