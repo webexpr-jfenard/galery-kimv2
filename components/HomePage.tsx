@@ -58,7 +58,7 @@ export function HomePage() {
 </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold mb-2">Votre Galerie Photos</h1>
+              <h1 className="text-3xl font-bold mb-2">Votre Galerie photos</h1>
               <p className="text-muted-foreground">
                 Entrez votre ID de galerie transmis pour accéder à vos photos.
               </p>
