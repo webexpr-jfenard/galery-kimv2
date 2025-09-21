@@ -71,6 +71,9 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Mobile subfolder dropdown state
   const [showSubfolderDropdown, setShowSubfolderDropdown] = useState(false);
+  
+  // Mobile search state
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -371,7 +374,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showSubfolderDropdown) {
+      if (showSubfolderDropdown || showMobileSearch) {
         const target = event.target as Element;
         if (!target.closest('.relative')) {
           setShowSubfolderDropdown(false);
@@ -381,7 +384,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSubfolderDropdown]);
+  }, [showSubfolderDropdown, showMobileSearch]);
 
   // Auth dialog
   if (needsAuth) {
@@ -474,25 +477,23 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40">
+      {/* Header - Desktop Layout */}
+      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40 hidden md:block">
         <div className="container mx-auto px-4 py-4">
-          {/* 3-row header layout */}
-          <div className="flex flex-col space-y-3">
-            {/* Row 1: Back button and title */}
-            <div className="flex items-center gap-2 lg:gap-4">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            {/* Left: Back button and title */}
+            <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => window.appRouter.navigateTo('/')}
-                className="shrink-0"
               >
-                <ArrowLeft className="h-4 w-4 mr-1 lg:mr-2" />
-                <span className="hidden sm:inline">Accueil</span>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Accueil
               </Button>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg lg:text-2xl font-bold truncate">{gallery.name}</h1>
-                <div className="flex flex-wrap items-center gap-2 text-xs lg:text-sm text-muted-foreground">
+              <div>
+                <h1 className="text-2xl font-bold">{gallery.name}</h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{filteredPhotos.length} photos</span>
                   {selectedSubfolder && (
                     <>
@@ -507,8 +508,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               </div>
             </div>
 
-            {/* Row 2: Selection and Submit buttons */}
-            <div className="flex items-center justify-between">
+            {/* Right: Actions */}
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -516,9 +517,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 className="flex items-center"
               >
                 <Heart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Ma sélection</span>
-                <span className="sm:hidden">Sélection</span>
-                <span className="ml-1">({selection.size})</span>
+                Ma sélection ({selection.size})
               </Button>
               
               <SelectionSubmitButton 
@@ -526,173 +525,263 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 galleryName={gallery.name}
                 variant="default"
                 size="sm"
-                className="sm:hidden"
-                children="Soumettre"
               />
-              
-              <SelectionSubmitButton 
-                galleryId={galleryId}
-                galleryName={gallery.name}
-                variant="default"
-                size="sm"
-                className="hidden sm:flex"
+            </div>
+          </div>
+
+          {/* Search and controls */}
+          <div className="flex items-center gap-4">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher des photos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
               />
             </div>
 
-            {/* Row 3: Search and controls */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search */}
-              <div className="relative flex-1">
+            {/* View mode selector */}
+            <div className="flex items-center border rounded-md p-1">
+              <Button
+                variant={viewMode === 'masonry' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleViewModeChange('masonry')}
+                className="px-2 py-1 h-auto"
+                title="Vue mosaïque"
+              >
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
+                    stroke="currentColor" 
+                    strokeWidth="2"/>
+                </svg>
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleViewModeChange('grid')}
+                className="px-2 py-1 h-auto"
+                title="Vue grille classique"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Show photo names toggle */}
+            <Button
+              variant={showPhotoNames ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowPhotoNames(!showPhotoNames)}
+              title="Afficher les noms des photos"
+            >
+              <Tag className="h-4 w-4 mr-2" />
+              Noms
+            </Button>
+          </div>
+
+          {/* Subfolder filter (desktop) */}
+          {showSubfolderFilter && subfolders.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedSubfolder(undefined)}
+                  className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                >
+                  <Grid className="h-4 w-4 mr-1" />
+                  Toutes
+                </Button>
+                
+                {subfolders.map((subfolder) => (
+                  <Button
+                    key={subfolder.name}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSubfolderFilterChange(subfolder.name)}
+                    className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                  >
+                    <Folder className="h-4 w-4 mr-1" />
+                    <span className="max-w-[120px] truncate">{subfolder.name}</span>
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {subfolder.photoCount}
+                    </Badge>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Header - Mobile Layout */}
+      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40 md:hidden">
+        <div className="container mx-auto px-4 py-3">
+          {/* Top row: Back button and title */}
+          <div className="flex items-center gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.appRouter.navigateTo('/')}
+              className="shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-bold truncate">{gallery.name}</h1>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{filteredPhotos.length} photos</span>
+                {selectedSubfolder && (
+                  <>
+                    <span>•</span>
+                    <Badge variant="outline" className="text-xs">
+                      <Folder className="h-3 w-3 mr-1" />
+                      {selectedSubfolder}
+                    </Badge>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Compact controls row */}
+          <div className="flex items-center gap-2">
+            {/* Search toggle button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="shrink-0"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Selection button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.appRouter.navigateTo(`/favorites/${galleryId}`)}
+              className="shrink-0"
+            >
+              <Heart className="h-4 w-4 mr-1" />
+              {selection.size}
+            </Button>
+
+            {/* View toggles */}
+            <div className="flex items-center border rounded-md p-1 shrink-0">
+              <Button
+                variant={viewMode === 'masonry' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleViewModeChange('masonry')}
+                className="px-1.5 py-1 h-auto"
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
+                    stroke="currentColor" 
+                    strokeWidth="2"/>
+                </svg>
+              </Button>
+              <Button
+                variant={viewMode === 'grid' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handleViewModeChange('grid')}
+                className="px-1.5 py-1 h-auto"
+              >
+                <Grid3X3 className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Names toggle */}
+            <Button
+              variant={showPhotoNames ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowPhotoNames(!showPhotoNames)}
+              className="shrink-0"
+            >
+              <Tag className="h-4 w-4" />
+            </Button>
+
+            {/* Submit button */}
+            <SelectionSubmitButton 
+              galleryId={galleryId}
+              galleryName={gallery.name}
+              variant="default"
+              size="sm"
+              className="shrink-0"
+              children="Soumettre"
+            />
+          </div>
+
+          {/* Collapsible search */}
+          {showMobileSearch && (
+            <div className="mt-3">
+              <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Rechercher des photos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  autoFocus
                 />
               </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-2 shrink-0">
-                {/* View mode selector */}
-                <div className="flex items-center border rounded-md p-1">
-                  <Button
-                    variant={viewMode === 'masonry' ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleViewModeChange('masonry')}
-                    className="px-2 py-1 h-auto"
-                    title="Vue mosaïque"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
-                        stroke="currentColor" 
-                        strokeWidth="2"/>
-                    </svg>
-                  </Button>
-                  <Button
-                    variant={viewMode === 'grid' ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleViewModeChange('grid')}
-                    className="px-2 py-1 h-auto"
-                    title="Vue grille classique"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Show photo names toggle */}
-                <Button
-                  variant={showPhotoNames ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowPhotoNames(!showPhotoNames)}
-                  className="hidden sm:flex"
-                  title="Afficher les noms des photos"
-                >
-                  <Tag className="h-4 w-4 mr-2" />
-                  Noms
-                </Button>
-
-                {/* Mobile names toggle */}
-                <Button
-                  variant={showPhotoNames ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowPhotoNames(!showPhotoNames)}
-                  className="sm:hidden"
-                  title="Afficher les noms des photos"
-                >
-                  <Tag className="h-4 w-4" />
-                </Button>
-              </div>
             </div>
+          )}
 
-            {/* Row 4: Subfolder filter (when present) */}
-            {showSubfolderFilter && subfolders.length > 0 && (
-              <>
-                {/* Mobile: Dropdown */}
-                <div className="md:hidden relative">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSubfolderDropdown(!showSubfolderDropdown)}
-                    className="w-full justify-between"
+          {/* Subfolder filter (mobile) */}
+          {showSubfolderFilter && subfolders.length > 0 && (
+            <div className="mt-3 relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSubfolderDropdown(!showSubfolderDropdown)}
+                className="w-full justify-between"
+              >
+                <div className="flex items-center">
+                  <Folder className="h-4 w-4 mr-2" />
+                  <span className="truncate">
+                    {selectedSubfolder || 'Toutes les photos'}
+                  </span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showSubfolderDropdown ? 'rotate-180' : ''}`} />
+              </Button>
+              
+              {showSubfolderDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedSubfolder(undefined);
+                      setShowSubfolderDropdown(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${!selectedSubfolder ? 'bg-primary/10 text-primary' : ''}`}
                   >
-                    <div className="flex items-center">
-                      <Folder className="h-4 w-4 mr-2" />
-                      <span className="truncate">
-                        {selectedSubfolder || 'Toutes les photos'}
-                      </span>
-                    </div>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${showSubfolderDropdown ? 'rotate-180' : ''}`} />
-                  </Button>
-                  
-                  {showSubfolderDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                      <button
-                        onClick={() => {
-                          setSelectedSubfolder(undefined);
-                          setShowSubfolderDropdown(false);
-                        }}
-                        className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${!selectedSubfolder ? 'bg-primary/10 text-primary' : ''}`}
-                      >
-                        <Grid className="h-4 w-4 mr-2" />
-                        Toutes les photos
-                        <Badge variant="secondary" className="ml-auto text-xs">
-                          {filteredPhotos.length}
-                        </Badge>
-                      </button>
-                      {subfolders.map((subfolder) => (
-                        <button
-                          key={subfolder.name}
-                          onClick={() => {
-                            handleSubfolderFilterChange(subfolder.name);
-                            setShowSubfolderDropdown(false);
-                          }}
-                          className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${selectedSubfolder === subfolder.name ? 'bg-primary/10 text-primary' : ''}`}
-                        >
-                          <Folder className="h-4 w-4 mr-2" />
-                          <span className="truncate">{subfolder.name}</span>
-                          <Badge variant="secondary" className="ml-auto text-xs">
-                            {subfolder.photoCount}
-                          </Badge>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Desktop: Horizontal scroll */}
-                <div className="hidden md:block">
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedSubfolder(undefined)}
-                      className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                    <Grid className="h-4 w-4 mr-2" />
+                    Toutes les photos
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {filteredPhotos.length}
+                    </Badge>
+                  </button>
+                  {subfolders.map((subfolder) => (
+                    <button
+                      key={subfolder.name}
+                      onClick={() => {
+                        handleSubfolderFilterChange(subfolder.name);
+                        setShowSubfolderDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${selectedSubfolder === subfolder.name ? 'bg-primary/10 text-primary' : ''}`}
                     >
-                      <Grid className="h-4 w-4 mr-1" />
-                      Toutes
-                    </Button>
-                    
-                    {subfolders.map((subfolder) => (
-                      <Button
-                        key={subfolder.name}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSubfolderFilterChange(subfolder.name)}
-                        className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
-                      >
-                        <Folder className="h-4 w-4 mr-1" />
-                        <span className="max-w-[120px] truncate">{subfolder.name}</span>
-                        <Badge variant="secondary" className="ml-1 text-xs">
-                          {subfolder.photoCount}
-                        </Badge>
-                      </Button>
-                    ))}
-                  </div>
+                      <Folder className="h-4 w-4 mr-2" />
+                      <span className="truncate">{subfolder.name}</span>
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {subfolder.photoCount}
+                      </Badge>
+                    </button>
+                  ))}
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
