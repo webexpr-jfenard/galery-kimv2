@@ -16,6 +16,7 @@ import {
   Folder,
   FolderOpen,
   Grid,
+  Grid3X3,
   Tag
 } from "lucide-react";
 import { toast } from "sonner";
@@ -54,12 +55,48 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // Photo names display
   const [showPhotoNames, setShowPhotoNames] = useState(false);
   
+  // View mode (masonry or grid) with persistence
+  const [viewMode, setViewMode] = useState<'masonry' | 'grid'>(() => {
+    const saved = localStorage.getItem('gallery-view-mode');
+    return (saved as 'masonry' | 'grid') || 'masonry';
+  });
+  
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
+
+  // Handle view mode change
+  const handleViewModeChange = (mode: 'masonry' | 'grid') => {
+    setViewMode(mode);
+    localStorage.setItem('gallery-view-mode', mode);
+  };
+
+  // Calculate width for classic grid items based on image aspect ratio
+  const getGridItemStyle = (photo: Photo) => {
+    if (viewMode !== 'grid') return {};
+    
+    // Default aspect ratio if dimensions not available
+    const aspectRatio = (photo.width && photo.height) 
+      ? photo.width / photo.height 
+      : 1.5; // Default 3:2 ratio
+    
+    // Fixed height is 200px (from CSS), calculate width to maintain ratio
+    const fixedHeight = 200;
+    const calculatedWidth = fixedHeight * aspectRatio;
+    
+    // Set min and max widths for better layout
+    const minWidth = 150;
+    const maxWidth = 400;
+    const finalWidth = Math.max(minWidth, Math.min(maxWidth, calculatedWidth));
+    
+    return {
+      width: `${finalWidth}px`,
+      flexShrink: 0
+    };
+  };
 
   // Load gallery data
   useEffect(() => {
@@ -461,6 +498,28 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               
               {/* Action buttons - responsive */}
               <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                {/* View mode selector */}
+                <div className="flex items-center border rounded-md p-1">
+                  <Button
+                    variant={viewMode === 'masonry' ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleViewModeChange('masonry')}
+                    className="px-2 py-1 h-auto"
+                    title="Vue mosaïque"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'grid' ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleViewModeChange('grid')}
+                    className="px-2 py-1 h-auto"
+                    title="Vue grille classique"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                </div>
+
                 {/* Show photo names toggle */}
                 <Button
                   variant={showPhotoNames ? "default" : "outline"}
@@ -588,16 +647,20 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             )}
           </div>
         ) : (
-          <div className="masonry-grid">
+          <div className={viewMode === 'masonry' ? 'masonry-grid' : 'classic-grid'}>
             {filteredPhotos.map((photo, index) => (
-              <div key={photo.id} className="masonry-item animate-fadeIn">
+              <div 
+                key={photo.id} 
+                className={viewMode === 'masonry' ? 'masonry-item animate-fadeIn' : 'classic-grid-item animate-fadeIn'}
+                style={getGridItemStyle(photo)}
+              >
                 {/* Photo */}
-                <div className="photo-container" onClick={() => openLightbox(index)}>
+                <div className={viewMode === 'masonry' ? 'photo-container' : ''} onClick={() => openLightbox(index)}>
                   <img
                     src={photo.url}
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
-                    className="photo-image"
+                    className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
                   />
 
                   {/* Photo name overlay - NEW */}
