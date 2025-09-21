@@ -149,6 +149,13 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       }
 
       console.log(`✅ Gallery loaded: ${galleryData.name}`);
+      console.log('🔍 Gallery data:', {
+        id: galleryData.id,
+        name: galleryData.name,
+        hasPassword: !!galleryData.password,
+        password: galleryData.password ? '[MASKED]' : 'null',
+        isAuthenticated: galleryService.isGalleryAuthenticated(galleryId)
+      });
 
       // Check if authentication is needed
       if (galleryData.password && !galleryService.isGalleryAuthenticated(galleryId)) {
