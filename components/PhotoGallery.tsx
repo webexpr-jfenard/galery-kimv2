@@ -81,16 +81,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       // Classic grid - no special styling needed
       return {};
     } else if (viewMode === 'masonry') {
-      // For masonry, we need to calculate row span based on image aspect ratio
-      // This is a simplified approach - in a real app you'd calculate based on actual image dimensions
-      // Using a rough estimate based on photo ID hash for demo purposes
-      const hash = photo.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const spans = [20, 25, 30, 35, 40]; // Different row spans (10px per row)
-      const spanIndex = hash % spans.length;
-      const rowSpan = spans[spanIndex];
-      
+      // For masonry, let content size itself naturally
+      // Remove the fixed grid-row-end to allow auto-sizing
       return {
-        gridRowEnd: `span ${rowSpan}`,
+        gridRowEnd: 'auto',
       };
     }
     return {};
