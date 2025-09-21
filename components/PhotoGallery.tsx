@@ -485,7 +485,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header - Desktop Layout */}
-      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40 hidden md:block">
+      <div className="border-b backdrop-blur-sm sticky top-0 z-40 hidden md:block" style={{backgroundColor: '#f8f9fa'}}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4 mb-4">
             {/* Left: Back button and title */}
@@ -656,7 +656,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       </div>
 
       {/* Header - Mobile Layout */}
-      <div className="border-b bg-white backdrop-blur-sm sticky top-0 z-40 md:hidden">
+      <div className="border-b backdrop-blur-sm sticky top-0 z-40 md:hidden" style={{backgroundColor: '#f8f9fa'}}>
         <div className="container mx-auto px-4 py-3">
           {/* Top row: Back button and title */}
           <div className="flex items-center gap-2 mb-3">
