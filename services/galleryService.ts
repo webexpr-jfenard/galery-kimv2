@@ -846,6 +846,9 @@ class GalleryService {
           filteredPhotos = filteredPhotos.filter((photo: Photo) => photo.subfolder === subfolder);
         }
         
+        // Sort alphabetically by name
+        filteredPhotos.sort((a: Photo, b: Photo) => a.name.localeCompare(b.name));
+        
         return filteredPhotos;
       }
 
@@ -865,7 +868,7 @@ class GalleryService {
         .from(this.PHOTOS_TABLE)
         .select('*')
         .eq('gallery_id', galleryId)
-        .order('created_at', { ascending: false });
+        .order('name', { ascending: true });
 
       // Filter by subfolder if specified
       if (subfolder) {
@@ -928,7 +931,7 @@ class GalleryService {
           bucketPath: filePath,
           supabaseFile: file
         };
-      });
+      }).sort((a, b) => a.name.localeCompare(b.name));
 
       // Cache photos locally for faster subsequent loads
       localStorage.setItem(`${this.PHOTOS_KEY}-${gallery.id}`, JSON.stringify(photos));

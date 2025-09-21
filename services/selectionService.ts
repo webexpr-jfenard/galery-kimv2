@@ -115,7 +115,7 @@ class SelectionService {
   // Upload selection file to Supabase
   private async uploadSelection(fileName: string, textContent: string): Promise<{ success: boolean; downloadUrl?: string; fileName: string; isTemporary?: boolean }> {
     try {
-      const supabaseClient = supabaseService.getClient();
+      const supabaseClient = supabaseService.client;
       if (!supabaseClient) {
         throw new Error('Supabase client not available');
       }
