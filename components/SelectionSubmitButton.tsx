@@ -172,7 +172,7 @@ export function SelectionSubmitButton({
         className={`${className} font-medium`}
       >
         <Send className="h-4 w-4 mr-2" />
-        Soumettre ma sélection
+        Soumettre
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
