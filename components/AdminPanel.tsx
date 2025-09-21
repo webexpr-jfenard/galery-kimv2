@@ -474,7 +474,7 @@ export function AdminPanel() {
           isOpen={showAuthDialog}
           onClose={() => {
             setShowAuthDialog(false);
-            window.appRouter.navigateTo('/');
+            // Don't redirect, just close dialog - user will see the auth screen again
           }}
           onAuthenticate={handleAuthentication}
           type="admin"
@@ -898,6 +898,20 @@ export function AdminPanel() {
                               onChange={(e) => setEditForm(prev => ({ ...prev, bucketFolder: e.target.value }))}
                             />
                           </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor={`edit-password-${gallery.id}`} className="text-sm font-medium flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Mot de passe (laisser vide pour supprimer la protection)
+                          </Label>
+                          <Input
+                            id={`edit-password-${gallery.id}`}
+                            type="password"
+                            placeholder="Nouveau mot de passe..."
+                            value={editForm.password || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                          />
                         </div>
 
                         <div>

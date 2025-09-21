@@ -764,8 +764,8 @@ class GalleryService {
       const gallery = await this.getGallery(galleryId);
       if (!gallery) return false;
       
-      // If gallery is public and has no password, allow access
-      if (gallery.isPublic && !gallery.password) return true;
+      // If gallery has no password, allow access
+      if (!gallery.password) return true;
       
       // Check password
       const isAuthenticated = gallery.password === password;
