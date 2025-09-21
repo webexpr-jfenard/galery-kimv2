@@ -91,24 +91,8 @@ export function HomePage() {
             </Button>
           </div>
 
-          {/* Help Section */}
-          <div className="pt-8 border-t">
-            <div className="text-center space-y-3">
-              <h3 className="font-semibold text-sm">Besoin d'aide ?</h3>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <p>
-                  • Contactez votre photographe si vous n'avez pas d'ID de galerie
-                </p>
-               
-                <p>
-                  • Vous pouvez mettre des photos en favoris et laisser des commentaires pour la sélection
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Footer */}
-          <div className="pt-8">
+          <div>
             <Badge variant="outline" className="text-xs">
               Galerie photos - Kim Redler
             </Badge>
