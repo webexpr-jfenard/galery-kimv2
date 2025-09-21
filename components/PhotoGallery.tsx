@@ -74,6 +74,9 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Mobile search state
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  
+  // Desktop search state
+  const [showDesktopSearch, setShowDesktopSearch] = useState(false);
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -374,17 +377,21 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showSubfolderDropdown || showMobileSearch) {
+      if (showSubfolderDropdown || showMobileSearch || showDesktopSearch) {
         const target = event.target as Element;
         if (!target.closest('.relative')) {
           setShowSubfolderDropdown(false);
+          // Close desktop search only if no search term
+          if (showDesktopSearch && !searchTerm) {
+            setShowDesktopSearch(false);
+          }
         }
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSubfolderDropdown, showMobileSearch]);
+  }, [showSubfolderDropdown, showMobileSearch, showDesktopSearch, searchTerm]);
 
   // Auth dialog
   if (needsAuth) {
@@ -529,18 +536,35 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             </div>
           </div>
 
-          {/* Search and controls */}
-          <div className="flex items-center gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher des photos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          {/* Compact controls row */}
+          <div className="flex items-center gap-3">
+            {/* Search toggle/field */}
+            {!showDesktopSearch ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDesktopSearch(true)}
+                title="Rechercher des photos"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-64"
+                  autoFocus
+                  onBlur={() => {
+                    if (!searchTerm) {
+                      setShowDesktopSearch(false);
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             {/* View mode selector */}
             <div className="flex items-center border rounded-md p-1">
@@ -578,37 +602,53 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               <Tag className="h-4 w-4 mr-2" />
               Noms
             </Button>
-          </div>
 
-          {/* Subfolder filter (desktop) */}
-          {showSubfolderFilter && subfolders.length > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedSubfolder(undefined)}
-                  className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
-                >
-                  <Grid className="h-4 w-4 mr-1" />
-                  Toutes
-                </Button>
-                
-                {subfolders.map((subfolder) => (
+            {/* Subfolder filter (desktop) - inline */}
+            {showSubfolderFilter && subfolders.length > 0 && (
+              <>
+                <div className="h-6 w-px bg-border"></div>
+                <div className="flex items-center gap-2">
                   <Button
-                    key={subfolder.name}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleSubfolderFilterChange(subfolder.name)}
-                    className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                    onClick={() => setSelectedSubfolder(undefined)}
+                    className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
                   >
-                    <Folder className="h-4 w-4 mr-1" />
-                    <span className="max-w-[120px] truncate">{subfolder.name}</span>
-                    <Badge variant="secondary" className="ml-1 text-xs">
-                      {subfolder.photoCount}
-                    </Badge>
+                    <Grid className="h-4 w-4 mr-1" />
+                    Toutes
                   </Button>
-                ))}
+                  
+                  {subfolders.map((subfolder) => (
+                    <Button
+                      key={subfolder.name}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSubfolderFilterChange(subfolder.name)}
+                      className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                    >
+                      <Folder className="h-4 w-4 mr-1" />
+                      <span className="max-w-[120px] truncate">{subfolder.name}</span>
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {subfolder.photoCount}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Expanded search row when search is active and there are many subfolders */}
+          {showDesktopSearch && searchTerm && showSubfolderFilter && subfolders.length > 4 && (
+            <div className="mt-3">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher des photos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
           )}

@@ -81,29 +81,6 @@ export function SelectionSubmitButton({
     }
   };
 
-  // Quick submit without client info
-  const handleQuickSubmit = async () => {
-    try {
-      setIsSubmitting(true);
-      setStep('submitting');
-      
-      const result = await selectionService.quickExportSelection(galleryId, galleryName, isCompleteSelection);
-      
-      if (result.success) {
-        setResult(result);
-        setStep('success');
-        toast.success('Sélection soumise avec succès !');
-      } else {
-        throw new Error(result.error || 'Échec de la soumission');
-      }
-    } catch (error) {
-      console.error('Error submitting selection:', error);
-      toast.error('Erreur lors de la soumission');
-      setStep('info');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Submit with client information
   const handleSubmitWithInfo = async () => {
@@ -317,21 +294,12 @@ export function SelectionSubmitButton({
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button
-                  variant="outline"
-                  onClick={handleQuickSubmit}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Soumettre rapidement
-                </Button>
-                <Button
                   onClick={handleSubmitWithInfo}
                   disabled={isSubmitting}
                   className="flex-1"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  Soumettre avec infos
+                  Soumettre
                 </Button>
               </div>
 
