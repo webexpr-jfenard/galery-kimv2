@@ -74,28 +74,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     localStorage.setItem('gallery-view-mode', mode);
   };
 
-  // Calculate width for classic grid items based on image aspect ratio
+  // Style for classic grid items - now simpler since images size themselves
   const getGridItemStyle = (photo: Photo) => {
     if (viewMode !== 'grid') return {};
     
-    // Default aspect ratio if dimensions not available
-    const aspectRatio = (photo.width && photo.height) 
-      ? photo.width / photo.height 
-      : 1.5; // Default 3:2 ratio
-    
-    // Fixed height is 200px (from CSS), calculate width to maintain ratio
-    const fixedHeight = 200;
-    const calculatedWidth = fixedHeight * aspectRatio;
-    
-    // Set min and max widths for better layout
-    const minWidth = 150;
-    const maxWidth = 400;
-    const finalWidth = Math.max(minWidth, Math.min(maxWidth, calculatedWidth));
-    
-    return {
-      width: `${finalWidth}px`,
-      flexShrink: 0
-    };
+    // Let images size themselves naturally within the 180px height limit
+    return {};
   };
 
   // Load gallery data

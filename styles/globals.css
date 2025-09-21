@@ -884,25 +884,29 @@ html {
 
 /* Classic Grid Layout */
 .classic-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-start;
-  align-items: flex-start;
+  text-align: justify;
+  line-height: 0;
   padding: 1rem 0;
 }
 
+.classic-grid::after {
+  content: '';
+  display: inline-block;
+  width: 100%;
+}
+
 .classic-grid-item {
-  height: 200px; /* Fixed height for all rows */
   position: relative;
   overflow: hidden;
   border-radius: 12px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   background: #f8f9fa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 12px;
+  margin-bottom: 12px;
+  line-height: 1;
 }
 
 .classic-grid-item:hover {
@@ -911,13 +915,15 @@ html {
 }
 
 .classic-grid-image {
-  height: 100%;
+  max-height: 180px; /* Limit height to 180px */
   width: auto;
-  max-width: none;
+  height: auto;
+  max-width: 100%;
   object-fit: contain;
   object-position: center;
   border-radius: 12px;
   transition: filter 0.2s ease;
+  display: block;
 }
 
 .classic-grid-item:hover .classic-grid-image {
@@ -1054,33 +1060,39 @@ html {
 
 /* Responsive classic grid */
 @media (max-width: 1536px) {
-  .classic-grid {
-    gap: 10px;
+  .classic-grid-item {
+    margin-right: 10px;
+    margin-bottom: 10px;
   }
   
-  .classic-grid-item {
-    height: 180px;
+  .classic-grid-image {
+    max-height: 160px;
   }
 }
 
 @media (max-width: 1024px) {
-  .classic-grid {
-    gap: 8px;
+  .classic-grid-item {
+    margin-right: 8px;
+    margin-bottom: 8px;
   }
   
-  .classic-grid-item {
-    height: 160px;
+  .classic-grid-image {
+    max-height: 140px;
   }
 }
 
 @media (max-width: 768px) {
   .classic-grid {
-    gap: 6px;
-    justify-content: center;
+    text-align: center;
   }
   
   .classic-grid-item {
-    height: 140px;
+    margin-right: 6px;
+    margin-bottom: 6px;
+  }
+  
+  .classic-grid-image {
+    max-height: 120px;
   }
   
   .classic-grid-item .photo-name-overlay {
@@ -1090,12 +1102,13 @@ html {
 }
 
 @media (max-width: 640px) {
-  .classic-grid {
-    gap: 4px;
+  .classic-grid-item {
+    margin-right: 4px;
+    margin-bottom: 4px;
   }
   
-  .classic-grid-item {
-    height: 120px;
+  .classic-grid-image {
+    max-height: 100px;
   }
   
   .classic-grid-item .photo-overlay {
@@ -1104,8 +1117,8 @@ html {
 }
 
 @media (max-width: 480px) {
-  .classic-grid-item {
-    height: 100px;
+  .classic-grid-image {
+    max-height: 90px;
   }
   
   .classic-grid-item .quick-comment-form {
