@@ -85,12 +85,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       // This is a simplified approach - in a real app you'd calculate based on actual image dimensions
       // Using a rough estimate based on photo ID hash for demo purposes
       const hash = photo.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const spans = [200, 250, 300, 350, 400]; // Different heights in pixels
+      const spans = [20, 25, 30, 35, 40]; // Different row spans (10px per row)
       const spanIndex = hash % spans.length;
-      const height = spans[spanIndex];
+      const rowSpan = spans[spanIndex];
       
       return {
-        gridRowEnd: `span ${height}`,
+        gridRowEnd: `span ${rowSpan}`,
       };
     }
     return {};
