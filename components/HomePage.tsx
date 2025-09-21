@@ -23,7 +23,12 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen relative" style={{
+      backgroundImage: 'url(/bg-homepage-kr.webp)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
       {/* Discreet Admin Button - Top Right */}
       <div className="absolute top-4 right-4 z-10">
         <Button
@@ -37,7 +42,7 @@ export function HomePage() {
       </div>
 
       {/* Main Content - Centered */}
-      <div className="flex items-center justify-center min-h-screen p-4 bg-background-light">
+      <div className="flex items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-md text-center space-y-8 p-12 bg-background rounded-xl border border-gray-200 shadow-lg" style={{boxShadow: '#00000010 1px 1px 60px'}}>
           {/* Logo/Brand */}
           <div className="space-y-4">
