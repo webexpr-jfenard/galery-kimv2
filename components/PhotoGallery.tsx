@@ -82,6 +82,21 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     return {};
   };
 
+  // Group photos by subfolder for display
+  const groupPhotosBySubfolder = (photos: Photo[]) => {
+    const groups: Record<string, Photo[]> = {};
+    
+    photos.forEach(photo => {
+      const folder = photo.subfolder || 'Photos principales';
+      if (!groups[folder]) {
+        groups[folder] = [];
+      }
+      groups[folder].push(photo);
+    });
+    
+    return groups;
+  };
+
   // Load gallery data
   useEffect(() => {
     loadGalleryData();
@@ -630,7 +645,141 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               </div>
             )}
           </div>
+        ) : !selectedSubfolder ? (
+          // Grouped view when showing all photos
+          <>
+            {(() => {
+              const photoGroups = groupPhotosBySubfolder(filteredPhotos);
+              const sortedSections = Object.keys(photoGroups).sort();
+              
+              return sortedSections.map((sectionName) => (
+                <div key={sectionName} className="mb-8">
+                  {/* Section Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800">{sectionName}</h2>
+                    <Badge variant="secondary" className="text-sm">
+                      {photoGroups[sectionName].length} photos
+                    </Badge>
+                  </div>
+
+                  {/* Section Photos */}
+                  <div className={viewMode === 'masonry' ? 'masonry-grid' : 'classic-grid'}>
+                    {photoGroups[sectionName].map((photo) => {
+                      const originalIndex = filteredPhotos.findIndex(p => p.id === photo.id);
+                      return (
+                        <div 
+                          key={photo.id} 
+                          className={viewMode === 'masonry' ? 'masonry-item animate-fadeIn' : 'classic-grid-item animate-fadeIn'}
+                          style={getGridItemStyle(photo)}
+                        >
+                          {/* Photo */}
+                          <div className={viewMode === 'masonry' ? 'photo-container' : ''} onClick={() => openLightbox(originalIndex)}>
+                            <img
+                              src={photo.url}
+                              alt={getPhotoDisplayName(photo)}
+                              loading="lazy"
+                              className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
+                            />
+
+                            {/* Photo name overlay */}
+                            <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
+                              {getPhotoDisplayName(photo)}
+                            </div>
+
+                            {/* Selection indicator */}
+                            {userService.isUserLoggedIn() ? (
+                              <div className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}>
+                                <button
+                                  className="w-full h-full flex items-center justify-center"
+                                  onClick={(e) => toggleSelection(photo.id, e)}
+                                  title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
+                                >
+                                  <Heart 
+                                    className={`h-5 w-5 transition-all ${
+                                      userSelection.has(photo.id)
+                                        ? 'fill-current text-white'
+                                        : 'text-gray-600'
+                                    }`} 
+                                  />
+                                </button>
+                                
+                                {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 1 && (
+                                  <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                    {favoritesList.filter(f => f.photoId === photo.id).length}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="favorite-indicator">
+                                <button
+                                  className="w-full h-full flex items-center justify-center"
+                                  onClick={(e) => toggleSelection(photo.id, e)}
+                                  title="Cliquez pour vous identifier et ajouter aux favoris"
+                                >
+                                  <Heart className="h-5 w-5 text-gray-600" />
+                                </button>
+                                
+                                {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 0 && (
+                                  <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                                    {favoritesList.filter(f => f.photoId === photo.id).length}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Comment indicator */}
+                            {photoCommentCounts[photo.id] > 0 && (
+                              <div className="comment-indicator">
+                                <MessageSquare className="h-3 w-3" />
+                                {photoCommentCounts[photo.id]}
+                              </div>
+                            )}
+
+                            {/* Hover overlay with quick comment */}
+                            <div className="photo-overlay">
+                              <div></div>
+                              <div className="quick-comment-form">
+                                <input
+                                  type="text"
+                                  placeholder="Ajouter un commentaire..."
+                                  className="quick-comment-input"
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const target = e.target as HTMLInputElement;
+                                      if (target.value.trim()) {
+                                        submitComment(photo.id, target.value);
+                                        target.value = '';
+                                      }
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                  className="quick-comment-submit"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
+                                    if (input?.value.trim()) {
+                                      submitComment(photo.id, input.value);
+                                      input.value = '';
+                                    }
+                                  }}
+                                >
+                                  <Send className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+          </>
         ) : (
+          // Classic single-folder view when a subfolder is selected
           <div className={viewMode === 'masonry' ? 'masonry-grid' : 'classic-grid'}>
             {filteredPhotos.map((photo, index) => (
               <div 
