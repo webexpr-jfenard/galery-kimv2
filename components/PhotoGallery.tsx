@@ -149,13 +149,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       }
 
       console.log(`✅ Gallery loaded: ${galleryData.name}`);
-      console.log('🔍 Gallery data:', {
-        id: galleryData.id,
-        name: galleryData.name,
-        hasPassword: !!galleryData.password,
-        password: galleryData.password ? '[MASKED]' : 'null',
-        isAuthenticated: galleryService.isGalleryAuthenticated(galleryId)
-      });
 
       // Check if authentication is needed
       if (galleryData.password && !galleryService.isGalleryAuthenticated(galleryId)) {
@@ -418,7 +411,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         
         <AuthDialog
           isOpen={needsAuth}
-          onClose={() => window.appRouter.navigateTo('/')}
+          onClose={() => {
+            // Don't redirect when closing - let user try again or manually navigate away
+            setNeedsAuth(false);
+          }}
           onAuthenticate={handleAuthentication}
           type="gallery"
           galleryName={gallery?.name}
