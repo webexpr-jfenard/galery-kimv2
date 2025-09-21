@@ -721,8 +721,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     </div>
                   )}
 
-                  {/* Subfolder indicator */}
-                  {photo.subfolder && (
+                  {/* Subfolder indicator - only show in masonry view */}
+                  {photo.subfolder && viewMode === 'masonry' && (
                     <div className="subfolder-indicator">
                       <Folder className="h-3 w-3 mr-1" />
                       {photo.subfolder}

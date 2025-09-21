@@ -900,6 +900,9 @@ html {
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .classic-grid-item:hover {
@@ -911,7 +914,7 @@ html {
   height: 100%;
   width: auto;
   max-width: none;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   border-radius: 12px;
   transition: filter 0.2s ease;
