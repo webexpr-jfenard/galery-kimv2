@@ -17,7 +17,8 @@ import {
   FolderOpen,
   Grid,
   Grid3X3,
-  Tag
+  Tag,
+  LayoutList
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -74,11 +75,24 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     localStorage.setItem('gallery-view-mode', mode);
   };
 
-  // Style for classic grid items - now simpler since images size themselves
+  // Style for grid items - calculate grid row span for masonry
   const getGridItemStyle = (photo: Photo) => {
-    if (viewMode !== 'grid') return {};
-    
-    // Let images size themselves naturally within the 180px height limit
+    if (viewMode === 'grid') {
+      // Classic grid - no special styling needed
+      return {};
+    } else if (viewMode === 'masonry') {
+      // For masonry, we need to calculate row span based on image aspect ratio
+      // This is a simplified approach - in a real app you'd calculate based on actual image dimensions
+      // Using a rough estimate based on photo ID hash for demo purposes
+      const hash = photo.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const spans = [200, 250, 300, 350, 400]; // Different heights in pixels
+      const spanIndex = hash % spans.length;
+      const height = spans[spanIndex];
+      
+      return {
+        gridRowEnd: `span ${height}`,
+      };
+    }
     return {};
   };
 
@@ -506,7 +520,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     className="px-2 py-1 h-auto"
                     title="Vue mosaïque"
                   >
-                    <Grid className="h-4 w-4" />
+                    <LayoutList className="h-4 w-4" />
                   </Button>
                   <Button
                     variant={viewMode === 'grid' ? "default" : "ghost"}
