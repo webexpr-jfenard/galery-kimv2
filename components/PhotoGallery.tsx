@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -68,6 +68,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
+  
+  // Refs for masonry calculations
+  const masonryRef = useRef<HTMLDivElement>(null);
+  const [imageHeights, setImageHeights] = useState<Record<string, number>>({});
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -75,19 +79,43 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     localStorage.setItem('gallery-view-mode', mode);
   };
 
-  // Style for grid items - calculate grid row span for masonry
+  // Calculate grid row span based on actual image height
+  const calculateRowSpan = (photoId: string) => {
+    const height = imageHeights[photoId];
+    if (!height) return 'auto';
+    // Each row is 10px, calculate how many rows this image needs
+    const rowSpan = Math.ceil(height / 10);
+    return `span ${rowSpan}`;
+  };
+
+  // Style for grid items
   const getGridItemStyle = (photo: Photo) => {
     if (viewMode === 'grid') {
       // Classic grid - no special styling needed
       return {};
     } else if (viewMode === 'masonry') {
-      // For masonry, let content size itself naturally
-      // Remove the fixed grid-row-end to allow auto-sizing
+      // For masonry, use calculated row span
       return {
-        gridRowEnd: 'auto',
+        gridRowEnd: calculateRowSpan(photo.id),
       };
     }
     return {};
+  };
+
+  // Handle image load to calculate heights
+  const handleImageLoad = (photoId: string, event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    const container = img.parentElement;
+    if (container) {
+      const containerWidth = container.offsetWidth;
+      const aspectRatio = img.naturalHeight / img.naturalWidth;
+      const displayHeight = containerWidth * aspectRatio;
+      
+      setImageHeights(prev => ({
+        ...prev,
+        [photoId]: displayHeight
+      }));
+    }
   };
 
   // Group photos by subfolder for display
@@ -687,6 +715,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                               alt={getPhotoDisplayName(photo)}
                               loading="lazy"
                               className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
+                              onLoad={(e) => handleImageLoad(photo.id, e)}
                             />
 
                             {/* Photo name overlay */}
@@ -802,6 +831,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
+                    onLoad={(e) => handleImageLoad(photo.id, e)}
                   />
 
                   {/* Photo name overlay - NEW */}

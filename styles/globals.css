@@ -267,59 +267,58 @@ html {
   }
 }
 
-/* Sequential Masonry Grid - Left-to-right flow with preserved aspect ratios */
+/* Horizontal Masonry Grid - CSS Grid with dynamic row spans */
 @layer components {
   .masonry-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 1rem;
+    grid-auto-rows: 10px;
+    grid-auto-flow: row dense;
     padding: 1rem 0;
-    align-items: flex-start;
+    grid-template-columns: repeat(1, 1fr);
   }
 
-  /* Item width control for responsive columns */
-  .masonry-item {
-    flex: 1 1 calc(100% - 0.5rem);
-    max-width: calc(100% - 0.5rem);
-  }
-
-  /* Responsive columns - Better breakpoints for mobile-first design */
+  /* Responsive columns */
   @media (min-width: 480px) {
-    .masonry-item {
-      flex: 1 1 calc(50% - 0.5rem);
-      max-width: calc(50% - 0.5rem);
+    .masonry-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
     }
   }
 
   @media (min-width: 768px) {
-    .masonry-item {
-      flex: 1 1 calc(50% - 0.75rem);
-      max-width: calc(50% - 0.75rem);
+    .masonry-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
-    .masonry-item {
-      flex: 1 1 calc(33.333% - 1rem);
-      max-width: calc(33.333% - 1rem);
+    .masonry-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1280px) {
-    .masonry-item {
-      flex: 1 1 calc(25% - 1.125rem);
-      max-width: calc(25% - 1.125rem);
+    .masonry-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
     }
   }
 
   @media (min-width: 1536px) {
     .masonry-grid {
+      grid-template-columns: repeat(4, 1fr);
       gap: 2rem;
     }
-    .masonry-item {
-      flex: 1 1 calc(25% - 1.5rem);
-      max-width: calc(25% - 1.5rem);
-    }
+  }
+  
+  /* Masonry item */
+  .masonry-item {
+    margin-bottom: 0;
+    display: block;
+    width: 100%;
   }
 
   /* Let images define their own height and preserve aspect ratio */
