@@ -1108,7 +1108,7 @@ html {
   }
   
   .classic-grid-image {
-    max-height: 100px;
+    max-height: 120px;
   }
   
   .classic-grid-item .photo-overlay {
@@ -1118,7 +1118,7 @@ html {
 
 @media (max-width: 480px) {
   .classic-grid-image {
-    max-height: 90px;
+    max-height: 120px;
   }
   
   .classic-grid-item .quick-comment-form {
