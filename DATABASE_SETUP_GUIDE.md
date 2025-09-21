@@ -2,7 +2,7 @@
 
 ## 🚨 Database Setup Required
 
-If you're seeing errors like:
+If you're seeing errors like :
 - `relation "public.photos" does not exist`
 - `Could not find the function public.get_gallery_subfolders`
 
