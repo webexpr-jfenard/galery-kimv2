@@ -17,7 +17,8 @@ import {
   FolderOpen,
   Grid,
   Grid3X3,
-  Tag
+  Tag,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -67,6 +68,9 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
+  
+  // Mobile subfolder dropdown state
+  const [showSubfolderDropdown, setShowSubfolderDropdown] = useState(false);
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -364,6 +368,21 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     setSearchTerm(''); // Clear search when changing subfolder
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSubfolderDropdown) {
+        const target = event.target as Element;
+        if (!target.closest('.relative')) {
+          setShowSubfolderDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSubfolderDropdown]);
+
   // Auth dialog
   if (needsAuth) {
     return (
@@ -476,10 +495,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   <h1 className="text-lg lg:text-2xl font-bold truncate">{gallery.name}</h1>
                   <div className="flex flex-wrap items-center gap-2 text-xs lg:text-sm text-muted-foreground">
                     <span>{filteredPhotos.length} photos</span>
-                    <span>•</span>
-                    <span>{selection.size} sélectionnées</span>
-                    <span>•</span>
-                    <span>{comments.length} commentaires</span>
                     {selectedSubfolder && (
                       <>
                         <span>•</span>
@@ -590,33 +605,90 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
               {/* Subfolder filter */}
               {showSubfolderFilter && subfolders.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedSubfolder(undefined)}
-                    className={`${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
-                  >
-                    <Grid className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Toutes</span>
-                  </Button>
-                  
-                  {subfolders.map((subfolder) => (
+                <>
+                  {/* Mobile: Dropdown */}
+                  <div className="md:hidden relative">
                     <Button
-                      key={subfolder.name}
                       variant="outline"
                       size="sm"
-                      onClick={() => handleSubfolderFilterChange(subfolder.name)}
-                      className={`${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                      onClick={() => setShowSubfolderDropdown(!showSubfolderDropdown)}
+                      className="w-full justify-between"
                     >
-                      <Folder className="h-4 w-4 mr-1" />
-                      <span className="max-w-[100px] truncate">{subfolder.name}</span>
-                      <Badge variant="secondary" className="ml-1 text-xs">
-                        {subfolder.photoCount}
-                      </Badge>
+                      <div className="flex items-center">
+                        <Folder className="h-4 w-4 mr-2" />
+                        <span className="truncate">
+                          {selectedSubfolder || 'Toutes les photos'}
+                        </span>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${showSubfolderDropdown ? 'rotate-180' : ''}`} />
                     </Button>
-                  ))}
-                </div>
+                    
+                    {showSubfolderDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                        <button
+                          onClick={() => {
+                            setSelectedSubfolder(undefined);
+                            setShowSubfolderDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${!selectedSubfolder ? 'bg-primary/10 text-primary' : ''}`}
+                        >
+                          <Grid className="h-4 w-4 mr-2" />
+                          Toutes les photos
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {filteredPhotos.length}
+                          </Badge>
+                        </button>
+                        {subfolders.map((subfolder) => (
+                          <button
+                            key={subfolder.name}
+                            onClick={() => {
+                              handleSubfolderFilterChange(subfolder.name);
+                              setShowSubfolderDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${selectedSubfolder === subfolder.name ? 'bg-primary/10 text-primary' : ''}`}
+                          >
+                            <Folder className="h-4 w-4 mr-2" />
+                            <span className="truncate">{subfolder.name}</span>
+                            <Badge variant="secondary" className="ml-auto text-xs">
+                              {subfolder.photoCount}
+                            </Badge>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop: Horizontal scroll */}
+                  <div className="hidden md:block">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedSubfolder(undefined)}
+                        className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                      >
+                        <Grid className="h-4 w-4 mr-1" />
+                        Toutes
+                      </Button>
+                      
+                      {subfolders.map((subfolder) => (
+                        <Button
+                          key={subfolder.name}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSubfolderFilterChange(subfolder.name)}
+                          className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                        >
+                          <Folder className="h-4 w-4 mr-1" />
+                          <span className="max-w-[120px] truncate">{subfolder.name}</span>
+                          <Badge variant="secondary" className="ml-1 text-xs">
+                            {subfolder.photoCount}
+                          </Badge>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
