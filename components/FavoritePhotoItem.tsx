@@ -30,7 +30,7 @@ export function FavoritePhotoItem({
   const handleSaveComment = () => {
     favoritesService.updateComment(photo.id, commentText);
     setShowCommentDialog(false);
-    toast.success("Comment updated!");
+    toast.success("Commentaire mis à jour !");
   };
 
   const handleCancelEdit = () => {

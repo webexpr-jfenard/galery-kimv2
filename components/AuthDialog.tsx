@@ -34,7 +34,7 @@ export function AuthDialog({
     e.preventDefault();
     
     if (!password.trim()) {
-      setError('Please enter a password');
+      setError('Veuillez entrer un mot de passe');
       return;
     }
 
@@ -50,11 +50,11 @@ export function AuthDialog({
         setError('');
         onClose();
       } else {
-        setError('Invalid password. Please try again.');
+        setError('Mot de passe invalide. Veuillez réessayer.');
       }
     } catch (error) {
       console.error('Authentication error:', error);
-      setError('Authentication failed. Please try again.');
+      setError('Échec de l\'authentification. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
@@ -81,8 +81,8 @@ export function AuthDialog({
           iconColor: 'text-orange-600',
           bgColor: 'bg-orange-50',
           borderColor: 'border-orange-200',
-          title: title || 'Admin Access Required',
-          description: description || 'Enter the admin password to access the management panel.'
+          title: title || 'Accès administrateur requis',
+          description: description || 'Entrez le mot de passe administrateur pour accéder au panneau de gestion.'
         };
       case 'gallery':
       default:
@@ -91,8 +91,8 @@ export function AuthDialog({
           iconColor: 'text-blue-600',
           bgColor: 'bg-blue-50',
           borderColor: 'border-blue-200',
-          title: title || `Gallery Protected`,
-          description: description || `This gallery is password protected. Enter the password to view photos.`
+          title: title || `Galerie protégée`,
+          description: description || `Cette galerie est protégée par mot de passe. Entrez le mot de passe pour voir les photos.`
         };
     }
   };
@@ -127,7 +127,7 @@ export function AuthDialog({
           <div className="space-y-2">
             <Label htmlFor="password" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Password
+              Mot de passe
             </Label>
             <div className="relative">
               <Input
@@ -136,7 +136,7 @@ export function AuthDialog({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter password..."
+                placeholder="Entrer le mot de passe..."
                 className="pr-10"
                 disabled={isLoading}
                 autoFocus
@@ -172,7 +172,7 @@ export function AuthDialog({
               disabled={isLoading}
               className="flex-1"
             >
-              Cancel
+              Annuler
             </Button>
             <Button
               type="submit"
@@ -182,12 +182,12 @@ export function AuthDialog({
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                  Verifying...
+                  Vérification...
                 </>
               ) : (
                 <>
                   <Lock className="h-4 w-4 mr-2" />
-                  Access
+                  Accéder
                 </>
               )}
             </Button>
@@ -197,9 +197,9 @@ export function AuthDialog({
         {/* Helper Text */}
         <div className="text-xs text-muted-foreground text-center pt-2 border-t">
           {type === 'admin' ? (
-            <p>Admin access is required to manage galleries and system settings.</p>
+            <p>L'accès administrateur est requis pour gérer les galeries et les paramètres système.</p>
           ) : (
-            <p>Contact the gallery owner if you need access to this protected gallery.</p>
+            <p>Contactez le propriétaire de la galerie si vous avez besoin d'accéder à cette galerie protégée.</p>
           )}
         </div>
       </DialogContent>

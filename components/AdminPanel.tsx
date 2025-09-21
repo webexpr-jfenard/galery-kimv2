@@ -153,9 +153,9 @@ export function AdminPanel() {
       const sessionData = authService.getSessionInfo();
       setSessionInfo(sessionData);
       
-      toast.success('Successfully logged in to admin panel');
+      toast.success('Connecté avec succès au panneau admin');
     } else {
-      toast.error('Invalid admin password');
+      toast.error('Mot de passe administrateur invalide');
     }
     return isValid;
   };
@@ -166,7 +166,7 @@ export function AdminPanel() {
     setShowAuthDialog(true);
     setGalleries([]);
     setStats({ totalGalleries: 0, totalPhotos: 0, protectedGalleries: 0 });
-    toast.success('Logged out successfully');
+    toast.success('Déconnecté avec succès');
   };
 
   const loadGalleries = async () => {
@@ -178,7 +178,7 @@ export function AdminPanel() {
       setGalleries(galleryList || []);
     } catch (error) {
       console.error('Error loading galleries:', error);
-      toast.error('Failed to load galleries');
+      toast.error('Échec du chargement des galeries');
       setGalleries([]);
     } finally {
       setIsLoading(false);
@@ -232,16 +232,16 @@ export function AdminPanel() {
       const result = await galleryService.syncFromSupabase();
       
       if (result.success) {
-        toast.success(`Successfully synced ${result.count} galleries from Supabase`);
+        toast.success(`${result.count} galeries synchronisées avec succès depuis Supabase`);
         await loadGalleries();
         await loadStats();
         await loadConnectionStatus();
       } else {
-        toast.error(result.error || 'Failed to sync from Supabase');
+        toast.error(result.error || 'Échec de la synchronisation depuis Supabase');
       }
     } catch (error) {
       console.error('Sync error:', error);
-      toast.error('Failed to sync from Supabase');
+      toast.error('Échec de la synchronisation depuis Supabase');
     } finally {
       setIsSyncing(false);
     }
@@ -249,7 +249,7 @@ export function AdminPanel() {
 
   const createGallery = async () => {
     if (!newGallery.name.trim()) {
-      toast.error('Please enter a gallery name');
+      toast.error('Veuillez entrer un nom de galerie');
       return;
     }
 
@@ -282,13 +282,13 @@ export function AdminPanel() {
         allowFavorites: true
       });
 
-      toast.success(`Gallery "${createdGallery.name}" created successfully!`);
+      toast.success(`Galerie "${createdGallery.name}" créée avec succès !`);
       await loadGalleries();
       await loadStats();
       await loadConnectionStatus();
     } catch (error) {
       console.error('Error creating gallery:', error);
-      toast.error('Failed to create gallery');
+      toast.error('Échec de la création de la galerie');
     } finally {
       setIsCreating(false);
     }
@@ -304,12 +304,12 @@ export function AdminPanel() {
       const success = await galleryService.deleteGallery(id);
       
       if (success) {
-        toast.success(`Gallery "${name}" deleted successfully`);
+        toast.success(`Galerie "${name}" supprimée avec succès`);
         await loadGalleries();
         await loadStats();
         await loadConnectionStatus();
       } else {
-        toast.error('Failed to delete gallery');
+        toast.error('Échec de la suppression de la galerie');
       }
     } catch (error) {
       console.error('Error deleting gallery:', error);
@@ -341,11 +341,11 @@ export function AdminPanel() {
       if (updatedGallery) {
         setEditingGallery(null);
         setEditForm({});
-        toast.success(`Gallery "${updatedGallery.name}" updated successfully`);
+        toast.success(`Galerie "${updatedGallery.name}" mise à jour avec succès`);
         await loadGalleries();
         await loadConnectionStatus();
       } else {
-        toast.error('Failed to update gallery');
+        toast.error('Échec de la mise à jour de la galerie');
       }
     } catch (error) {
       console.error('Error updating gallery:', error);
@@ -367,11 +367,11 @@ export function AdminPanel() {
     // Validate files
     const validFiles = fileArray.filter(file => supabaseService.constructor.isValidImageFile(file));
     if (validFiles.length !== fileArray.length) {
-      toast.error(`${fileArray.length - validFiles.length} files were skipped (invalid image format)`);
+      toast.error(`${fileArray.length - validFiles.length} fichiers ignorés (format d'image invalide)`);
     }
 
     if (validFiles.length === 0) {
-      toast.error('No valid image files selected');
+      toast.error('Aucun fichier image valide sélectionné');
       return;
     }
 
@@ -396,11 +396,11 @@ export function AdminPanel() {
 
       if (result.successful.length > 0) {
         const subfolderMsg = selectedSubfolder ? ` to subfolder "${selectedSubfolder}"` : '';
-        toast.success(`Successfully uploaded ${result.successful.length} photos${subfolderMsg}`);
+        toast.success(`${result.successful.length} photos téléchargées avec succès${subfolderMsg}`);
       }
 
       if (result.failed.length > 0) {
-        toast.error(`Failed to upload ${result.failed.length} photos`);
+        toast.error(`Échec du téléchargement de ${result.failed.length} photos`);
         console.error('Upload failures:', result.failed);
       }
 
@@ -410,7 +410,7 @@ export function AdminPanel() {
 
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload photos');
+      toast.error('Échec du téléchargement des photos');
     } finally {
       setUploadingGallery(null);
       setUploadProgress(null);
@@ -455,17 +455,17 @@ export function AdminPanel() {
             <div className="bg-card border rounded-lg p-6 mb-6 text-left">
               <h3 className="font-semibold mb-3">Admin Features:</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>• Create and manage photo galleries</li>
-                <li>• Supabase cloud storage integration</li>
-                <li>• Upload and organize photos by subfolder</li>
-                <li>• Set password protection for galleries</li>
-                <li>• View statistics and analytics</li>
-                <li>• Sync galleries across devices</li>
+                <li>• Créer et gérer des galeries photos</li>
+                <li>• Intégration du stockage cloud Supabase</li>
+                <li>• Télécharger et organiser les photos par sous-dossier</li>
+                <li>• Définir une protection par mot de passe pour les galeries</li>
+                <li>• Voir les statistiques et analyses</li>
+                <li>• Synchroniser les galeries entre appareils</li>
               </ul>
             </div>
             <Button onClick={() => setShowAuthDialog(true)} size="lg">
               <Shield className="h-5 w-5 mr-2" />
-              Access Admin Panel
+              Accéder au panneau admin
             </Button>
           </div>
         </div>
@@ -478,8 +478,8 @@ export function AdminPanel() {
           }}
           onAuthenticate={handleAuthentication}
           type="admin"
-          title="Admin Authentication"
-          description="Enter the admin password to access the management panel."
+          title="Authentification Admin"
+          description="Entrez le mot de passe administrateur pour accéder au panneau de gestion."
         />
       </>
     );
@@ -498,21 +498,21 @@ export function AdminPanel() {
                 onClick={() => window.appRouter.navigateTo('/')}
               >
                 <ArrowLeft className="h-4 w-4 mr-1 lg:mr-2" />
-                <span className="hidden sm:inline">Back to Home</span>
-                <span className="sm:hidden">Home</span>
+                <span className="hidden sm:inline">Retour à l'accueil</span>
+                <span className="sm:hidden">Accueil</span>
               </Button>
               <div>
                 <h1 className="text-xl lg:text-3xl font-bold flex items-center gap-2 lg:gap-3">
                   <div className="w-8 h-8 lg:w-10 lg:h-10 bg-orange-100 rounded-full flex items-center justify-center">
                     <Shield className="h-4 w-4 lg:h-6 lg:w-6 text-orange-600" />
                   </div>
-                  Admin Panel
+                  Panneau Admin
                 </h1>
                 <p className="text-sm lg:text-base text-muted-foreground">
-                  Manage galleries and system settings
+                  Gérer les galeries et les paramètres système
                   {sessionInfo.timeRemaining && (
                     <span className="ml-2 text-xs">
-                      • Session expires in {formatTimeRemaining(sessionInfo.timeRemaining)}
+                      • Session expire dans {formatTimeRemaining(sessionInfo.timeRemaining)}
                     </span>
                   )}
                 </p>
@@ -521,15 +521,15 @@ export function AdminPanel() {
             <div className="flex items-center gap-2 lg:gap-3">
               <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-xs">
                 <Settings className="h-3 w-3 mr-1" />
-                Admin Access
+                Accès Admin
               </Badge>
               <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Supabase Connected
+                Supabase Connecté
               </Badge>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-1 lg:mr-2" />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden sm:inline">Déconnexion</span>
               </Button>
             </div>
           </div>
@@ -559,10 +559,10 @@ export function AdminPanel() {
 </linearGradient>
 </defs>
 </svg>
-                    Supabase Cloud Storage
+                    Stockage Cloud Supabase
                   </CardTitle>
                   <CardDescription>
-                    Your application is connected to Supabase cloud storage for gallery synchronization and photo management
+                    Votre application est connectée au stockage cloud Supabase pour la synchronisation des galeries et la gestion des photos
                   </CardDescription>
                 </div>
                 <Button
@@ -571,7 +571,7 @@ export function AdminPanel() {
                   className="flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
-                  Gmail Config
+                  Config Gmail
                 </Button>
               </div>
             </CardHeader>
@@ -583,7 +583,7 @@ export function AdminPanel() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Connected</span>
+                      <span className="text-sm">Connecté</span>
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -593,21 +593,21 @@ export function AdminPanel() {
                         <AlertCircle className="h-4 w-4 text-yellow-600" />
                       )}
                       <span className="text-sm">
-                        Database {connectionStatus.isTableReady ? 'Ready' : 'Setup Needed'}
+                        Base de données {connectionStatus.isTableReady ? 'Prête' : 'Configuration requise'}
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <HardDrive className="h-4 w-4 text-blue-600" />
                       <span className="text-sm">
-                        Local: {connectionStatus.localGalleries} galleries
+                        Local: {connectionStatus.localGalleries} galeries
                       </span>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <Cloud className="h-4 w-4 text-green-600" />
                       <span className="text-sm">
-                        Cloud: {connectionStatus.remoteGalleries} galleries
+                        Cloud: {connectionStatus.remoteGalleries} galeries
                       </span>
                     </div>
                   </div>
@@ -624,12 +624,12 @@ export function AdminPanel() {
                   {isSyncing ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Syncing...
+                      Synchronisation...
                     </>
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Sync from Cloud
+                      Synchroniser depuis le Cloud
                     </>
                   )}
                 </Button>
@@ -640,7 +640,7 @@ export function AdminPanel() {
                   size="sm"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Status
+                  Rafraîchir le statut
                 </Button>
               </div>
             </CardContent>
@@ -651,13 +651,13 @@ export function AdminPanel() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Galleries</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Galeries</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalGalleries}</div>
               <p className="text-xs text-muted-foreground">
-                Cloud synchronized
+                Synchronisé avec le cloud
               </p>
             </CardContent>
           </Card>
@@ -670,33 +670,33 @@ export function AdminPanel() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalPhotos}</div>
               <p className="text-xs text-muted-foreground">
-                From Supabase storage
+                Depuis le stockage Supabase
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Protected</CardTitle>
+              <CardTitle className="text-sm font-medium">Protégées</CardTitle>
               <Key className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.protectedGalleries}</div>
               <p className="text-xs text-muted-foreground">
-                Password protected
+                Protégées par mot de passe
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Storage</CardTitle>
+              <CardTitle className="text-sm font-medium">Stockage</CardTitle>
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">Cloud</div>
               <p className="text-xs text-muted-foreground">
-                Supabase storage
+                Stockage Supabase
               </p>
             </CardContent>
           </Card>
@@ -710,10 +710,10 @@ export function AdminPanel() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FolderOpen className="h-5 w-5" />
-                  Galleries ({filteredGalleries.length})
+                  Galeries ({filteredGalleries.length})
                 </CardTitle>
                 <CardDescription>
-                  Manage your photo galleries, upload photos with subfolder organization, and configure settings.
+                  Gérez vos galeries photos, téléchargez des photos avec organisation par sous-dossiers et configurez les paramètres.
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -722,14 +722,14 @@ export function AdminPanel() {
                   <DialogTrigger asChild>
                     <Button className="whitespace-nowrap">
                       <Plus className="h-4 w-4 mr-2" />
-                      Create Gallery
+                      Créer une galerie
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <Plus className="h-5 w-5" />
-                        Create New Gallery
+                        Créer une nouvelle galerie
                       </DialogTitle>
                     </DialogHeader>
                     
@@ -737,11 +737,11 @@ export function AdminPanel() {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="dialog-name" className="text-sm font-medium">
-                            Gallery Name *
+                            Nom de la galerie *
                           </Label>
                           <Input
                             id="dialog-name"
-                            placeholder="e.g., Wedding - John & Jane"
+                            placeholder="ex: Mariage - Jean & Marie"
                             value={newGallery.name}
                             onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
                           />
@@ -751,22 +751,22 @@ export function AdminPanel() {
                           <div className="space-y-2">
                             <Label htmlFor="dialog-bucketFolder" className="flex items-center gap-2 text-sm font-medium">
                               <Folder className="h-4 w-4" />
-                              Bucket Folder
+                              Dossier Bucket
                             </Label>
                             <Input
                               id="dialog-bucketFolder"
-                              placeholder="e.g., wedding-john-jane-2024"
+                              placeholder="ex: mariage-jean-marie-2024"
                               value={newGallery.bucketFolder}
                               onChange={(e) => setNewGallery(prev => ({ ...prev, bucketFolder: e.target.value }))}
                             />
                             <p className="text-xs text-muted-foreground">
-                              Leave empty for auto-generation
+                              Laisser vide pour génération automatique
                             </p>
                           </div>
 
                           <div className="space-y-2">
                             <Label htmlFor="dialog-bucketName" className="text-sm font-medium">
-                              Bucket Name
+                              Nom du Bucket
                             </Label>
                             <Input
                               id="dialog-bucketName"
@@ -780,12 +780,12 @@ export function AdminPanel() {
                         <div className="space-y-2">
                           <Label htmlFor="dialog-password" className="flex items-center gap-2 text-sm font-medium">
                             <Key className="h-4 w-4" />
-                            Password Protection
+                            Protection par mot de passe
                           </Label>
                           <Input
                             id="dialog-password"
                             type="password"
-                            placeholder="Leave empty for public gallery"
+                            placeholder="Laisser vide pour galerie publique"
                             value={newGallery.password}
                             onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
                           />
@@ -795,7 +795,7 @@ export function AdminPanel() {
                           <Label htmlFor="dialog-description" className="text-sm font-medium">Description</Label>
                           <Textarea
                             id="dialog-description"
-                            placeholder="Optional gallery description..."
+                            placeholder="Description optionnelle de la galerie..."
                             value={newGallery.description}
                             onChange={(e) => setNewGallery(prev => ({ ...prev, description: e.target.value }))}
                             rows={3}
@@ -804,7 +804,7 @@ export function AdminPanel() {
 
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="dialog-isPublic" className="text-sm font-medium">Public Gallery</Label>
+                            <Label htmlFor="dialog-isPublic" className="text-sm font-medium">Galerie Publique</Label>
                             <Switch
                               id="dialog-isPublic"
                               checked={newGallery.isPublic}
@@ -813,7 +813,7 @@ export function AdminPanel() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="dialog-allowComments" className="text-sm font-medium">Allow Comments</Label>
+                            <Label htmlFor="dialog-allowComments" className="text-sm font-medium">Autoriser les commentaires</Label>
                             <Switch
                               id="dialog-allowComments"
                               checked={newGallery.allowComments}
@@ -822,7 +822,7 @@ export function AdminPanel() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="dialog-allowFavorites" className="text-sm font-medium">Allow Favorites</Label>
+                            <Label htmlFor="dialog-allowFavorites" className="text-sm font-medium">Autoriser les favoris</Label>
                             <Switch
                               id="dialog-allowFavorites"
                               checked={newGallery.allowFavorites}
@@ -836,12 +836,12 @@ export function AdminPanel() {
                             {isCreating ? (
                               <>
                                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Creating...
+                                Création...
                               </>
                             ) : (
                               <>
                                 <Plus className="h-4 w-4 mr-2" />
-                                Create Gallery
+                                Créer la galerie
                               </>
                             )}
                           </Button>
@@ -855,7 +855,7 @@ export function AdminPanel() {
                 <div className="relative w-full sm:w-80">
                   <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search galleries..."
+                    placeholder="Rechercher des galeries..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -868,11 +868,11 @@ export function AdminPanel() {
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                Loading galleries...
+                Chargement des galeries...
               </div>
             ) : filteredGalleries.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? 'No galleries match your search.' : 'No galleries created yet.'}
+                {searchTerm ? 'Aucune galerie ne correspond à votre recherche.' : 'Aucune galerie créée pour le moment.'}
               </div>
             ) : (
               <div className="space-y-4">
@@ -883,7 +883,7 @@ export function AdminPanel() {
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor={`edit-name-${gallery.id}`} className="text-sm font-medium">Name</Label>
+                            <Label htmlFor={`edit-name-${gallery.id}`} className="text-sm font-medium">Nom</Label>
                             <Input
                               id={`edit-name-${gallery.id}`}
                               value={editForm.name || ''}
@@ -891,7 +891,7 @@ export function AdminPanel() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor={`edit-bucket-${gallery.id}`} className="text-sm font-medium">Bucket Folder</Label>
+                            <Label htmlFor={`edit-bucket-${gallery.id}`} className="text-sm font-medium">Dossier Bucket</Label>
                             <Input
                               id={`edit-bucket-${gallery.id}`}
                               value={editForm.bucketFolder || ''}
@@ -917,31 +917,31 @@ export function AdminPanel() {
                                 checked={editForm.isPublic ?? true}
                                 onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, isPublic: checked }))}
                               />
-                              <Label className="text-sm">Public</Label>
+                              <Label className="text-sm">Publique</Label>
                             </div>
                             <div className="flex items-center gap-2">
                               <Switch
                                 checked={editForm.allowComments ?? true}
                                 onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowComments: checked }))}
                               />
-                              <Label className="text-sm">Comments</Label>
+                              <Label className="text-sm">Commentaires</Label>
                             </div>
                             <div className="flex items-center gap-2">
                               <Switch
                                 checked={editForm.allowFavorites ?? true}
                                 onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowFavorites: checked }))}
                               />
-                              <Label className="text-sm">Favorites</Label>
+                              <Label className="text-sm">Favoris</Label>
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <Button size="sm" onClick={saveGalleryEdit}>
                               <Save className="h-4 w-4 mr-2" />
-                              Save
+                              Enregistrer
                             </Button>
                             <Button size="sm" variant="outline" onClick={cancelEdit}>
                               <X className="h-4 w-4 mr-2" />
-                              Cancel
+                              Annuler
                             </Button>
                           </div>
                         </div>
@@ -978,7 +978,7 @@ export function AdminPanel() {
                                   {gallery.password && (
                                     <Badge variant="secondary">
                                       <Key className="h-3 w-3 mr-1" />
-                                      Protected
+                                      Protégée
                                     </Badge>
                                   )}
                                   <Badge variant="outline">
@@ -999,8 +999,8 @@ export function AdminPanel() {
                                     {gallery.bucketFolder}
                                   </span>
                                 )}
-                                <span>{gallery.isPublic ? 'Public' : 'Private'}</span>
-                                <span>Created {new Date(gallery.createdAt).toLocaleDateString()}</span>
+                                <span>{gallery.isPublic ? 'Publique' : 'Privée'}</span>
+                                <span>Créée le {new Date(gallery.createdAt).toLocaleDateString('fr-FR')}</span>
                               </div>
                             </div>
                           </div>
@@ -1012,7 +1012,7 @@ export function AdminPanel() {
                               onClick={() => window.appRouter.navigateTo(`/gallery/${gallery.id}`)}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              View
+                              Voir
                             </Button>
                             <Button
                               size="sm"
@@ -1020,7 +1020,7 @@ export function AdminPanel() {
                               onClick={() => setManagingPhotosGallery(gallery.id)}
                             >
                               <FileImage className="h-4 w-4 mr-2" />
-                              Manage Photos
+                              Gérer les photos
                             </Button>
                             <Button
                               size="sm"
@@ -1028,7 +1028,7 @@ export function AdminPanel() {
                               onClick={() => startEditingGallery(gallery)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
-                              Edit
+                              Modifier
                             </Button>
                             <Button
                               size="sm"
@@ -1037,7 +1037,7 @@ export function AdminPanel() {
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              Supprimer
                             </Button>
                           </div>
                         </div>
@@ -1059,7 +1059,7 @@ export function AdminPanel() {
                             <div className="space-y-2">
                               <Label htmlFor={`upload-${gallery.id}`} className="text-sm font-medium flex items-center gap-2">
                                 <Upload className="h-4 w-4" />
-                                Upload Photos
+                                Télécharger des photos
                               </Label>
                               <Input
                                 id={`upload-${gallery.id}`}
@@ -1076,7 +1076,7 @@ export function AdminPanel() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <RefreshCw className="h-4 w-4 animate-spin" />
-                                    Uploading {uploadProgress.completed}/{uploadProgress.total}
+                                    Téléchargement {uploadProgress.completed}/{uploadProgress.total}
                                   </div>
                                   <div className="w-full bg-muted rounded-full h-2">
                                     <div 
@@ -1090,8 +1090,8 @@ export function AdminPanel() {
                               {/* Upload info */}
                               <p className="text-xs text-muted-foreground">
                                 {uploadSubfolders[gallery.id] 
-                                  ? `Photos will be saved to: "${uploadSubfolders[gallery.id]}"` 
-                                  : 'Photos will be saved to the gallery root'
+                                  ? `Les photos seront sauvegardées dans : "${uploadSubfolders[gallery.id]}"` 
+                                  : 'Les photos seront sauvegardées à la racine de la galerie'
                                 }
                               </p>
                             </div>

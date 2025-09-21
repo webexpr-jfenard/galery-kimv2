@@ -227,7 +227,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       
     } catch (error) {
       console.error('Error updating selection:', error);
-      toast.error('Failed to update selection');
+      toast.error('Échec de la mise à jour de la sélection');
     }
   };
 
@@ -290,7 +290,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       toast.success('Commentaire ajouté');
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      toast.error('Échec de l\'ajout du commentaire');
     }
   };
 

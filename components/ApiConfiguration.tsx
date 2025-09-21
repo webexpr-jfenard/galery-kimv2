@@ -29,7 +29,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
     if (useRealAPI) {
       // Validate required fields
       if (!supabaseConfig.url || !supabaseConfig.apiKey) {
-        toast.error("Please provide Supabase URL and API key to use real API");
+        toast.error("Veuillez fournir l'URL Supabase et la clé API pour utiliser l'API réelle");
         return;
       }
     }
@@ -46,8 +46,8 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
 
     toast.success(
       useRealAPI 
-        ? "Real API configuration saved! Gallery will now fetch from your storage." 
-        : "Mock API enabled. Gallery will use sample photos."
+        ? "Configuration API réelle sauvegardée ! La galerie va maintenant récupérer depuis votre stockage." 
+        : "API fictive activée. La galerie utilisera des photos d'exemple."
     );
 
     onConfigurationChange?.();
@@ -56,9 +56,9 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>API Configuration</CardTitle>
+        <CardTitle>Configuration API</CardTitle>
         <p className="text-muted-foreground">
-          Configure your storage providers to fetch real photos or use mock data for testing.
+          Configurez vos fournisseurs de stockage pour récupérer de vraies photos ou utilisez des données fictives pour les tests.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -69,7 +69,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
             onCheckedChange={setUseRealAPI}
           />
           <Label htmlFor="use-real-api">
-            Use Real API (disable to use mock data)
+            Utiliser l'API réelle (désactiver pour utiliser des données fictives)
           </Label>
         </div>
 
@@ -82,7 +82,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
             
             <TabsContent value="supabase" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="supabase-url">Supabase URL *</Label>
+                <Label htmlFor="supabase-url">URL Supabase *</Label>
                 <Input
                   id="supabase-url"
                   placeholder="https://your-project.supabase.co"
@@ -91,7 +91,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="supabase-key">Supabase Anon Key *</Label>
+                <Label htmlFor="supabase-key">Clé Anon Supabase *</Label>
                 <Input
                   id="supabase-key"
                   type="password"
@@ -101,7 +101,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="supabase-bucket">Storage Bucket</Label>
+                <Label htmlFor="supabase-bucket">Bucket de stockage</Label>
                 <Input
                   id="supabase-bucket"
                   placeholder="photos"
@@ -110,7 +110,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="supabase-folder">Folder Path</Label>
+                <Label htmlFor="supabase-folder">Chemin du dossier</Label>
                 <Input
                   id="supabase-folder"
                   placeholder="gallery"
@@ -119,19 +119,19 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="p-3 bg-muted rounded-lg text-sm">
-                <p><strong>Setup Instructions:</strong></p>
+                <p><strong>Instructions de configuration :</strong></p>
                 <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Install Supabase client: <code>npm install @supabase/supabase-js</code></li>
-                  <li>Create a storage bucket in your Supabase dashboard</li>
-                  <li>Upload photos to your bucket/folder</li>
-                  <li>Make sure your bucket has public access for photo URLs</li>
+                  <li>Installer le client Supabase : <code>npm install @supabase/supabase-js</code></li>
+                  <li>Créer un bucket de stockage dans votre tableau de bord Supabase</li>
+                  <li>Télécharger des photos dans votre bucket/dossier</li>
+                  <li>Assurez-vous que votre bucket a un accès public pour les URL des photos</li>
                 </ol>
               </div>
             </TabsContent>
             
             <TabsContent value="googledrive" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="drive-key">Google Drive API Key</Label>
+                <Label htmlFor="drive-key">Clé API Google Drive</Label>
                 <Input
                   id="drive-key"
                   type="password"
@@ -141,7 +141,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="drive-folder">Folder ID</Label>
+                <Label htmlFor="drive-folder">ID du dossier</Label>
                 <Input
                   id="drive-folder"
                   placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
@@ -150,13 +150,13 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
                 />
               </div>
               <div className="p-3 bg-muted rounded-lg text-sm">
-                <p><strong>Setup Instructions:</strong></p>
+                <p><strong>Instructions de configuration :</strong></p>
                 <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Create a project in Google Cloud Console</li>
-                  <li>Enable the Google Drive API</li>
-                  <li>Create an API key with Drive API access</li>
-                  <li>Make your Drive folder publicly accessible</li>
-                  <li>Copy the folder ID from the Drive URL</li>
+                  <li>Créer un projet dans Google Cloud Console</li>
+                  <li>Activer l'API Google Drive</li>
+                  <li>Créer une clé API avec accès à l'API Drive</li>
+                  <li>Rendre votre dossier Drive accessible publiquement</li>
+                  <li>Copier l'ID du dossier depuis l'URL Drive</li>
                 </ol>
               </div>
             </TabsContent>
@@ -164,7 +164,7 @@ export function ApiConfiguration({ onConfigurationChange }: ApiConfigurationProp
         )}
 
         <Button onClick={handleSaveConfiguration} className="w-full">
-          Save Configuration
+          Sauvegarder la configuration
         </Button>
       </CardContent>
     </Card>

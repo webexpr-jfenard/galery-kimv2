@@ -73,7 +73,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       // Load gallery info
       const galleryData = await galleryService.getGallery(galleryId);
       if (!galleryData) {
-        toast.error(`Gallery "${galleryId}" not found`);
+        toast.error(`Galerie "${galleryId}" non trouvée`);
         return;
       }
       setGallery(galleryData);
@@ -102,7 +102,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
 
     } catch (error) {
       console.error('Error loading favorites data:', error);
-      toast.error('Failed to load favorites');
+      toast.error('Échec du chargement des favoris');
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +133,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         toast.success('Retiré de votre sélection');
       } catch (error) {
         console.error('Error removing from favorites:', error);
-        toast.error('Failed to remove from selection');
+        toast.error('Échec du retrait de la sélection');
       }
     } else {
       // Add favorite
@@ -143,7 +143,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         toast.success('Ajouté à votre sélection');
       } catch (error) {
         console.error('Error adding to favorites:', error);
-        toast.error('Failed to add to selection');
+        toast.error('Échec de l\'ajout à la sélection');
       }
     }
   };
@@ -179,7 +179,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       toast.success('Retiré de votre sélection');
     } catch (error) {
       console.error('Error removing from favorites:', error);
-      toast.error('Failed to remove from selection');
+      toast.error('Échec du retrait de la sélection');
     }
   };
 
@@ -194,11 +194,11 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
         setFavorites([]);
         toast.success('Sélection effacée');
       } else {
-        toast.error('Failed to clear selection');
+        toast.error('Échec de l\'effacement de la sélection');
       }
     } catch (error) {
       console.error('Error clearing favorites:', error);
-      toast.error('Failed to clear selection');
+      toast.error('Échec de l\'effacement de la sélection');
     }
   };
 
@@ -228,7 +228,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       toast.success(`Commentaire ajouté${userName ? ` par ${userName}` : ''}`);
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      toast.error('Échec de l\'ajout du commentaire');
     }
   };
 
@@ -523,7 +523,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   {/* Admin View Controls */}
                   {isAdmin && (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground mr-2">Vue:</span>
+                      <span className="text-sm text-muted-foreground mr-2">Vue :</span>
                       <Button
                         variant={viewMode === 'grid' ? 'default' : 'outline'}
                         size="sm"
@@ -591,7 +591,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                   </p>
                                   {photoFavoritesCount > 1 && (
                                     <Badge variant="secondary" className="text-xs">
-                                      {photoFavoritesCount} users
+                                      {photoFavoritesCount} utilisateurs
                                     </Badge>
                                   )}
                                 </div>
@@ -605,7 +605,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                   {photoCommentCounts[photo.id] > 0 && (
                                     <span className="flex items-center gap-1">
                                       <MessageSquare className="h-3 w-3" />
-                                      {photoCommentCounts[photo.id]} comments
+                                      {photoCommentCounts[photo.id]} commentaires
                                     </span>
                                   )}
                                 </div>
@@ -672,7 +672,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                 </p>
                                 {photoFavoritesCount > 1 && (
                                   <Badge variant="secondary" className="text-xs">
-                                    {photoFavoritesCount} users
+                                    {photoFavoritesCount} utilisateurs
                                   </Badge>
                                 )}
                               </div>

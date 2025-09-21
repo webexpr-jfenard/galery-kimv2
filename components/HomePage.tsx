@@ -55,7 +55,7 @@ export function HomePage() {
             <div>
               <h1 className="text-3xl font-bold mb-2">Votre Galerie Photos</h1>
               <p className="text-muted-foreground">
-                Entrer votre ID de galerie transmis pour accéder à vos photos.
+                Entrez votre ID de galerie transmis pour accéder à vos photos.
               </p>
             </div>
           </div>
@@ -65,7 +65,7 @@ export function HomePage() {
             <div className="space-y-2">
               <Input
                 type="text"
-                placeholder="Entrer l'ID de Galerie"
+                placeholder="Entrez l'ID de galerie"
                 value={galleryId}
                 onChange={(e) => setGalleryId(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -92,14 +92,14 @@ export function HomePage() {
           {/* Help Section */}
           <div className="pt-8 border-t">
             <div className="text-center space-y-3">
-              <h3 className="font-semibold text-sm">Need Help?</h3>
+              <h3 className="font-semibold text-sm">Besoin d'aide ?</h3>
               <div className="space-y-2 text-xs text-muted-foreground">
                 <p>
-                  • Contact your photographer if you don't have a Gallery ID
+                  • Contactez votre photographe si vous n'avez pas d'ID de galerie
                 </p>
                
                 <p>
-                  • You can favorite photos and leave comments for selection
+                  • Vous pouvez mettre des photos en favoris et laisser des commentaires pour la sélection
                 </p>
               </div>
             </div>
@@ -108,7 +108,7 @@ export function HomePage() {
           {/* Footer */}
           <div className="pt-8">
             <Badge variant="outline" className="text-xs">
-              Professional Photo Gallery System
+              Système de galerie photo professionnel
             </Badge>
           </div>
         </div>
