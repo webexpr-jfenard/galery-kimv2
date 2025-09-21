@@ -55,10 +55,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // Photo names display
   const [showPhotoNames, setShowPhotoNames] = useState(false);
   
-  // View mode (masonry or grid) with persistence
+  // View mode (masonry or grid) with persistence - default to grid
   const [viewMode, setViewMode] = useState<'masonry' | 'grid'>(() => {
     const saved = localStorage.getItem('gallery-view-mode');
-    return (saved as 'masonry' | 'grid') || 'masonry';
+    return (saved as 'masonry' | 'grid') || 'grid';
   });
   
   // Lightbox state
