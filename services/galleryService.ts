@@ -55,6 +55,14 @@ class GalleryService {
   
   private migrationComplete = false;
 
+  // Natural sort function that handles numbers correctly
+  private naturalSort = (a: string, b: string): number => {
+    return a.localeCompare(b, undefined, { 
+      numeric: true, 
+      sensitivity: 'base' 
+    });
+  };
+
   // Check if database tables exist and are accessible
   private async checkDatabaseHealth(): Promise<{ tablesExist: boolean; functionsExist: boolean }> {
     if (!supabaseService.isReady()) {
@@ -673,7 +681,7 @@ class GalleryService {
           }
         });
         
-        return Array.from(subfolderMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        return Array.from(subfolderMap.values()).sort((a, b) => this.naturalSort(a.name, b.name));
       }
 
       const health = await this.checkDatabaseHealth();
@@ -742,7 +750,7 @@ class GalleryService {
         name,
         photoCount: count,
         lastUpdated: new Date().toISOString()
-      })).sort((a, b) => a.name.localeCompare(b.name));
+      })).sort((a, b) => this.naturalSort(a.name, b.name));
 
     } catch (error) {
       console.error('Error in subfolder fallback:', error);
@@ -846,8 +854,8 @@ class GalleryService {
           filteredPhotos = filteredPhotos.filter((photo: Photo) => photo.subfolder === subfolder);
         }
         
-        // Sort alphabetically by name
-        filteredPhotos.sort((a: Photo, b: Photo) => a.name.localeCompare(b.name));
+        // Sort naturally by name (handles numbers correctly)
+        filteredPhotos.sort((a: Photo, b: Photo) => this.naturalSort(a.name, b.name));
         
         return filteredPhotos;
       }
@@ -864,11 +872,11 @@ class GalleryService {
   // NEW: Fetch photos from Supabase database (with subfolder support)
   private async fetchPhotosFromSupabaseDB(galleryId: string, subfolder?: string): Promise<Photo[]> {
     try {
+      // Get data without sorting first (we'll sort in JavaScript for natural ordering)
       let query = supabaseService.client
         .from(this.PHOTOS_TABLE)
         .select('*')
-        .eq('gallery_id', galleryId)
-        .order('name', { ascending: true });
+        .eq('gallery_id', galleryId);
 
       // Filter by subfolder if specified
       if (subfolder) {
@@ -895,6 +903,9 @@ class GalleryService {
         bucketPath: `${galleryId}/${row.subfolder ? `${row.subfolder}/` : ''}${row.name}`,
         subfolder: row.subfolder || undefined
       }));
+
+      // Sort naturally by name (handles numbers correctly)
+      photos.sort((a, b) => this.naturalSort(a.name, b.name));
 
       console.log(`✅ Loaded ${photos.length} photos from Supabase database`);
       return photos;
@@ -931,7 +942,7 @@ class GalleryService {
           bucketPath: filePath,
           supabaseFile: file
         };
-      }).sort((a, b) => a.name.localeCompare(b.name));
+      }).sort((a, b) => this.naturalSort(a.name, b.name));
 
       // Cache photos locally for faster subsequent loads
       localStorage.setItem(`${this.PHOTOS_KEY}-${gallery.id}`, JSON.stringify(photos));
