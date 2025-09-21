@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -17,8 +17,7 @@ import {
   FolderOpen,
   Grid,
   Grid3X3,
-  Tag,
-  LayoutList
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -68,10 +67,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // User name dialog state
   const [showUserNameDialog, setShowUserNameDialog] = useState(false);
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{photoId: string, action: 'add'} | null>(null);
-  
-  // Refs for masonry calculations
-  const masonryRef = useRef<HTMLDivElement>(null);
-  const [imageHeights, setImageHeights] = useState<Record<string, number>>({});
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -79,43 +74,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     localStorage.setItem('gallery-view-mode', mode);
   };
 
-  // Calculate grid row span based on actual image height
-  const calculateRowSpan = (photoId: string) => {
-    const height = imageHeights[photoId];
-    if (!height) return 'auto';
-    // Each row is 10px, calculate how many rows this image needs
-    const rowSpan = Math.ceil(height / 10);
-    return `span ${rowSpan}`;
-  };
-
   // Style for grid items
   const getGridItemStyle = (photo: Photo) => {
-    if (viewMode === 'grid') {
-      // Classic grid - no special styling needed
-      return {};
-    } else if (viewMode === 'masonry') {
-      // For masonry, use calculated row span
-      return {
-        gridRowEnd: calculateRowSpan(photo.id),
-      };
-    }
+    // Both modes let images size themselves naturally
     return {};
-  };
-
-  // Handle image load to calculate heights
-  const handleImageLoad = (photoId: string, event: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = event.currentTarget;
-    const container = img.parentElement;
-    if (container) {
-      const containerWidth = container.offsetWidth;
-      const aspectRatio = img.naturalHeight / img.naturalWidth;
-      const displayHeight = containerWidth * aspectRatio;
-      
-      setImageHeights(prev => ({
-        ...prev,
-        [photoId]: displayHeight
-      }));
-    }
   };
 
   // Group photos by subfolder for display
@@ -542,7 +504,11 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     className="px-2 py-1 h-auto"
                     title="Vue mosaïque"
                   >
-                    <LayoutList className="h-4 w-4" />
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
+                        stroke="currentColor" 
+                        strokeWidth="2"/>
+                    </svg>
                   </Button>
                   <Button
                     variant={viewMode === 'grid' ? "default" : "ghost"}
@@ -715,7 +681,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                               alt={getPhotoDisplayName(photo)}
                               loading="lazy"
                               className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
-                              onLoad={(e) => handleImageLoad(photo.id, e)}
                             />
 
                             {/* Photo name overlay */}
@@ -831,7 +796,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
-                    onLoad={(e) => handleImageLoad(photo.id, e)}
                   />
 
                   {/* Photo name overlay - NEW */}
