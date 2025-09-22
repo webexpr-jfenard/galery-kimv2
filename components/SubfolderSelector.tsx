@@ -113,78 +113,87 @@ export function SubfolderSelector({
       </Label>
       
       <div className="space-y-2">
-        {/* Existing subfolders selection */}
-        <Select
-          value={selectedSubfolder || "ROOT_FOLDER"}
-          onValueChange={handleSelectChange}
-          disabled={disabled || isLoading}
-        >
-          <SelectTrigger className="w-full">
-            <div className="flex items-center gap-2">
-              <Folder className="h-4 w-4 text-muted-foreground" />
-              <SelectValue placeholder="Choisir un sous-dossier existant ou créer un nouveau..." />
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {/* Root folder option - use special value to avoid empty string */}
-            <SelectItem value="ROOT_FOLDER">
-              <div className="flex items-center gap-2">
-                <Folder className="h-4 w-4" />
-                Racine (pas de sous-dossier)
-              </div>
-            </SelectItem>
-            
-            {/* Existing subfolders */}
-            {subfolders.map((subfolder) => (
-              <SelectItem key={subfolder.name} value={subfolder.name}>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <Folder className="h-4 w-4 text-blue-500" />
-                    <span>{subfolder.name}</span>
-                  </div>
-                  <Badge variant="secondary" className="ml-2">
-                    {subfolder.photoCount}
-                  </Badge>
-                </div>
-              </SelectItem>
-            ))}
-            
-            {/* Show loading state */}
-            {isLoading && (
-              <SelectItem value="LOADING" disabled>
+        {/* Selector and Add Button - Side by side on desktop */}
+        <div className="flex flex-col md:flex-row gap-2">
+          {/* Existing subfolders selection */}
+          <div className="flex-1">
+            <Select
+              value={selectedSubfolder || "ROOT_FOLDER"}
+              onValueChange={handleSelectChange}
+              disabled={disabled || isLoading}
+            >
+              <SelectTrigger className="w-full">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
-                  Chargement...
+                  <Folder className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Choisir un sous-dossier existant..." />
                 </div>
-              </SelectItem>
-            )}
-            
-            {/* Show when no subfolders exist */}
-            {!isLoading && subfolders.length === 0 && (
-              <SelectItem value="NO_SUBFOLDERS" disabled>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Folder className="h-4 w-4" />
-                  Aucun sous-dossier existant
-                </div>
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+              </SelectTrigger>
+              <SelectContent>
+                {/* Root folder option - use special value to avoid empty string */}
+                <SelectItem value="ROOT_FOLDER">
+                  <div className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    Racine (pas de sous-dossier)
+                  </div>
+                </SelectItem>
+                
+                {/* Existing subfolders */}
+                {subfolders.map((subfolder) => (
+                  <SelectItem key={subfolder.name} value={subfolder.name}>
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4 text-blue-500" />
+                        <span>{subfolder.name}</span>
+                      </div>
+                      <Badge variant="secondary" className="ml-2">
+                        {subfolder.photoCount}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+                
+                {/* Show loading state */}
+                {isLoading && (
+                  <SelectItem value="LOADING" disabled>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
+                      Chargement...
+                    </div>
+                  </SelectItem>
+                )}
+                
+                {/* Show when no subfolders exist */}
+                {!isLoading && subfolders.length === 0 && (
+                  <SelectItem value="NO_SUBFOLDERS" disabled>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Folder className="h-4 w-4" />
+                      Aucun sous-dossier existant
+                    </div>
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Create new subfolder */}
-        {!isCreatingNew ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCreatingNew(true)}
-            disabled={disabled}
-            className="w-full"
-          >
-            <FolderPlus className="h-4 w-4 mr-2" />
-            Créer un nouveau sous-dossier
-          </Button>
-        ) : (
+          {/* Create new subfolder button */}
+          {!isCreatingNew && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreatingNew(true)}
+              disabled={disabled}
+              className="md:shrink-0"
+            >
+              <FolderPlus className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">Nouveau</span>
+              <span className="md:hidden">Créer un nouveau sous-dossier</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Create new subfolder form - Full width when active */}
+        {isCreatingNew && (
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <Input
