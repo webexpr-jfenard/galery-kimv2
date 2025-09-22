@@ -456,7 +456,7 @@ html {
     justify-content: space-between;
     align-items: flex-end;
     padding: 1rem;
-    border-radius: 12px;
+    border-radius: 0px;
   }
 
   .photo-container:hover .photo-overlay {
