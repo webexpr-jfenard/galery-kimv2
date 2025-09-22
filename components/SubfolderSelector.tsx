@@ -182,7 +182,7 @@ export function SubfolderSelector({
               variant="outline"
               onClick={() => setIsCreatingNew(true)}
               disabled={disabled}
-              className="md:shrink-0 h-10 px-3"
+              className="md:shrink-0 h-9 px-3"
             >
               <FolderPlus className="h-5 w-5 md:mr-1" />
               <span className="hidden md:inline">Nouveau</span>
