@@ -9,9 +9,9 @@ export interface Photo {
   createdAt: string;
 }
 
-// Supabase configuration - PLEASE UPDATE WITH YOUR REAL CREDENTIALS
-const SUPABASE_URL = "https://ugfkyfmthbwqoeauyqlz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnZmt5Zm10aGJ3cW9lYXV5cWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2NjU0MzksImV4cCI6MjA2NTI0MTQzOX0.0hr_vXm8xjkGytwbY0mR6OPs_9SR6hmiv8ucNSaRJ0U"; // This must be a valid JWT token starting with "eyJ..."
+// Supabase configuration from environment variables
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const BUCKET_NAME = "photos"; // Your storage bucket name
 
 export class SupabaseService {

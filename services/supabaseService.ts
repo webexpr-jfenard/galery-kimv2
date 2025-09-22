@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Hardcoded Supabase configuration
-const SUPABASE_URL = "https://ugfkyfmthbwqoeauyqlz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnZmt5Zm10aGJ3cW9lYXV5cWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2NjU0MzksImV4cCI6MjA2NTI0MTQzOX0.0hr_vXm8xjkGytwbY0mR6OPs_9SR6hmiv8ucNSaRJ0U";
+// Supabase configuration from environment variables
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 interface StorageFile {
   name: string;
@@ -26,9 +26,16 @@ class SupabaseService {
   private isConfigured = true; // Always configured with hardcoded credentials
 
   constructor() {
-    // Initialize with hardcoded credentials
+    // Validate environment variables
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error('❌ Supabase credentials missing from environment variables');
+      console.log('Please check your .env.local file contains VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+      throw new Error('Supabase credentials not configured');
+    }
+    
+    // Initialize with environment credentials
     this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase initialized with hardcoded credentials');
+    console.log('✅ Supabase initialized with environment credentials');
   }
 
   // Check if service is ready (always true now)
