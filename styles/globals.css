@@ -1078,7 +1078,7 @@ html {
   flex-direction: column;
   justify-content: space-between;
   padding: 1rem;
-  border-radius: 12px;
+  border-radius: 0px;
   z-index: 3;
 }
 
