@@ -123,10 +123,7 @@ export function SubfolderSelector({
               disabled={disabled || isLoading}
             >
               <SelectTrigger className="w-full">
-                <div className="flex items-center gap-2">
-                  <Folder className="h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder="Choisir un sous-dossier existant..." />
-                </div>
+                <SelectValue placeholder="Choisir un sous-dossier existant..." />
               </SelectTrigger>
               <SelectContent>
                 {/* Root folder option - use special value to avoid empty string */}
