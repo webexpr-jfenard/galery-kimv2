@@ -1040,12 +1040,16 @@ class GalleryService {
           continue;
         }
 
-        // Use original filename (risk of conflicts but cleaner names)
-        const fileName = file.name;
+        // Clean filename for storage (remove accents, spaces, special chars)
+        const cleanFileName = file.name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove accents
+          .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+          .replace(/_+/g, '_'); // Replace multiple underscores with single
         
         // Build file path with subfolder support
         const subfolderPath = subfolder ? `${subfolder}/` : '';
-        const filePath = `${gallery.bucketFolder}/${subfolderPath}${fileName}`;
+        const filePath = `${gallery.bucketFolder}/${subfolderPath}${cleanFileName}`;
 
         // Upload to Supabase Storage
         const uploadResult = await supabaseService.uploadFile(
@@ -1061,9 +1065,9 @@ class GalleryService {
           
           if (publicUrl) {
             const photo: Photo = {
-              id: `${galleryId}-${fileName}`,
+              id: `${galleryId}-${cleanFileName}`,
               galleryId,
-              name: fileName,
+              name: file.name, // Keep original name for display
               originalName: file.name,
               url: publicUrl,
               description: '',
