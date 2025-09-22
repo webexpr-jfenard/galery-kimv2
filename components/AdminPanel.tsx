@@ -38,6 +38,7 @@ import {
   FileImage,
   RefreshCw,
   Cloud,
+  ChevronDown,
   HardDrive,
   AlertCircle,
   Info,
@@ -97,6 +98,7 @@ export function AdminPanel() {
   const [uploadingGallery, setUploadingGallery] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [uploadSubfolders, setUploadSubfolders] = useState<Record<string, string | undefined>>({});
+  const [showUploadSections, setShowUploadSections] = useState<Record<string, boolean>>({});
   
   const [stats, setStats] = useState({
     totalGalleries: 0,
@@ -425,6 +427,14 @@ export function AdminPanel() {
     setUploadSubfolders(prev => ({
       ...prev,
       [galleryId]: subfolder
+    }));
+  };
+
+  // Toggle upload section visibility
+  const toggleUploadSection = (galleryId: string) => {
+    setShowUploadSections(prev => ({
+      ...prev,
+      [galleryId]: !prev[galleryId]
     }));
   };
 
@@ -1077,38 +1087,66 @@ export function AdminPanel() {
                           </div>
                         </div>
 
-                        {/* FIXED: Upload Section with Proper Subfolder Support */}
+                        {/* Add Photos Button */}
                         <div className="border-t pt-4">
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* Subfolder Selection - Takes 2/3 width */}
-                            <div className="lg:col-span-2">
-                              <SubfolderSelector
-                                galleryId={gallery.id}
-                                selectedSubfolder={uploadSubfolders[gallery.id]}
-                                onSubfolderChange={(subfolder) => handleSubfolderChange(gallery.id, subfolder)}
-                                disabled={uploadingGallery === gallery.id}
-                              />
-                            </div>
-                            
-                            {/* Upload Section - Takes 1/3 width */}
-                            <div className="space-y-2">
-                              <Label htmlFor={`upload-${gallery.id}`} className="text-sm font-medium flex items-center gap-2">
-                                <Upload className="h-4 w-4" />
-                                Télécharger des photos
-                              </Label>
-                              <Input
-                                id={`upload-${gallery.id}`}
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={(e) => handlePhotoUpload(gallery.id, e.target.files)}
-                                disabled={uploadingGallery === gallery.id}
-                                className="file:mr-2 file:px-3 file:py-1 file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                              />
-                              
-                              {/* Upload Progress */}
-                              {uploadingGallery === gallery.id && uploadProgress && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleUploadSection(gallery.id)}
+                            className="flex items-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            Ajouter photos
+                            {showUploadSections[gallery.id] ? (
+                              <ChevronDown className="h-4 w-4 rotate-180 transition-transform" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 transition-transform" />
+                            )}
+                          </Button>
+
+                          {/* Collapsible Upload Section */}
+                          {showUploadSections[gallery.id] && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Subfolder Section - Left side on desktop */}
                                 <div className="space-y-2">
+                                  <SubfolderSelector
+                                    galleryId={gallery.id}
+                                    selectedSubfolder={uploadSubfolders[gallery.id]}
+                                    onSubfolderChange={(subfolder) => handleSubfolderChange(gallery.id, subfolder)}
+                                    disabled={uploadingGallery === gallery.id}
+                                  />
+                                </div>
+                                
+                                {/* Upload Section - Right side on desktop */}
+                                <div className="space-y-2">
+                                  <Label htmlFor={`upload-${gallery.id}`} className="text-sm font-medium flex items-center gap-2">
+                                    <Upload className="h-4 w-4" />
+                                    Télécharger des photos
+                                  </Label>
+                                  <Input
+                                    id={`upload-${gallery.id}`}
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => handlePhotoUpload(gallery.id, e.target.files)}
+                                    disabled={uploadingGallery === gallery.id}
+                                    className="file:mr-2 file:px-3 file:py-1 file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                                  />
+                                  
+                                  {/* Upload info */}
+                                  <p className="text-xs text-muted-foreground">
+                                    {uploadSubfolders[gallery.id] 
+                                      ? `Les photos seront sauvegardées dans : "${uploadSubfolders[gallery.id]}"` 
+                                      : 'Les photos seront sauvegardées à la racine de la galerie'
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Upload Progress - Full width below */}
+                              {uploadingGallery === gallery.id && uploadProgress && (
+                                <div className="mt-4 space-y-2">
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <RefreshCw className="h-4 w-4 animate-spin" />
                                     Téléchargement {uploadProgress.completed}/{uploadProgress.total}
@@ -1121,16 +1159,8 @@ export function AdminPanel() {
                                   </div>
                                 </div>
                               )}
-                              
-                              {/* Upload info */}
-                              <p className="text-xs text-muted-foreground">
-                                {uploadSubfolders[gallery.id] 
-                                  ? `Les photos seront sauvegardées dans : "${uploadSubfolders[gallery.id]}"` 
-                                  : 'Les photos seront sauvegardées à la racine de la galerie'
-                                }
-                              </p>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </>
                     )}
