@@ -1040,12 +1040,12 @@ class GalleryService {
           continue;
         }
 
-        // Generate unique filename
-        const uniqueName = supabaseService.constructor.generateUniqueFilename(file.name);
+        // Use original filename (risk of conflicts but cleaner names)
+        const fileName = file.name;
         
         // Build file path with subfolder support
         const subfolderPath = subfolder ? `${subfolder}/` : '';
-        const filePath = `${gallery.bucketFolder}/${subfolderPath}${uniqueName}`;
+        const filePath = `${gallery.bucketFolder}/${subfolderPath}${fileName}`;
 
         // Upload to Supabase Storage
         const uploadResult = await supabaseService.uploadFile(
@@ -1061,9 +1061,9 @@ class GalleryService {
           
           if (publicUrl) {
             const photo: Photo = {
-              id: `${galleryId}-${uniqueName}`,
+              id: `${galleryId}-${fileName}`,
               galleryId,
-              name: file.name,
+              name: fileName,
               originalName: file.name,
               url: publicUrl,
               description: '',
