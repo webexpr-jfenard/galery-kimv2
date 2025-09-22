@@ -63,6 +63,45 @@ class GalleryService {
     });
   };
 
+  // Apply custom subfolder ordering
+  private applyCustomSubfolderOrder(galleryId: string, subfolders: SubfolderInfo[]): SubfolderInfo[] {
+    try {
+      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
+      if (savedOrder) {
+        const parsedOrder = JSON.parse(savedOrder);
+        
+        // Sort subfolders according to saved order
+        const orderedSubfolders: SubfolderInfo[] = [];
+        const unorderedSubfolders: SubfolderInfo[] = [];
+        
+        // First, add subfolders in the saved order
+        parsedOrder.forEach((name: string) => {
+          const subfolder = subfolders.find(sf => sf.name === name);
+          if (subfolder) {
+            orderedSubfolders.push(subfolder);
+          }
+        });
+        
+        // Then add any new subfolders that weren't in the saved order
+        subfolders.forEach(subfolder => {
+          if (!parsedOrder.includes(subfolder.name)) {
+            unorderedSubfolders.push(subfolder);
+          }
+        });
+        
+        // Sort the unordered ones alphabetically and append them
+        unorderedSubfolders.sort((a, b) => this.naturalSort(a.name, b.name));
+        
+        return [...orderedSubfolders, ...unorderedSubfolders];
+      }
+    } catch (error) {
+      console.error('Error applying custom subfolder order:', error);
+    }
+    
+    // Fallback to alphabetical order
+    return subfolders.sort((a, b) => this.naturalSort(a.name, b.name));
+  }
+
   // Check if database tables exist and are accessible
   private async checkDatabaseHealth(): Promise<{ tablesExist: boolean; functionsExist: boolean }> {
     if (!supabaseService.isReady()) {
@@ -655,7 +694,7 @@ class GalleryService {
     }
   }
 
-  // NEW: Subfolder Management with better error handling
+  // NEW: Subfolder Management with better error handling and custom ordering
   async getGallerySubfolders(galleryId: string): Promise<SubfolderInfo[]> {
     try {
       if (!supabaseService.isReady()) {
@@ -681,7 +720,8 @@ class GalleryService {
           }
         });
         
-        return Array.from(subfolderMap.values()).sort((a, b) => this.naturalSort(a.name, b.name));
+        const subfolderData = Array.from(subfolderMap.values());
+        return this.applyCustomSubfolderOrder(galleryId, subfolderData);
       }
 
       const health = await this.checkDatabaseHealth();
@@ -701,11 +741,14 @@ class GalleryService {
         return await this.getSubfoldersFallback(galleryId);
       }
 
-      return (data || []).map((row: any) => ({
+      const subfolderData = (data || []).map((row: any) => ({
         name: row.subfolder,
         photoCount: parseInt(row.photo_count),
         lastUpdated: new Date().toISOString() // Fallback date
       }));
+
+      // Apply custom ordering if available
+      return this.applyCustomSubfolderOrder(galleryId, subfolderData);
       
     } catch (error) {
       console.error('Error getting gallery subfolders:', error);
@@ -746,11 +789,13 @@ class GalleryService {
         }
       });
 
-      return Array.from(subfolderCounts.entries()).map(([name, count]) => ({
+      const subfolderData = Array.from(subfolderCounts.entries()).map(([name, count]) => ({
         name,
         photoCount: count,
         lastUpdated: new Date().toISOString()
-      })).sort((a, b) => this.naturalSort(a.name, b.name));
+      }));
+
+      return this.applyCustomSubfolderOrder(galleryId, subfolderData);
 
     } catch (error) {
       console.error('Error in subfolder fallback:', error);

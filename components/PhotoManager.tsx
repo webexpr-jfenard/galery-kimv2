@@ -17,7 +17,10 @@ import {
   HardDrive,
   RefreshCw,
   X,
-  Star
+  Star,
+  GripVertical,
+  Settings2,
+  Save
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -39,6 +42,9 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | undefined>();
   const [subfolders, setSubfolders] = useState<string[]>([]);
+  const [showFolderOrganizer, setShowFolderOrganizer] = useState(false);
+  const [orderedSubfolders, setOrderedSubfolders] = useState<string[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadGalleryData();
@@ -89,7 +95,21 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
       
       // Load subfolders for filtering
       const subfolderList = await galleryService.getGallerySubfolders(galleryId);
-      setSubfolders(subfolderList.map(sf => sf.name));
+      const subfolderNames = subfolderList.map(sf => sf.name);
+      setSubfolders(subfolderNames);
+      
+      // Load custom order from localStorage or use alphabetical
+      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
+      if (savedOrder) {
+        const parsedOrder = JSON.parse(savedOrder);
+        // Validate that all subfolders are in the saved order and add missing ones
+        const validOrder = parsedOrder.filter((name: string) => subfolderNames.includes(name));
+        const missingSubfolders = subfolderNames.filter(name => !validOrder.includes(name));
+        setOrderedSubfolders([...validOrder, ...missingSubfolders]);
+      } else {
+        // Default to alphabetical order
+        setOrderedSubfolders([...subfolderNames].sort());
+      }
 
       console.log(`✅ Loaded ${photoList.length} photos for gallery ${galleryData.name}`);
       
@@ -236,6 +256,40 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     return gallery?.featuredPhotoId === photo.id;
   };
 
+  // Drag and drop handlers for subfolder ordering
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newOrder = [...orderedSubfolders];
+    const draggedItem = newOrder[draggedIndex];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(index, 0, draggedItem);
+
+    setOrderedSubfolders(newOrder);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  const saveSubfolderOrder = () => {
+    localStorage.setItem(`gallery-${galleryId}-subfolder-order`, JSON.stringify(orderedSubfolders));
+    toast.success('Ordre des dossiers sauvegardé');
+    setShowFolderOrganizer(false);
+  };
+
+  const resetSubfolderOrder = () => {
+    setOrderedSubfolders([...subfolders].sort());
+    localStorage.removeItem(`gallery-${galleryId}-subfolder-order`);
+    toast.success('Ordre alphabétique rétabli');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -302,6 +356,16 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
               
               {/* Action buttons */}
               <div className="flex items-center gap-2 shrink-0">
+                {subfolders.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFolderOrganizer(!showFolderOrganizer)}
+                    title="Organiser l'ordre des dossiers"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -380,7 +444,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   >
                     All Folders
                   </Button>
-                  {subfolders.map((subfolder) => (
+                  {orderedSubfolders.map((subfolder) => (
                     <Button
                       key={subfolder}
                       variant="outline"
@@ -395,6 +459,65 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 </div>
               )}
             </div>
+
+            {/* Folder Organizer Panel */}
+            {showFolderOrganizer && subfolders.length > 1 && (
+              <div className="border rounded-lg p-4 bg-muted/50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Organiser l'ordre des dossiers
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetSubfolderOrder}
+                    >
+                      Ordre alphabétique
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={saveSubfolderOrder}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="text-xs text-muted-foreground mb-3">
+                  Glissez-déposez les dossiers pour changer leur ordre d'affichage
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {orderedSubfolders.map((subfolder, index) => (
+                    <div
+                      key={subfolder}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-move hover:shadow-md transition-all ${
+                        draggedIndex === index ? 'opacity-50 transform rotate-1' : ''
+                      } ${
+                        selectedSubfolder === subfolder 
+                          ? 'bg-primary/10 border-primary' 
+                          : 'bg-background hover:bg-muted/50'
+                      }`}
+                    >
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium truncate flex-1">{subfolder}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {subfolders.filter(name => name === subfolder).length}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Bulk actions */}
             {filteredPhotos.length > 0 && (
