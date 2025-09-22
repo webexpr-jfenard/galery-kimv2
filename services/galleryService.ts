@@ -1084,7 +1084,7 @@ class GalleryService {
               try {
                 const photoRecord = {
                   gallery_id: galleryId,
-                  name: uniqueName,
+                  name: file.name, // Use original name for display
                   url: publicUrl,
                   description: null,
                   subfolder: subfolder || null,
