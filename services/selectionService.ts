@@ -323,9 +323,12 @@ class SelectionService {
       console.log('Selection file created:', uploadResult.fileName);
       console.log('Download URL:', uploadResult.downloadUrl);
 
-      // Send Gmail notification
+      // Send Gmail notification with hardcoded photographer info
       const gmailConfig = this.getGmailConfig();
       if (gmailConfig && gmailConfig.enableNotifications) {
+        // Override with hardcoded photographer details
+        gmailConfig.photographerEmail = 'redlerkim@gmail.com';
+        gmailConfig.photographerName = 'Kim Redler';
         console.log('Sending Gmail notification with download URL:', uploadResult.downloadUrl);
         
         const gmailService = new GmailService(gmailConfig);
@@ -377,17 +380,27 @@ class SelectionService {
     }
   }
 
-  // Get Gmail configuration from localStorage
+  // Get Gmail configuration from localStorage with hardcoded fallback
   private getGmailConfig(): GmailConfig | null {
     try {
       const saved = localStorage.getItem('gmail-config');
       if (saved) {
-        return JSON.parse(saved);
+        const config = JSON.parse(saved);
+        // Always override with hardcoded photographer info
+        config.photographerEmail = 'redlerkim@gmail.com';
+        config.photographerName = 'Kim Redler';
+        return config;
       }
     } catch (error) {
       console.error('Failed to load Gmail config:', error);
     }
-    return null;
+    
+    // Return hardcoded configuration if nothing saved
+    return {
+      enableNotifications: true,
+      photographerEmail: 'redlerkim@gmail.com',
+      photographerName: 'Kim Redler'
+    };
   }
 
   // Clear all selections for a gallery

@@ -19,6 +19,7 @@ import {
   Trash2, 
   Edit, 
   Eye, 
+  EyeOff,
   BarChart3, 
   ArrowLeft,
   Search,
@@ -86,6 +87,7 @@ export function AdminPanel() {
   // Edit gallery state
   const [editingGallery, setEditingGallery] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Gallery>>({});
+  const [showEditPassword, setShowEditPassword] = useState<Record<string, boolean>>({});
   
   // Photo management state
   const [managingPhotosGallery, setManagingPhotosGallery] = useState<string | null>(null);
@@ -905,13 +907,32 @@ export function AdminPanel() {
                             <Key className="h-4 w-4" />
                             Mot de passe (laisser vide pour supprimer la protection)
                           </Label>
-                          <Input
-                            id={`edit-password-${gallery.id}`}
-                            type="password"
-                            placeholder="Nouveau mot de passe..."
-                            value={editForm.password || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                          />
+                          <div className="relative">
+                            <Input
+                              id={`edit-password-${gallery.id}`}
+                              type={showEditPassword[gallery.id] ? 'text' : 'password'}
+                              placeholder="Nouveau mot de passe..."
+                              value={editForm.password || ''}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                              className="pr-10"
+                            />
+                            {editForm.password && (
+                              <button
+                                type="button"
+                                onClick={() => setShowEditPassword(prev => ({ 
+                                  ...prev, 
+                                  [gallery.id]: !prev[gallery.id] 
+                                }))}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              >
+                                {showEditPassword[gallery.id] ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div>
