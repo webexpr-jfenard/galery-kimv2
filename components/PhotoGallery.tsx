@@ -610,7 +610,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {showSubfolderFilter && subfolders.length > 0 && (
               <>
                 <div className="h-6 w-px bg-border"></div>
-                <div className="flex items-center gap-2 overflow-x-auto max-w-md scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   <Button
                     variant="outline"
                     size="sm"
