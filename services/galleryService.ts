@@ -1063,7 +1063,7 @@ class GalleryService {
             const photo: Photo = {
               id: `${galleryId}-${uniqueName}`,
               galleryId,
-              name: uniqueName,
+              name: file.name,
               originalName: file.name,
               url: publicUrl,
               description: '',

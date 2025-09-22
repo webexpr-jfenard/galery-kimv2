@@ -822,20 +822,9 @@ html {
     }
   }
 
-  /* Photo counter - Fixed z-index and responsive */
+  /* Photo counter - Hidden */
   .photo-counter {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    backdrop-filter: blur(8px);
-    z-index: 100000;
-    text-align: center;
-    min-width: 120px;
+    display: none;
   }
 
   .photo-position {
