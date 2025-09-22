@@ -5,8 +5,10 @@ import type { Comment, FavoritePhoto } from "../services/favoritesService";
 interface Photo {
   id: string;
   name: string;
+  originalName?: string;
   url: string;
   description?: string;
+  subfolder?: string;
 }
 
 interface LightboxProps {
@@ -20,6 +22,8 @@ interface LightboxProps {
   comments?: Comment[]; // Add comments prop
   onToggleFavorite: (photoId: string) => void;
   onAddComment: (photoId: string, comment: string) => Promise<void>;
+  galleryId?: string; // Add galleryId to get custom order
+  allPhotos?: Photo[]; // All photos to calculate correct position
 }
 
 export function Lightbox({
@@ -32,7 +36,9 @@ export function Lightbox({
   commentCounts,
   comments = [], // Default to empty array
   onToggleFavorite,
-  onAddComment
+  onAddComment,
+  galleryId,
+  allPhotos
 }: LightboxProps) {
   const [comment, setComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -40,6 +46,79 @@ export function Lightbox({
   const [showUsersDropdown, setShowUsersDropdown] = useState(false);
 
   const currentPhoto = currentIndex !== null ? photos[currentIndex] : null;
+
+  // Calculate position with custom subfolder order
+  const getOrderedPosition = () => {
+    if (!currentPhoto || !galleryId || !allPhotos) {
+      return {
+        position: currentIndex !== null ? currentIndex + 1 : 0,
+        total: photos.length
+      };
+    }
+
+    try {
+      // Get custom order from localStorage
+      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
+      if (!savedOrder) {
+        return {
+          position: currentIndex !== null ? currentIndex + 1 : 0,
+          total: photos.length
+        };
+      }
+
+      const parsedOrder = JSON.parse(savedOrder);
+      
+      // Group all photos by subfolder
+      const photoGroups: Record<string, Photo[]> = {};
+      allPhotos.forEach(photo => {
+        const folder = photo.subfolder || 'Photos principales';
+        if (!photoGroups[folder]) {
+          photoGroups[folder] = [];
+        }
+        photoGroups[folder].push(photo);
+      });
+
+      // Create ordered list of all photos following custom subfolder order
+      const orderedPhotos: Photo[] = [];
+      const unorderedSubfolders: string[] = [];
+
+      // First, add photos from subfolders in saved order
+      parsedOrder.forEach((folderName: string) => {
+        if (photoGroups[folderName]) {
+          orderedPhotos.push(...photoGroups[folderName]);
+        }
+      });
+
+      // Then add photos from subfolders not in saved order
+      Object.keys(photoGroups).forEach(folderName => {
+        if (!parsedOrder.includes(folderName)) {
+          unorderedSubfolders.push(folderName);
+        }
+      });
+
+      // Sort unordered subfolders alphabetically and add their photos
+      unorderedSubfolders.sort().forEach(folderName => {
+        orderedPhotos.push(...photoGroups[folderName]);
+      });
+
+      // Find position of current photo in the ordered list
+      const position = orderedPhotos.findIndex(p => p.id === currentPhoto.id) + 1;
+
+      return {
+        position: position || (currentIndex !== null ? currentIndex + 1 : 0),
+        total: orderedPhotos.length
+      };
+
+    } catch (error) {
+      console.error('Error calculating ordered position:', error);
+      return {
+        position: currentIndex !== null ? currentIndex + 1 : 0,
+        total: photos.length
+      };
+    }
+  };
+
+  const { position, total } = getOrderedPosition();
 
   // Get all favorites info for current photo
   const currentPhotoFavorites = currentPhoto 
@@ -177,9 +256,16 @@ export function Lightbox({
         <X />
       </button>
 
-      {/* Photo counter */}
+      {/* Photo counter and name */}
       <div className="photo-counter">
-        {currentIndex + 1} / {photos.length}
+        <div className="photo-position">
+          {position} / {total}
+        </div>
+        {currentPhoto && (
+          <div className="photo-name">
+            {currentPhoto.originalName || currentPhoto.name}
+          </div>
+        )}
       </div>
 
       {/* Navigation buttons */}

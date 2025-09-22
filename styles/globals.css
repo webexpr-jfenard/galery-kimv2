@@ -832,17 +832,45 @@ html {
     color: white;
     padding: 8px 16px;
     border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
     backdrop-filter: blur(8px);
     z-index: 100000;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .photo-position {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .photo-name {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.9;
+    margin-top: 4px;
+    line-height: 1.2;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   @media (max-width: 768px) {
     .photo-counter {
       top: 10px;
-      font-size: 12px;
       padding: 6px 12px;
+      min-width: 100px;
+    }
+    
+    .photo-position {
+      font-size: 12px;
+    }
+    
+    .photo-name {
+      font-size: 10px;
+      max-width: 150px;
+      margin-top: 2px;
     }
   }
 

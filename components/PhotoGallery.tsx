@@ -1160,6 +1160,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         comments={comments} // Pass all comments for lightbox display
         onToggleFavorite={toggleSelection}
         onAddComment={submitComment}
+        galleryId={galleryId} // Add galleryId for custom order
+        allPhotos={photos} // All photos for correct position calculation
       />
 
       {/* User Name Dialog */}
