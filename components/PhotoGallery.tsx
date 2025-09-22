@@ -933,7 +933,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
                             {/* Selection indicator */}
                             {userService.isUserLoggedIn() ? (
-                              <div className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}>
+                              <div className={`favorite-indicator ${
+                                userSelection.has(photo.id) ? 'is-favorite' : 
+                                selection.has(photo.id) ? 'is-favorite-other' : ''
+                              }`}>
                                 <button
                                   className="w-full h-full flex items-center justify-center"
                                   onClick={(e) => toggleSelection(photo.id, e)}
@@ -942,6 +945,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                   <Heart 
                                     className={`h-5 w-5 transition-all ${
                                       userSelection.has(photo.id)
+                                        ? 'fill-current text-white'
+                                        : selection.has(photo.id)
                                         ? 'fill-current text-white'
                                         : 'text-gray-600'
                                     }`} 
@@ -955,13 +960,17 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                 )}
                               </div>
                             ) : (
-                              <div className="favorite-indicator">
+                              <div className={`favorite-indicator ${
+                                selection.has(photo.id) ? 'is-favorite-other' : ''
+                              }`}>
                                 <button
                                   className="w-full h-full flex items-center justify-center"
                                   onClick={(e) => toggleSelection(photo.id, e)}
                                   title="Cliquez pour vous identifier et ajouter aux favoris"
                                 >
-                                  <Heart className="h-5 w-5 text-gray-600" />
+                                  <Heart className={`h-5 w-5 transition-all ${
+                                    selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
+                                  }`} />
                                 </button>
                                 
                                 {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 0 && (
@@ -1049,7 +1058,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   {/* Selection indicator - shows user's own selection */}
                   {/* Only show clickable heart if user is logged in */}
                   {userService.isUserLoggedIn() ? (
-                    <div className={`favorite-indicator ${userSelection.has(photo.id) ? 'is-favorite' : ''}`}>
+                    <div className={`favorite-indicator ${
+                      userSelection.has(photo.id) ? 'is-favorite' : 
+                      selection.has(photo.id) ? 'is-favorite-other' : ''
+                    }`}>
                       <button
                         className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
@@ -1059,7 +1071,9 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                           className={`h-5 w-5 transition-all ${
                             userSelection.has(photo.id)
                               ? 'fill-current text-white' // User selected - filled heart with white color
-                              : 'text-gray-600' // Not selected by user - gray
+                              : selection.has(photo.id)
+                              ? 'fill-current text-white' // Selected by others - also filled
+                              : 'text-gray-600' // Not selected by anyone - gray
                           }`} 
                         />
                       </button>
@@ -1073,13 +1087,17 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     </div>
                   ) : (
                     // Show non-clickable heart for non-logged users
-                    <div className="favorite-indicator">
+                    <div className={`favorite-indicator ${
+                      selection.has(photo.id) ? 'is-favorite-other' : ''
+                    }`}>
                       <button
                         className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
                         title="Cliquez pour vous identifier et ajouter aux favoris"
                       >
-                        <Heart className="h-5 w-5 text-gray-600" />
+                        <Heart className={`h-5 w-5 transition-all ${
+                          selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
+                        }`} />
                       </button>
                       
                       {/* Global selection indicator for non-logged users */}
