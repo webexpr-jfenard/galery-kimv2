@@ -105,6 +105,44 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     return groups;
   };
 
+  // Get custom ordered section names
+  const getOrderedSections = (sectionNames: string[]) => {
+    try {
+      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
+      if (savedOrder) {
+        const parsedOrder = JSON.parse(savedOrder);
+        
+        // Create ordered list based on saved order
+        const orderedSections: string[] = [];
+        const unorderedSections: string[] = [];
+        
+        // First, add sections in the saved order
+        parsedOrder.forEach((name: string) => {
+          if (sectionNames.includes(name)) {
+            orderedSections.push(name);
+          }
+        });
+        
+        // Then add any new sections that weren't in the saved order
+        sectionNames.forEach(sectionName => {
+          if (!parsedOrder.includes(sectionName)) {
+            unorderedSections.push(sectionName);
+          }
+        });
+        
+        // Sort the unordered ones alphabetically and append them
+        unorderedSections.sort();
+        
+        return [...orderedSections, ...unorderedSections];
+      }
+    } catch (error) {
+      console.error('Error getting custom section order:', error);
+    }
+    
+    // Fallback to alphabetical order
+    return sectionNames.sort();
+  };
+
   // Load gallery data
   useEffect(() => {
     loadGalleryData();
@@ -857,7 +895,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           <>
             {(() => {
               const photoGroups = groupPhotosBySubfolder(filteredPhotos);
-              const sortedSections = Object.keys(photoGroups).sort();
+              const sortedSections = getOrderedSections(Object.keys(photoGroups));
               
               return sortedSections.map((sectionName) => (
                 <div key={sectionName} className="mb-8">
