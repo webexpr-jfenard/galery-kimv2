@@ -180,14 +180,13 @@ export function SubfolderSelector({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setIsCreatingNew(true)}
               disabled={disabled}
-              className="md:shrink-0"
+              className="md:shrink-0 h-10 px-3"
             >
-              <FolderPlus className="h-4 w-4 mr-2" />
+              <FolderPlus className="h-5 w-5 md:mr-1" />
               <span className="hidden md:inline">Nouveau</span>
-              <span className="md:hidden">Créer un nouveau sous-dossier</span>
+              <span className="md:hidden ml-2">Créer un nouveau sous-dossier</span>
             </Button>
           )}
         </div>
