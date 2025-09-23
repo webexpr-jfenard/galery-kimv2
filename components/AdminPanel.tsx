@@ -43,8 +43,8 @@ import {
   AlertCircle,
   Info,
   FolderOpen,
-  Star,
-  Mail
+  Mail,
+  Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -93,6 +93,7 @@ export function AdminPanel() {
   // Photo management state
   const [managingPhotosGallery, setManagingPhotosGallery] = useState<string | null>(null);
   const [showEmailConfig, setShowEmailConfig] = useState(false);
+  const [showSupabaseConfig, setShowSupabaseConfig] = useState(false);
   
   // Upload state with subfolder support - FIXED: Individual subfolder state per gallery
   const [uploadingGallery, setUploadingGallery] = useState<string | null>(null);
@@ -539,6 +540,14 @@ export function AdminPanel() {
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Supabase Connecté
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowSupabaseConfig(true)}
+                title="Configuration Supabase"
+              >
+                <Database className="h-4 w-4" />
+              </Button>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-1 lg:mr-2" />
                 <span className="hidden sm:inline">Déconnexion</span>
@@ -549,114 +558,16 @@ export function AdminPanel() {
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Supabase Status & Sync */}
-        <div className="mb-8">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
-                  <svg class="h-5 w-5" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint0_linear)"></path>
-<path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fill-opacity="0.2"></path>
-<path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.041L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"></path>
-<defs>
-<linearGradient id="paint0_linear" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
-<stop stop-color="#249361"></stop>
-<stop offset="1" stop-color="#3ECF8E"></stop>
-</linearGradient>
-<linearGradient id="paint1_linear" x1="36.1558" y1="30.578" x2="54.4844" y2="65.0806" gradientUnits="userSpaceOnUse">
-<stop></stop>
-<stop offset="1" stop-opacity="0"></stop>
-</linearGradient>
-</defs>
-</svg>
-                    Stockage Cloud Supabase
-                  </CardTitle>
-                  <CardDescription>
-                    Votre application est connectée au stockage cloud Supabase pour la synchronisation des galeries et la gestion des photos
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEmailConfig(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Mail className="h-4 w-4" />
-                  Config Gmail
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Connection Status */}
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Connecté</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      {connectionStatus.isTableReady ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      )}
-                      <span className="text-sm">
-                        Base de données {connectionStatus.isTableReady ? 'Prête' : 'Configuration requise'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm">
-                        Local: {connectionStatus.localGalleries} galeries
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">
-                        Cloud: {connectionStatus.remoteGalleries} galeries
-                      </span>
-                    </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
-              {/* Sync Actions */}
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={handleSyncFromSupabase}
-                  disabled={isSyncing}
-                  variant="outline"
-                >
-                  {isSyncing ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Synchronisation...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Synchroniser depuis le Cloud
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  onClick={loadConnectionStatus}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Rafraîchir le statut
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Config Email Button - Moved here for quick access */}
+        <div className="mb-6 flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => setShowEmailConfig(true)}
+            className="flex items-center gap-2"
+          >
+            <Mail className="h-4 w-4" />
+            Config Gmail
+          </Button>
         </div>
 
         {/* Stats Cards - Responsive */}
@@ -1185,6 +1096,108 @@ export function AdminPanel() {
           isOpen={showEmailConfig}
           onClose={() => setShowEmailConfig(false)}
         />
+      )}
+
+      {/* Supabase Configuration Modal */}
+      {showSupabaseConfig && (
+        <Dialog open={showSupabaseConfig} onOpenChange={setShowSupabaseConfig}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <svg className="h-5 w-5" viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint0_linear)"></path>
+                  <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#paint1_linear)" fillOpacity="0.2"></path>
+                  <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.041L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"></path>
+                  <defs>
+                    <linearGradient id="paint0_linear" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#249361"></stop>
+                      <stop offset="1" stopColor="#3ECF8E"></stop>
+                    </linearGradient>
+                    <linearGradient id="paint1_linear" x1="36.1558" y1="30.578" x2="54.4844" y2="65.0806" gradientUnits="userSpaceOnUse">
+                      <stop></stop>
+                      <stop offset="1" stopOpacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                Configuration Supabase
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Connection Status */}
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Connecté</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {connectionStatus.isTableReady ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      )}
+                      <span className="text-sm">
+                        Base de données {connectionStatus.isTableReady ? 'Prête' : 'Configuration requise'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm">
+                        Local: {connectionStatus.localGalleries} galeries
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Cloud className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">
+                        Cloud: {connectionStatus.remoteGalleries} galeries
+                      </span>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Sync Actions */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={handleSyncFromSupabase}
+                  disabled={isSyncing}
+                  variant="outline"
+                >
+                  {isSyncing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Synchronisation...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Synchroniser depuis le Cloud
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={loadConnectionStatus}
+                  variant="outline"
+                  size="sm"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Rafraîchir le statut
+                </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                <p>Votre application est connectée au stockage cloud Supabase pour la synchronisation des galeries et la gestion des photos.</p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
