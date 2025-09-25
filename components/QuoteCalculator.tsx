@@ -96,6 +96,17 @@ export function QuoteCalculator() {
   const [arrivalAddress, setArrivalAddress] = useState('');
   const [calculatingDistance, setCalculatingDistance] = useState(false);
 
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowDepartureSuggestions(false);
+      setShowArrivalSuggestions(false);
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
   // Calculate quote based on number of people
   const calculateQuote = (data = quoteData) => {
     const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate, travelZone, additionalOptions } = data;
@@ -201,33 +212,104 @@ export function QuoteCalculator() {
     return calculateQuote(quickData);
   };
 
-  // Calculate distance with OpenRouteService API
+  // Autocomplete suggestions for addresses
+  const [departureResults, setDepartureResults] = useState<string[]>([]);
+  const [arrivalResults, setArrivalResults] = useState<string[]>([]);
+  const [showDepartureSuggestions, setShowDepartureSuggestions] = useState(false);
+  const [showArrivalSuggestions, setShowArrivalSuggestions] = useState(false);
+
+  // Search address suggestions using Nominatim (OpenStreetMap - no CORS, free)
+  const searchAddresses = async (query: string): Promise<string[]> => {
+    if (query.length < 3) return [];
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}&countrycodes=fr`
+      );
+      const results = await response.json();
+
+      return results.map((result: any) => result.display_name);
+    } catch (error) {
+      console.error('Address search error:', error);
+      return [];
+    }
+  };
+
+  // Calculate distance using Nominatim + distance formula
   const calculateDistanceAndCost = async () => {
     if (!departureAddress.trim() || !arrivalAddress.trim()) return;
 
     setCalculatingDistance(true);
     try {
-      // Using OpenRouteService (free tier: 2000 requests/day)
-      const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
-        method: 'POST',
-        headers: {
-          'Authorization': '5b3ce3597851110001cf6248a9b0a99e9b334baea2b12b36b2cd3b7b', // Free API key
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          coordinates: [
-            // Note: This would need geocoding first, for demo we'll use manual calculation
-          ]
-        })
-      });
+      // Geocode both addresses
+      const [depResponse, arrResponse] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(departureAddress)}&countrycodes=fr`),
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(arrivalAddress)}&countrycodes=fr`)
+      ]);
 
-      // For now, let's use a simpler approach with manual zone selection
-      // In a real implementation, you'd geocode addresses first, then calculate route
+      const [depResults, arrResults] = await Promise.all([
+        depResponse.json(),
+        arrResponse.json()
+      ]);
+
+      if (depResults.length === 0 || arrResults.length === 0) {
+        alert('Une ou plusieurs adresses non trouvées');
+        return;
+      }
+
+      // Calculate distance using Haversine formula
+      const lat1 = parseFloat(depResults[0].lat);
+      const lon1 = parseFloat(depResults[0].lon);
+      const lat2 = parseFloat(arrResults[0].lat);
+      const lon2 = parseFloat(arrResults[0].lon);
+
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      // Determine zone based on distance
+      let newZone: 'local' | 'near' | 'far' | 'very_far' = 'local';
+      if (distance > 100) newZone = 'very_far';
+      else if (distance > 50) newZone = 'far';
+      else if (distance > 20) newZone = 'near';
+
+      setQuoteData(prev => ({ ...prev, travelZone: newZone }));
+
+      alert(`Distance calculée: ${distance.toFixed(1)} km\nZone sélectionnée: ${travelZones.find(z => z.id === newZone)?.name}`);
 
     } catch (error) {
       console.error('Distance calculation error:', error);
+      alert('Erreur lors du calcul de distance');
     } finally {
       setCalculatingDistance(false);
+    }
+  };
+
+  // Handle address input changes with autocomplete
+  const handleDepartureChange = async (value: string) => {
+    setDepartureAddress(value);
+    if (value.length >= 3) {
+      const results = await searchAddresses(value);
+      setDepartureResults(results);
+      setShowDepartureSuggestions(true);
+    } else {
+      setShowDepartureSuggestions(false);
+    }
+  };
+
+  const handleArrivalChange = async (value: string) => {
+    setArrivalAddress(value);
+    if (value.length >= 3) {
+      const results = await searchAddresses(value);
+      setArrivalResults(results);
+      setShowArrivalSuggestions(true);
+    } else {
+      setShowArrivalSuggestions(false);
     }
   };
 
@@ -589,18 +671,60 @@ export function QuoteCalculator() {
                 {/* Address-based calculation */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-2">
-                    <Input
-                      placeholder="Adresse de départ"
-                      value={departureAddress}
-                      onChange={(e) => setDepartureAddress(e.target.value)}
-                      className="text-sm"
-                    />
-                    <Input
-                      placeholder="Adresse d'arrivée"
-                      value={arrivalAddress}
-                      onChange={(e) => setArrivalAddress(e.target.value)}
-                      className="text-sm"
-                    />
+                    {/* Departure Address with Autocomplete */}
+                    <div className="relative">
+                      <Input
+                        placeholder="Adresse de départ"
+                        value={departureAddress}
+                        onChange={(e) => handleDepartureChange(e.target.value)}
+                        onFocus={() => departureResults.length > 0 && setShowDepartureSuggestions(true)}
+                        className="text-sm"
+                      />
+                      {showDepartureSuggestions && departureResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          {departureResults.map((address, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                              onClick={() => {
+                                setDepartureAddress(address);
+                                setShowDepartureSuggestions(false);
+                              }}
+                            >
+                              {address}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Arrival Address with Autocomplete */}
+                    <div className="relative">
+                      <Input
+                        placeholder="Adresse d'arrivée"
+                        value={arrivalAddress}
+                        onChange={(e) => handleArrivalChange(e.target.value)}
+                        onFocus={() => arrivalResults.length > 0 && setShowArrivalSuggestions(true)}
+                        className="text-sm"
+                      />
+                      {showArrivalSuggestions && arrivalResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          {arrivalResults.map((address, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                              onClick={() => {
+                                setArrivalAddress(address);
+                                setShowArrivalSuggestions(false);
+                              }}
+                            >
+                              {address}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <Button
                       variant="outline"
                       size="sm"
