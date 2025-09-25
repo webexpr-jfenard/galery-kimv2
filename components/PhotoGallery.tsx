@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -6,10 +6,10 @@ import { AuthDialog } from "./AuthDialog";
 import { Lightbox } from "./Lightbox";
 import { SelectionSubmitButton } from "./SelectionSubmitButton";
 import { UserNameDialog } from "./UserNameDialog";
-import { 
-  ArrowLeft, 
-  Heart, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  Heart,
+  MessageSquare,
   Search,
   Send,
   Filter,
@@ -18,7 +18,8 @@ import {
   Grid,
   Grid3X3,
   Tag,
-  ChevronDown
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -77,6 +78,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Desktop search state
   const [showDesktopSearch, setShowDesktopSearch] = useState(false);
+
+  // Scroll indicators for subfolders
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -147,6 +154,31 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   useEffect(() => {
     loadGalleryData();
   }, [galleryId, selectedSubfolder]); // Reload when subfolder filter changes
+
+  // Check for scrollbar on mount and resize
+  useEffect(() => {
+    const checkScroll = () => {
+      if (scrollContainerRef.current && showSubfolderFilter && subfolders.length > 0) {
+        const container = scrollContainerRef.current;
+        const hasScroll = container.scrollWidth > container.clientWidth;
+        const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - 10;
+        setShowScrollIndicator(hasScroll && !isAtEnd);
+      }
+    };
+
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [showSubfolderFilter, subfolders]);
+
+  // Cleanup scroll interval on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current);
+      }
+    };
+  }, []);
 
   const loadGalleryData = async () => {
     try {
@@ -648,32 +680,79 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {showSubfolderFilter && subfolders.length > 0 && (
               <>
                 <div className="h-6 w-px bg-border"></div>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedSubfolder(undefined)}
-                    className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                <div className="relative flex items-center">
+                  <div
+                    ref={scrollContainerRef}
+                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide max-w-[600px] scroll-smooth"
+                    onScroll={(e) => {
+                      const target = e.target as HTMLDivElement;
+                      const hasMore = target.scrollWidth > target.clientWidth;
+                      const isAtEnd = target.scrollLeft + target.clientWidth >= target.scrollWidth - 10;
+                      setShowScrollIndicator(hasMore && !isAtEnd);
+                    }}
                   >
-                    <Grid className="h-4 w-4 mr-1" />
-                    Toutes
-                  </Button>
-                  
-                  {subfolders.map((subfolder) => (
                     <Button
-                      key={subfolder.name}
                       variant="outline"
                       size="sm"
-                      onClick={() => handleSubfolderFilterChange(subfolder.name)}
-                      className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                      onClick={() => setSelectedSubfolder(undefined)}
+                      className={`shrink-0 ${!selectedSubfolder ? 'bg-primary text-primary-foreground' : ''}`}
                     >
-                      <Folder className="h-4 w-4 mr-1" />
-                      <span className="max-w-[120px] truncate">{subfolder.name}</span>
-                      <Badge variant="secondary" className="ml-1 text-xs">
-                        {subfolder.photoCount}
-                      </Badge>
+                      <Grid className="h-4 w-4 mr-1" />
+                      Toutes
                     </Button>
-                  ))}
+
+                    {subfolders.map((subfolder) => (
+                      <Button
+                        key={subfolder.name}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSubfolderFilterChange(subfolder.name)}
+                        className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
+                      >
+                        <Folder className="h-4 w-4 mr-1" />
+                        <span className="max-w-[120px] truncate">{subfolder.name}</span>
+                        <Badge variant="secondary" className="ml-1 text-xs">
+                          {subfolder.photoCount}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Scroll indicator */}
+                  {showScrollIndicator && (
+                    <div
+                      className="absolute -right-1 bg-gradient-to-l from-background via-background to-transparent pl-8 pr-2"
+                      onMouseEnter={() => {
+                        if (scrollContainerRef.current && !isScrolling) {
+                          setIsScrolling(true);
+                          scrollIntervalRef.current = setInterval(() => {
+                            if (scrollContainerRef.current) {
+                              scrollContainerRef.current.scrollLeft += 3;
+                              const target = scrollContainerRef.current;
+                              if (target.scrollLeft + target.clientWidth >= target.scrollWidth - 10) {
+                                if (scrollIntervalRef.current) {
+                                  clearInterval(scrollIntervalRef.current);
+                                  scrollIntervalRef.current = null;
+                                  setIsScrolling(false);
+                                }
+                              }
+                            }
+                          }, 10);
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        if (scrollIntervalRef.current) {
+                          clearInterval(scrollIntervalRef.current);
+                          scrollIntervalRef.current = null;
+                          setIsScrolling(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background border shadow-sm hover:shadow-md transition-all cursor-pointer">
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground ${isScrolling ? 'animate-pulse' : ''}`} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
