@@ -611,7 +611,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           </div>
 
           {/* Compact controls row */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {/* Search toggle/field */}
             {!showDesktopSearch ? (
               <Button
@@ -681,10 +681,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {showSubfolderFilter && subfolders.length > 0 && (
               <>
                 <div className="h-6 w-px bg-border"></div>
-                <div className="relative flex items-center flex-1">
+                <div className="relative flex items-center flex-1 min-w-0 pr-12">
                   <div
                     ref={scrollContainerRef}
-                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 scroll-smooth"
+                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0 scroll-smooth"
                     onScroll={(e) => {
                       const target = e.target as HTMLDivElement;
                       const hasMore = target.scrollWidth > target.clientWidth;
@@ -722,7 +722,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   {/* Scroll indicator */}
                   {showScrollIndicator && (
                     <div
-                      className="absolute right-0 top-0 bottom-0 flex items-center bg-gradient-to-l from-background via-background/95 to-transparent pl-12 pr-1"
+                      className="absolute -right-10 top-0 bottom-0 flex items-center pointer-events-auto"
                       onMouseEnter={() => {
                         if (scrollContainerRef.current && !isScrolling) {
                           setIsScrolling(true);
@@ -749,10 +749,15 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         }
                       }}
                     >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all cursor-pointer">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all cursor-pointer shadow-sm">
                         <ChevronRight className={`h-4 w-4 text-primary ${isScrolling ? 'animate-pulse' : ''}`} />
                       </div>
                     </div>
+                  )}
+
+                  {/* Fade overlay to indicate scrollable content */}
+                  {showScrollIndicator && (
+                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
                   )}
                 </div>
               </>
