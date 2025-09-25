@@ -681,7 +681,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {showSubfolderFilter && subfolders.length > 0 && (
               <>
                 <div className="h-6 w-px bg-border"></div>
-                <div className="relative flex items-center flex-1 min-w-0 pr-12">
+                <div className="relative flex items-center flex-1 min-w-0">
                   <div
                     ref={scrollContainerRef}
                     className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0 scroll-smooth"
@@ -749,7 +749,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         }
                       }}
                     >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all cursor-pointer shadow-sm">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 hover:border-primary/30 transition-all cursor-pointer shadow-sm">
                         <ChevronRight className={`h-4 w-4 text-primary ${isScrolling ? 'animate-pulse' : ''}`} />
                       </div>
                     </div>
