@@ -13,14 +13,14 @@ import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
 import { GmailConfigDialog } from "./GmailConfigDialog";
 import { Alert, AlertDescription } from "./ui/alert";
-import { 
-  Settings, 
-  Plus, 
-  Trash2, 
-  Edit, 
-  Eye, 
+import {
+  Settings,
+  Plus,
+  Trash2,
+  Edit,
+  Eye,
   EyeOff,
-  BarChart3, 
+  BarChart3,
   ArrowLeft,
   Search,
   Folder,
@@ -44,7 +44,8 @@ import {
   Info,
   FolderOpen,
   Mail,
-  Star
+  Star,
+  Calculator
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -565,7 +566,7 @@ export function AdminPanel() {
             onClick={() => window.appRouter.navigateTo('/admin/quote-calculator')}
             className="flex items-center gap-2"
           >
-            <BarChart3 className="h-4 w-4" />
+            <Calculator className="h-4 w-4" />
             Calculateur de Devis
           </Button>
           <Button
