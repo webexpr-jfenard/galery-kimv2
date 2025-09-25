@@ -24,7 +24,17 @@ import {
   BarChart3
 } from "lucide-react";
 
-interface QuoteData {
+type CalculatorType = 'corporate' | 'wedding' | 'reportage';
+
+interface BaseQuoteData {
+  // Travel
+  travelZone: 'local' | 'near' | 'far' | 'very_far';
+  // Additional options
+  additionalOptions: AdditionalOption[];
+}
+
+interface CorporateQuoteData extends BaseQuoteData {
+  type: 'corporate';
   halfDayRate: number;
   fullDayRate: number;
   postProdRateUnder10: number;
@@ -33,11 +43,29 @@ interface QuoteData {
   // Settings
   maxPeopleHalfDay: number;
   maxPeopleRegularRate: number;
-  // Travel
-  travelZone: 'local' | 'near' | 'far' | 'very_far';
-  // Additional options
-  additionalOptions: AdditionalOption[];
 }
+
+interface WeddingQuoteData extends BaseQuoteData {
+  type: 'wedding';
+  ceremonyRate: number;
+  fullDayRate: number;
+  extraHourRate: number;
+  selectedPackage: 'ceremony' | 'fullday' | 'custom';
+  extraHours: number;
+  retouchingRate: number;
+  numberOfPhotosToRetouch: number;
+}
+
+interface ReportageQuoteData extends BaseQuoteData {
+  type: 'reportage';
+  halfDayRate: number;
+  fullDayRate: number;
+  selectedDuration: 'halfday' | 'fullday';
+  numberOfPhotos: number;
+  postProdRatePerPhoto: number;
+}
+
+type QuoteData = CorporateQuoteData | WeddingQuoteData | ReportageQuoteData;
 
 interface AdditionalOption {
   id: string;
@@ -69,21 +97,55 @@ export function QuoteCalculator() {
     { id: 'very_far', name: 'Très éloigné', description: '100+ km', price: 120 }
   ];
 
+  // Calculator type state
+  const [calculatorType, setCalculatorType] = useState<CalculatorType>('corporate');
 
-  const [quoteData, setQuoteData] = useState<QuoteData>({
-    halfDayRate: 500,
-    fullDayRate: 800,
-    postProdRateUnder10: 50,
-    postProdRateOver10: 40,
-    numberOfPeople: 10,
-    // Settings
-    maxPeopleHalfDay: 10,
-    maxPeopleRegularRate: 10,
-    // Travel
-    travelZone: 'local',
-    // Additional options
-    additionalOptions: []
-  });
+  // Default configurations for each calculator type
+  const getDefaultConfig = (type: CalculatorType): QuoteData => {
+    switch (type) {
+      case 'corporate':
+        return {
+          type: 'corporate',
+          halfDayRate: 500,
+          fullDayRate: 800,
+          postProdRateUnder10: 50,
+          postProdRateOver10: 40,
+          numberOfPeople: 10,
+          maxPeopleHalfDay: 10,
+          maxPeopleRegularRate: 10,
+          travelZone: 'local',
+          additionalOptions: []
+        };
+      case 'wedding':
+        return {
+          type: 'wedding',
+          ceremonyRate: 800,
+          fullDayRate: 1500,
+          extraHourRate: 100,
+          selectedPackage: 'ceremony',
+          extraHours: 0,
+          retouchingRate: 15,
+          numberOfPhotosToRetouch: 50,
+          travelZone: 'local',
+          additionalOptions: []
+        };
+      case 'reportage':
+        return {
+          type: 'reportage',
+          halfDayRate: 400,
+          fullDayRate: 700,
+          selectedDuration: 'halfday',
+          numberOfPhotos: 100,
+          postProdRatePerPhoto: 2,
+          travelZone: 'local',
+          additionalOptions: []
+        };
+      default:
+        throw new Error(`Unknown calculator type: ${type}`);
+    }
+  };
+
+  const [quoteData, setQuoteData] = useState<QuoteData>(getDefaultConfig('corporate'));
 
   const [isEditingRates, setIsEditingRates] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
@@ -107,66 +169,15 @@ export function QuoteCalculator() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Calculate quote based on number of people
+  // Change calculator type and reset data
+  const changeCalculatorType = (type: CalculatorType) => {
+    setCalculatorType(type);
+    setQuoteData(getDefaultConfig(type));
+  };
+
+  // Calculate quote based on calculator type
   const calculateQuote = (data = quoteData) => {
-    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate, travelZone, additionalOptions } = data;
-
-    // Calculate shooting cost - use configurable threshold with mixed full/half days
-    let shootingCost = 0;
-    let shootingDescription = '';
-
-    if (numberOfPeople <= maxPeopleHalfDay) {
-      // Simple case: 1 half day
-      shootingCost = halfDayRate;
-      shootingDescription = '1 demi-journée';
-    } else {
-      // Calculate how many full days we can use
-      const fullDays = Math.floor(numberOfPeople / (maxPeopleHalfDay * 2)); // Each full day = 2 * maxPeopleHalfDay
-      const remainingPeople = numberOfPeople - (fullDays * maxPeopleHalfDay * 2);
-
-      // For remaining people, determine if we need a full day or half days
-      let additionalFullDays = 0;
-      let halfDays = 0;
-
-      if (remainingPeople > 0) {
-        if (remainingPeople <= maxPeopleHalfDay) {
-          // Remaining people fit in 1 half day
-          halfDays = 1;
-        } else {
-          // Remaining people need 1 full day + potentially 1 half day
-          additionalFullDays = 1;
-          const remainingAfterFullDay = remainingPeople - (maxPeopleHalfDay * 2);
-          if (remainingAfterFullDay > 0) {
-            halfDays = 1;
-          }
-        }
-      }
-
-      const totalFullDays = fullDays + additionalFullDays;
-      shootingCost = (totalFullDays * fullDayRate) + (halfDays * halfDayRate);
-
-      // Create description
-      const parts = [];
-      if (totalFullDays > 0) {
-        parts.push(`${totalFullDays} journée${totalFullDays > 1 ? 's' : ''} complète${totalFullDays > 1 ? 's' : ''}`);
-      }
-      if (halfDays > 0) {
-        parts.push(`${halfDays} demi-journée`);
-      }
-      shootingDescription = parts.join(' + ');
-    }
-
-    // Calculate post-production cost - use configurable threshold
-    let postProdCost = 0;
-    if (numberOfPeople <= maxPeopleRegularRate) {
-      postProdCost = numberOfPeople * postProdRateUnder10;
-    } else {
-      // First X people at regular rate
-      postProdCost = maxPeopleRegularRate * postProdRateUnder10;
-      // Additional people at reduced rate
-      const additionalPeople = numberOfPeople - maxPeopleRegularRate;
-      postProdCost += additionalPeople * postProdRateOver10;
-    }
+    const { travelZone, additionalOptions } = data;
 
     // Calculate travel cost
     const selectedTravelZone = travelZones.find(zone => zone.id === travelZone);
@@ -177,12 +188,115 @@ export function QuoteCalculator() {
       return sum + (option.price * option.quantity);
     }, 0);
 
-    const subtotal = shootingCost + postProdCost + travelCost + additionalOptionsCost;
+    let mainCost = 0;
+    let mainDescription = '';
+    let postProdCost = 0;
+    let postProdDescription = '';
+
+    switch (data.type) {
+      case 'corporate': {
+        const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = data;
+
+        // Corporate shooting calculation (existing logic)
+        if (numberOfPeople <= maxPeopleHalfDay) {
+          mainCost = halfDayRate;
+          mainDescription = '1 demi-journée';
+        } else {
+          const fullDays = Math.floor(numberOfPeople / (maxPeopleHalfDay * 2));
+          const remainingPeople = numberOfPeople - (fullDays * maxPeopleHalfDay * 2);
+
+          let additionalFullDays = 0;
+          let halfDays = 0;
+
+          if (remainingPeople > 0) {
+            if (remainingPeople <= maxPeopleHalfDay) {
+              halfDays = 1;
+            } else {
+              additionalFullDays = 1;
+              const remainingAfterFullDay = remainingPeople - (maxPeopleHalfDay * 2);
+              if (remainingAfterFullDay > 0) {
+                halfDays = 1;
+              }
+            }
+          }
+
+          const totalFullDays = fullDays + additionalFullDays;
+          mainCost = (totalFullDays * fullDayRate) + (halfDays * halfDayRate);
+
+          const parts = [];
+          if (totalFullDays > 0) {
+            parts.push(`${totalFullDays} journée${totalFullDays > 1 ? 's' : ''} complète${totalFullDays > 1 ? 's' : ''}`);
+          }
+          if (halfDays > 0) {
+            parts.push(`${halfDays} demi-journée`);
+          }
+          mainDescription = parts.join(' + ');
+        }
+
+        // Corporate post-production
+        if (numberOfPeople <= maxPeopleRegularRate) {
+          postProdCost = numberOfPeople * postProdRateUnder10;
+          postProdDescription = `${numberOfPeople} personnes × ${postProdRateUnder10}€`;
+        } else {
+          postProdCost = maxPeopleRegularRate * postProdRateUnder10;
+          const additionalPeople = numberOfPeople - maxPeopleRegularRate;
+          postProdCost += additionalPeople * postProdRateOver10;
+          postProdDescription = `${maxPeopleRegularRate} premières × ${postProdRateUnder10}€ + ${additionalPeople} suivantes × ${postProdRateOver10}€`;
+        }
+        break;
+      }
+
+      case 'wedding': {
+        const { ceremonyRate, fullDayRate, extraHourRate, selectedPackage, extraHours, retouchingRate, numberOfPhotosToRetouch } = data;
+
+        // Wedding package calculation
+        switch (selectedPackage) {
+          case 'ceremony':
+            mainCost = ceremonyRate;
+            mainDescription = 'Forfait Cérémonie';
+            break;
+          case 'fullday':
+            mainCost = fullDayRate;
+            mainDescription = 'Forfait Journée Complète';
+            break;
+          case 'custom':
+            mainCost = ceremonyRate + (extraHours * extraHourRate);
+            mainDescription = `Forfait Cérémonie + ${extraHours}h supplémentaires`;
+            break;
+        }
+
+        // Wedding retouching
+        postProdCost = numberOfPhotosToRetouch * retouchingRate;
+        postProdDescription = `${numberOfPhotosToRetouch} photos × ${retouchingRate}€`;
+        break;
+      }
+
+      case 'reportage': {
+        const { halfDayRate, fullDayRate, selectedDuration, numberOfPhotos, postProdRatePerPhoto } = data;
+
+        // Reportage duration calculation
+        if (selectedDuration === 'halfday') {
+          mainCost = halfDayRate;
+          mainDescription = 'Forfait Demi-journée';
+        } else {
+          mainCost = fullDayRate;
+          mainDescription = 'Forfait Journée complète';
+        }
+
+        // Reportage post-production
+        postProdCost = numberOfPhotos * postProdRatePerPhoto;
+        postProdDescription = `${numberOfPhotos} photos × ${postProdRatePerPhoto}€`;
+        break;
+      }
+    }
+
+    const subtotal = mainCost + postProdCost + travelCost + additionalOptionsCost;
 
     return {
-      shootingCost,
-      shootingDescription,
+      mainCost,
+      mainDescription,
       postProdCost,
+      postProdDescription,
       travelCost,
       travelDescription: selectedTravelZone ? `${selectedTravelZone.name} (${selectedTravelZone.description})` : 'Local',
       additionalOptionsCost,
@@ -193,23 +307,26 @@ export function QuoteCalculator() {
 
   const quote = calculateQuote();
 
-  const handleNumberOfPeopleChange = (value: string) => {
-    const num = parseInt(value) || 0;
-    setQuoteData(prev => ({ ...prev, numberOfPeople: Math.max(1, num) }));
+  // Generic handlers for different calculator types
+  const handleFieldChange = (field: string, value: string | number) => {
+    setQuoteData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRateChange = (field: keyof QuoteData, value: string) => {
+  const handleNumberChange = (field: string, value: string) => {
     const num = parseFloat(value) || 0;
     setQuoteData(prev => ({ ...prev, [field]: Math.max(0, num) }));
   };
 
-  // Quick calculator functions
+  // Quick calculator functions (simplified for corporate only for now)
   const calculateQuickQuote = () => {
-    const quickData: QuoteData = {
-      ...quoteData,
-      numberOfPeople: quickPeople
-    };
-    return calculateQuote(quickData);
+    if (calculatorType === 'corporate' && quoteData.type === 'corporate') {
+      const quickData: CorporateQuoteData = {
+        ...quoteData,
+        numberOfPeople: quickPeople
+      };
+      return calculateQuote(quickData);
+    }
+    return calculateQuote();
   };
 
   // Autocomplete suggestions for addresses
@@ -387,8 +504,42 @@ export function QuoteCalculator() {
                   Calculateur de Devis
                 </h1>
                 <p className="text-muted-foreground">
-                  Génération automatique de devis photo avec options avancées
+                  {calculatorType === 'corporate' && 'Photos corporate - Tarification par personne'}
+                  {calculatorType === 'wedding' && 'Photos de mariage - Forfaits et retouche'}
+                  {calculatorType === 'reportage' && 'Reportage photo - Forfaits durée'}
                 </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Calculator Type Selector */}
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium">Type :</Label>
+                <div className="flex gap-1 border rounded-md p-1 bg-background">
+                  <Button
+                    variant={calculatorType === 'corporate' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => changeCalculatorType('corporate')}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Corporate
+                  </Button>
+                  <Button
+                    variant={calculatorType === 'wedding' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => changeCalculatorType('wedding')}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Mariage
+                  </Button>
+                  <Button
+                    variant={calculatorType === 'reportage' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => changeCalculatorType('reportage')}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Reportage
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
