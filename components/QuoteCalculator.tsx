@@ -22,6 +22,9 @@ interface QuoteData {
   postProdRateUnder10: number;
   postProdRateOver10: number;
   numberOfPeople: number;
+  // Settings
+  maxPeopleHalfDay: number;
+  maxPeopleRegularRate: number;
 }
 
 export function QuoteCalculator() {
@@ -30,25 +33,28 @@ export function QuoteCalculator() {
     fullDayRate: 800,
     postProdRateUnder10: 50,
     postProdRateOver10: 40,
-    numberOfPeople: 10
+    numberOfPeople: 10,
+    // Settings
+    maxPeopleHalfDay: 10,
+    maxPeopleRegularRate: 10
   });
 
   const [isEditingRates, setIsEditingRates] = useState(false);
 
   // Calculate quote based on number of people
   const calculateQuote = () => {
-    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10 } = quoteData;
+    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = quoteData;
 
-    // Calculate shooting cost - if more than 10 people, use full day rate
+    // Calculate shooting cost - use configurable threshold
     let shootingCost = 0;
     let shootingDescription = '';
 
-    if (numberOfPeople <= 10) {
+    if (numberOfPeople <= maxPeopleHalfDay) {
       shootingCost = halfDayRate;
       shootingDescription = '1 demi-journée';
     } else {
       // Compare full day vs multiple half days
-      const halfDaySessions = Math.ceil(numberOfPeople / 10);
+      const halfDaySessions = Math.ceil(numberOfPeople / maxPeopleHalfDay);
       const multipleHalfDaysCost = halfDaySessions * halfDayRate;
 
       if (fullDayRate < multipleHalfDaysCost) {
@@ -60,29 +66,25 @@ export function QuoteCalculator() {
       }
     }
 
-    // Calculate post-production cost
+    // Calculate post-production cost - use configurable threshold
     let postProdCost = 0;
-    if (numberOfPeople <= 10) {
+    if (numberOfPeople <= maxPeopleRegularRate) {
       postProdCost = numberOfPeople * postProdRateUnder10;
     } else {
-      // First 10 people at regular rate
-      postProdCost = 10 * postProdRateUnder10;
+      // First X people at regular rate
+      postProdCost = maxPeopleRegularRate * postProdRateUnder10;
       // Additional people at reduced rate
-      const additionalPeople = numberOfPeople - 10;
+      const additionalPeople = numberOfPeople - maxPeopleRegularRate;
       postProdCost += additionalPeople * postProdRateOver10;
     }
 
-    const subtotal = shootingCost + postProdCost;
-    const tva = subtotal * 0.20; // 20% TVA
-    const totalTTC = subtotal + tva;
+    const total = shootingCost + postProdCost;
 
     return {
       shootingCost,
       shootingDescription,
       postProdCost,
-      subtotal,
-      tva,
-      totalTTC
+      total
     };
   };
 
@@ -167,7 +169,7 @@ export function QuoteCalculator() {
                   className="text-lg"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {quoteData.numberOfPeople > 10 ? 'Plus de 10 personnes : journée complète recommandée' : 'Jusqu\'à 10 personnes : demi-journée suffisante'}
+                  {quoteData.numberOfPeople > quoteData.maxPeopleHalfDay ? `Plus de ${quoteData.maxPeopleHalfDay} personnes : journée complète recommandée` : `Jusqu'à ${quoteData.maxPeopleHalfDay} personnes : demi-journée suffisante`}
                 </p>
               </div>
 
@@ -244,11 +246,11 @@ export function QuoteCalculator() {
                     </div>
                   </div>
 
-                  {/* Post-prod Over 10 */}
+                  {/* Post-prod Over threshold */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-2">
                       <Edit className="h-4 w-4" />
-                      Post-production (au-delà de 10 personnes)
+                      Post-production (au-delà de {quoteData.maxPeopleRegularRate} personnes)
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
@@ -260,6 +262,43 @@ export function QuoteCalculator() {
                         className="flex-1"
                       />
                       <span className="text-sm text-muted-foreground">€ HT / personne (tarif dégressif)</span>
+                    </div>
+                  </div>
+
+                  {/* Settings Section */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Seuil demi-journée (nb max personnes)
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={quoteData.maxPeopleHalfDay}
+                        onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground">personnes</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Seuil tarif normal post-prod
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={quoteData.maxPeopleRegularRate}
+                        onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground">personnes</span>
                     </div>
                   </div>
 
@@ -304,7 +343,7 @@ export function QuoteCalculator() {
                     <Edit className="h-4 w-4" />
                     Post-production
                   </h3>
-                  {quoteData.numberOfPeople <= 10 ? (
+                  {quoteData.numberOfPeople <= quoteData.maxPeopleRegularRate ? (
                     <div className="flex justify-between items-center">
                       <span className="text-sm">
                         {quoteData.numberOfPeople} personnes × {quoteData.postProdRateUnder10}€ HT
@@ -314,12 +353,12 @@ export function QuoteCalculator() {
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
-                        <span>10 premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
-                        <span>{10 * quoteData.postProdRateUnder10}€ HT</span>
+                        <span>{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
+                        <span>{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
-                        <span>{quoteData.numberOfPeople - 10} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
-                        <span>{(quoteData.numberOfPeople - 10) * quoteData.postProdRateOver10}€ HT</span>
+                        <span>{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
+                        <span>{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between items-center">
@@ -335,21 +374,15 @@ export function QuoteCalculator() {
 
                 <Separator />
 
-                {/* Subtotal */}
-                <div className="flex justify-between items-center text-lg">
-                  <span className="font-semibold">Sous-total HT</span>
-                  <span className="font-bold">{quote.subtotal}€</span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">TVA (20%)</span>
-                  <span className="text-muted-foreground">{quote.tva.toFixed(2)}€</span>
-                </div>
-
+                {/* Total */}
                 <div className="flex justify-between items-center text-xl font-bold text-primary bg-primary/10 p-3 rounded-lg">
-                  <span>Total TTC</span>
-                  <span>{quote.totalTTC.toFixed(2)}€</span>
+                  <span>Total HT</span>
+                  <span>{quote.total.toFixed(2)}€</span>
                 </div>
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Non assujetti à la TVA
+                </p>
 
               </div>
             </CardContent>
