@@ -3,6 +3,7 @@ import { HomePage } from "./components/HomePage";
 import { PhotoGallery } from "./components/PhotoGallery";
 import { FavoritesPage } from "./components/FavoritesPage";
 import { AdminPanel } from "./components/AdminPanel";
+import { QuoteCalculator } from "./components/QuoteCalculator";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toaster } from "./components/ui/sonner";
 
@@ -104,6 +105,11 @@ const router = {
   // Parse admin route
   isAdminRoute: (route: string) => {
     return route === '/admin';
+  },
+
+  // Parse quote calculator route
+  isQuoteCalculatorRoute: (route: string) => {
+    return route === '/admin/quote-calculator';
   },
 
   // Parse favorites route  
@@ -233,12 +239,14 @@ export default function App() {
   const galleryId = router.getGalleryId(currentRoute);
   const favoritesGalleryId = router.getFavoritesGalleryId(currentRoute);
   const isAdmin = router.isAdminRoute(currentRoute);
-  
-  console.log('🎯 Rendering route:', { 
-    currentRoute, 
-    galleryId, 
-    favoritesGalleryId, 
-    isAdmin 
+  const isQuoteCalculator = router.isQuoteCalculatorRoute(currentRoute);
+
+  console.log('🎯 Rendering route:', {
+    currentRoute,
+    galleryId,
+    favoritesGalleryId,
+    isAdmin,
+    isQuoteCalculator
   });
 
   return (
@@ -249,6 +257,8 @@ export default function App() {
           <PhotoGallery galleryId={galleryId} />
         ) : favoritesGalleryId ? (
           <FavoritesPage galleryId={favoritesGalleryId} />
+        ) : isQuoteCalculator ? (
+          <QuoteCalculator />
         ) : isAdmin ? (
           <AdminPanel />
         ) : (

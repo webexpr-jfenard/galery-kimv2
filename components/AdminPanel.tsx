@@ -558,8 +558,16 @@ export function AdminPanel() {
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Config Email Button - Moved here for quick access */}
-        <div className="mb-6 flex justify-end">
+        {/* Quick Access Buttons */}
+        <div className="mb-6 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => window.appRouter.navigateTo('/admin/quote-calculator')}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Calculateur de Devis
+          </Button>
           <Button
             variant="outline"
             onClick={() => setShowEmailConfig(true)}
