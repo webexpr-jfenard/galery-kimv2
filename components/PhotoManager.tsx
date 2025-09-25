@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
-import { 
+import {
   ArrowLeft,
   Search,
   Trash2,
@@ -20,7 +20,8 @@ import {
   Star,
   GripVertical,
   Settings2,
-  Save
+  Save,
+  FolderInput
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -45,6 +46,9 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [showFolderOrganizer, setShowFolderOrganizer] = useState(false);
   const [orderedSubfolders, setOrderedSubfolders] = useState<string[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showFolderReassignModal, setShowFolderReassignModal] = useState(false);
+  const [targetSubfolder, setTargetSubfolder] = useState<string | undefined>();
+  const [isReassigning, setIsReassigning] = useState(false);
 
   useEffect(() => {
     loadGalleryData();
@@ -288,6 +292,42 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     setOrderedSubfolders([...subfolders].sort());
     localStorage.removeItem(`gallery-${galleryId}-subfolder-order`);
     toast.success('Ordre alphabétique rétabli');
+  };
+
+  const handleReassignToFolder = async () => {
+    if (selectedPhotos.size === 0) return;
+
+    try {
+      setIsReassigning(true);
+      const photoIds = Array.from(selectedPhotos);
+
+      const result = await galleryService.reassignPhotosToSubfolder(
+        galleryId,
+        photoIds,
+        targetSubfolder
+      );
+
+      if (result.successful.length > 0) {
+        const targetName = targetSubfolder || 'la racine';
+        toast.success(`${result.successful.length} photo(s) déplacée(s) vers ${targetName}`);
+      }
+
+      if (result.failed.length > 0) {
+        toast.error(`Échec du déplacement de ${result.failed.length} photo(s)`);
+      }
+
+      // Refresh photos and clear selection
+      setSelectedPhotos(new Set());
+      setShowFolderReassignModal(false);
+      setTargetSubfolder(undefined);
+      await loadGalleryData();
+
+    } catch (error) {
+      console.error('Error reassigning photos:', error);
+      toast.error('Échec du déplacement des photos');
+    } finally {
+      setIsReassigning(false);
+    }
   };
 
   if (isLoading) {
@@ -537,15 +577,25 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 </div>
                 
                 {selectedPhotos.size > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleDeleteSelected}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Selected ({selectedPhotos.size})
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFolderReassignModal(true)}
+                    >
+                      <FolderInput className="h-4 w-4 mr-2" />
+                      Changer de dossier ({selectedPhotos.size})
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Selected ({selectedPhotos.size})
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -734,6 +784,99 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
         )}
         </div>
       </div>
+
+      {/* Folder Reassign Modal */}
+      {showFolderReassignModal && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFolderReassignModal(false);
+            }
+          }}
+        >
+          <div className="bg-background rounded-lg shadow-2xl border p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <FolderInput className="h-5 w-5 text-primary" />
+                Changer de dossier
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFolderReassignModal(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground">
+                Sélectionnez le dossier de destination pour les {selectedPhotos.size} photo(s) sélectionnée(s).
+              </p>
+            </div>
+
+            <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
+              <Button
+                variant="outline"
+                className={`w-full justify-start ${targetSubfolder === undefined ? 'bg-primary text-primary-foreground' : ''}`}
+                onClick={() => setTargetSubfolder(undefined)}
+              >
+                <Folder className="h-4 w-4 mr-2" />
+                Racine de la galerie
+              </Button>
+              {orderedSubfolders.map((subfolder) => (
+                <Button
+                  key={subfolder}
+                  variant="outline"
+                  className={`w-full justify-start ${targetSubfolder === subfolder ? 'bg-primary text-primary-foreground' : ''}`}
+                  onClick={() => setTargetSubfolder(subfolder)}
+                >
+                  <Folder className="h-4 w-4 mr-2" />
+                  {subfolder}
+                  {selectedSubfolder === subfolder && (
+                    <Badge variant="secondary" className="ml-auto">
+                      Dossier actuel
+                    </Badge>
+                  )}
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowFolderReassignModal(false);
+                  setTargetSubfolder(undefined);
+                }}
+                disabled={isReassigning}
+              >
+                Annuler
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleReassignToFolder}
+                disabled={isReassigning || (targetSubfolder === selectedSubfolder && selectedSubfolder !== undefined)}
+              >
+                {isReassigning ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Déplacement...
+                  </>
+                ) : (
+                  <>
+                    <FolderInput className="h-4 w-4 mr-2" />
+                    Déplacer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

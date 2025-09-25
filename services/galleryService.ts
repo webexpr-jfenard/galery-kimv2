@@ -1314,6 +1314,72 @@ class GalleryService {
     }
   }
 
+  // Reassign photos to a different subfolder
+  async reassignPhotosToSubfolder(galleryId: string, photoIds: string[], targetSubfolder: string | undefined): Promise<{
+    successful: string[];
+    failed: string[];
+  }> {
+    const successful: string[] = [];
+    const failed: string[] = [];
+
+    try {
+      const gallery = await this.getGallery(galleryId);
+      if (!gallery) {
+        console.error('Gallery not found');
+        return { successful, failed: photoIds };
+      }
+
+      // Process each photo
+      for (const photoId of photoIds) {
+        try {
+          // Update in Supabase database if available
+          if (supabaseService.isReady()) {
+            const health = await this.checkDatabaseHealth();
+            if (health.tablesExist) {
+              const { error } = await supabaseService.client
+                .from(this.PHOTOS_TABLE)
+                .update({
+                  subfolder: targetSubfolder || null,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', photoId)
+                .eq('gallery_id', galleryId);
+
+              if (error) {
+                console.error(`Failed to update photo ${photoId} in database:`, error);
+                failed.push(photoId);
+                continue;
+              }
+            }
+          }
+
+          // Update in local cache
+          const cacheKey = `${this.PHOTOS_KEY}-${galleryId}`;
+          const stored = localStorage.getItem(cacheKey);
+          if (stored) {
+            const photos = JSON.parse(stored);
+            const photoIndex = photos.findIndex((p: Photo) => p.id === photoId);
+            if (photoIndex !== -1) {
+              photos[photoIndex].subfolder = targetSubfolder;
+              localStorage.setItem(cacheKey, JSON.stringify(photos));
+            }
+          }
+
+          successful.push(photoId);
+          console.log(`✅ Photo ${photoId} reassigned to subfolder: ${targetSubfolder || 'root'}`);
+        } catch (error) {
+          console.error(`Error reassigning photo ${photoId}:`, error);
+          failed.push(photoId);
+        }
+      }
+
+      return { successful, failed };
+    } catch (error) {
+      console.error('Error reassigning photos:', error);
+      return { successful, failed: photoIds };
+    }
+  }
+
   // Utility methods
   private generateId(): string {
     return Math.random().toString(36).substring(2, 9);
