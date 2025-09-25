@@ -53,10 +53,11 @@ export function QuoteCalculator() {
       shootingCost = halfDayRate;
       shootingDescription = '1 demi-journée';
     } else {
-      // Compare full day vs multiple half days
+      // Calculate multiple half days cost
       const halfDaySessions = Math.ceil(numberOfPeople / maxPeopleHalfDay);
       const multipleHalfDaysCost = halfDaySessions * halfDayRate;
 
+      // Compare all options: full day vs multiple half days
       if (fullDayRate < multipleHalfDaysCost) {
         shootingCost = fullDayRate;
         shootingDescription = '1 journée complète';
@@ -173,30 +174,32 @@ export function QuoteCalculator() {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Demi-journée</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         step="0.01"
                         value={quoteData.halfDayRate}
                         onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-12"
+                        placeholder="0.00"
                       />
-                      <span className="text-xs text-muted-foreground">€ HT</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Journée complète</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         step="0.01"
                         value={quoteData.fullDayRate}
                         onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-12"
+                        placeholder="0.00"
                       />
-                      <span className="text-xs text-muted-foreground">€ HT</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
                     </div>
                   </div>
                 </div>
@@ -211,30 +214,32 @@ export function QuoteCalculator() {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Tarif normal</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         step="0.01"
                         value={quoteData.postProdRateUnder10}
                         onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-16"
+                        placeholder="0.00"
                       />
-                      <span className="text-xs text-muted-foreground">€/pers</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Tarif dégressif</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         step="0.01"
                         value={quoteData.postProdRateOver10}
                         onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-16"
+                        placeholder="0.00"
                       />
-                      <span className="text-xs text-muted-foreground">€/pers</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
                     </div>
                   </div>
                 </div>
@@ -249,30 +254,32 @@ export function QuoteCalculator() {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Seuil demi-journée</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         min="1"
                         value={quoteData.maxPeopleHalfDay}
                         onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-12"
+                        placeholder="10"
                       />
-                      <span className="text-xs text-muted-foreground">pers</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Seuil tarif normal</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <Input
                         type="number"
                         min="1"
                         value={quoteData.maxPeopleRegularRate}
                         onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
                         disabled={!isEditingRates}
-                        className="flex-1"
+                        className="pr-12"
+                        placeholder="10"
                       />
-                      <span className="text-xs text-muted-foreground">pers</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
                     </div>
                   </div>
                 </div>
@@ -299,7 +306,7 @@ export function QuoteCalculator() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
           {/* Configuration Panel */}
           <Card>
@@ -335,13 +342,13 @@ export function QuoteCalculator() {
           </Card>
 
           {/* Quote Display */}
-          <Card className="bg-gradient-to-br from-emerald-50 to-blue-50 border-emerald-200">
-            <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-t-lg">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Euro className="h-5 w-5" />
+                <Euro className="h-5 w-5 text-green-600" />
                 Devis Calculé
               </CardTitle>
-              <CardDescription className="text-emerald-100">
+              <CardDescription>
                 Calcul automatique basé sur {quoteData.numberOfPeople} personne{quoteData.numberOfPeople > 1 ? 's' : ''}
               </CardDescription>
             </CardHeader>
@@ -349,52 +356,52 @@ export function QuoteCalculator() {
 
               {/* Quote Details */}
               <div className="space-y-4">
-                <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-4 rounded-lg border border-blue-200">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Prestation Shooting
                   </h3>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-blue-700">
+                    <span className="text-sm">
                       {quote.shootingDescription}
                     </span>
-                    <span className="font-bold text-blue-800 bg-blue-200 px-2 py-1 rounded">{quote.shootingCost}€ HT</span>
+                    <span className="font-medium">{quote.shootingCost}€ HT</span>
                   </div>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Installation + prises de vue
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-lg border border-purple-200">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2 text-purple-800">
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <Edit className="h-4 w-4" />
                     Post-production
                   </h3>
                   {quoteData.numberOfPeople <= quoteData.maxPeopleRegularRate ? (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-purple-700">
+                      <span className="text-sm">
                         {quoteData.numberOfPeople} personnes × {quoteData.postProdRateUnder10}€ HT
                       </span>
-                      <span className="font-bold text-purple-800 bg-purple-200 px-2 py-1 rounded">{quote.postProdCost}€ HT</span>
+                      <span className="font-medium">{quote.postProdCost}€ HT</span>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
-                        <span className="text-purple-700">{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
-                        <span className="text-purple-800">{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
+                        <span>{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
+                        <span>{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
-                        <span className="text-purple-700">{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
-                        <span className="text-purple-800">{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
+                        <span>{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
+                        <span>{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
                       </div>
-                      <Separator className="bg-purple-200" />
+                      <Separator />
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-purple-800">Total Post-production</span>
-                        <span className="font-bold text-purple-800 bg-purple-200 px-2 py-1 rounded">{quote.postProdCost}€ HT</span>
+                        <span className="font-medium">Total Post-production</span>
+                        <span className="font-medium">{quote.postProdCost}€ HT</span>
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-purple-600 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Retouche professionnelle (lumière, contraste, peau, détails)
                   </p>
                 </div>
@@ -402,16 +409,14 @@ export function QuoteCalculator() {
                 <Separator />
 
                 {/* Total */}
-                <div className="flex justify-between items-center text-2xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-500 p-4 rounded-lg shadow-lg">
+                <div className="flex justify-between items-center text-xl font-bold text-green-800 bg-green-50 border border-green-200 p-4 rounded-lg">
                   <span>Total HT</span>
-                  <span className="bg-white/20 px-3 py-1 rounded backdrop-blur">{quote.total.toFixed(2)}€</span>
+                  <span>{quote.total.toFixed(2)}€</span>
                 </div>
 
-                <div className="text-center">
-                  <p className="text-sm text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full inline-block font-medium">
-                    💼 Non assujetti à la TVA
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Non assujetti à la TVA
+                </p>
 
               </div>
             </CardContent>
