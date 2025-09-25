@@ -132,62 +132,6 @@ export function QuoteCalculator() {
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Settings Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              Paramètres Structurels
-            </CardTitle>
-            <CardDescription>
-              Configuration des seuils de personnes
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Seuil demi-journée
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={quoteData.maxPeopleHalfDay}
-                    onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
-                    className="flex-1"
-                  />
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">personnes max</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Au-delà, passage en journée complète ou multi-séances
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Seuil tarif normal
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={quoteData.maxPeopleRegularRate}
-                    onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
-                    className="flex-1"
-                  />
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">personnes max</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Au-delà, tarif dégressif pour la post-production
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Unit Rates Section */}
         <Card className="mb-8">
           <CardHeader>
@@ -219,76 +163,136 @@ export function QuoteCalculator() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Demi-journée
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quoteData.halfDayRate}
-                    onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
-                    disabled={!isEditingRates}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">€ HT</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Shooting rates - vertical stack */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Prestations Shooting
+                </h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Demi-journée</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={quoteData.halfDayRate}
+                        onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">€ HT</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Journée complète</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={quoteData.fullDayRate}
+                        onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">€ HT</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-1">
-                  <Camera className="h-3 w-3" />
-                  Journée complète
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quoteData.fullDayRate}
-                    onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
-                    disabled={!isEditingRates}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">€ HT</span>
+              {/* Post-production rates */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                  <Edit className="h-4 w-4" />
+                  Post-production
+                </h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Tarif normal</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={quoteData.postProdRateUnder10}
+                        onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">€/pers</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Tarif dégressif</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={quoteData.postProdRateOver10}
+                        onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">€/pers</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-1">
-                  <Edit className="h-3 w-3" />
-                  Post-prod normal
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quoteData.postProdRateUnder10}
-                    onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
-                    disabled={!isEditingRates}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">€/pers</span>
+              {/* Settings - thresholds */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Seuils
+                </h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Seuil demi-journée</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={quoteData.maxPeopleHalfDay}
+                        onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">pers</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Seuil tarif normal</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={quoteData.maxPeopleRegularRate}
+                        onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">pers</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-1">
-                  <Edit className="h-3 w-3" />
-                  Post-prod dégressif
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={quoteData.postProdRateOver10}
-                    onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
-                    disabled={!isEditingRates}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">€/pers</span>
+              {/* Info column */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Informations
+                </h3>
+                <div className="space-y-3 text-xs text-muted-foreground">
+                  <div className="p-2 bg-muted/30 rounded">
+                    <p className="font-medium mb-1">Demi-journée :</p>
+                    <p>Jusqu'à {quoteData.maxPeopleHalfDay} personnes</p>
+                  </div>
+                  <div className="p-2 bg-muted/30 rounded">
+                    <p className="font-medium mb-1">Tarif dégressif :</p>
+                    <p>À partir de {quoteData.maxPeopleRegularRate + 1} personnes</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -331,66 +335,66 @@ export function QuoteCalculator() {
           </Card>
 
           {/* Quote Display */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-gradient-to-br from-emerald-50 to-blue-50 border-emerald-200">
+            <CardHeader className="bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
-                <Euro className="h-5 w-5 text-green-600" />
+                <Euro className="h-5 w-5" />
                 Devis Calculé
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-emerald-100">
                 Calcul automatique basé sur {quoteData.numberOfPeople} personne{quoteData.numberOfPeople > 1 ? 's' : ''}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
 
               {/* Quote Details */}
               <div className="space-y-4">
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-r from-blue-100 to-indigo-100 p-4 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
                     <Clock className="h-4 w-4" />
                     Prestation Shooting
                   </h3>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm">
+                    <span className="text-sm text-blue-700">
                       {quote.shootingDescription}
                     </span>
-                    <span className="font-medium">{quote.shootingCost}€ HT</span>
+                    <span className="font-bold text-blue-800 bg-blue-200 px-2 py-1 rounded">{quote.shootingCost}€ HT</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-blue-600 mt-1">
                     Installation + prises de vue
                   </p>
                 </div>
 
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-lg border border-purple-200">
+                  <h3 className="font-semibold mb-3 flex items-center gap-2 text-purple-800">
                     <Edit className="h-4 w-4" />
                     Post-production
                   </h3>
                   {quoteData.numberOfPeople <= quoteData.maxPeopleRegularRate ? (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">
+                      <span className="text-sm text-purple-700">
                         {quoteData.numberOfPeople} personnes × {quoteData.postProdRateUnder10}€ HT
                       </span>
-                      <span className="font-medium">{quote.postProdCost}€ HT</span>
+                      <span className="font-bold text-purple-800 bg-purple-200 px-2 py-1 rounded">{quote.postProdCost}€ HT</span>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
-                        <span>{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
-                        <span>{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
+                        <span className="text-purple-700">{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
+                        <span className="text-purple-800">{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
-                        <span>{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
-                        <span>{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
+                        <span className="text-purple-700">{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
+                        <span className="text-purple-800">{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
                       </div>
-                      <Separator />
+                      <Separator className="bg-purple-200" />
                       <div className="flex justify-between items-center">
-                        <span className="font-medium">Total Post-production</span>
-                        <span className="font-medium">{quote.postProdCost}€ HT</span>
+                        <span className="font-medium text-purple-800">Total Post-production</span>
+                        <span className="font-bold text-purple-800 bg-purple-200 px-2 py-1 rounded">{quote.postProdCost}€ HT</span>
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-purple-600 mt-1">
                     Retouche professionnelle (lumière, contraste, peau, détails)
                   </p>
                 </div>
@@ -398,14 +402,16 @@ export function QuoteCalculator() {
                 <Separator />
 
                 {/* Total */}
-                <div className="flex justify-between items-center text-xl font-bold text-primary bg-primary/10 p-3 rounded-lg">
+                <div className="flex justify-between items-center text-2xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-500 p-4 rounded-lg shadow-lg">
                   <span>Total HT</span>
-                  <span>{quote.total.toFixed(2)}€</span>
+                  <span className="bg-white/20 px-3 py-1 rounded backdrop-blur">{quote.total.toFixed(2)}€</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground text-center">
-                  Non assujetti à la TVA
-                </p>
+                <div className="text-center">
+                  <p className="text-sm text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full inline-block font-medium">
+                    💼 Non assujetti à la TVA
+                  </p>
+                </div>
 
               </div>
             </CardContent>
