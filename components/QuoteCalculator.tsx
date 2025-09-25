@@ -127,19 +127,174 @@ export function QuoteCalculator() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditingRates(!isEditingRates)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              {isEditingRates ? 'Verrouiller tarifs' : 'Modifier tarifs'}
-            </Button>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Settings Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              Paramètres Structurels
+            </CardTitle>
+            <CardDescription>
+              Configuration des seuils de personnes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Seuil demi-journée
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={quoteData.maxPeopleHalfDay}
+                    onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">personnes max</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Au-delà, passage en journée complète ou multi-séances
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Seuil tarif normal
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={quoteData.maxPeopleRegularRate}
+                    onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">personnes max</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Au-delà, tarif dégressif pour la post-production
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Unit Rates Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Euro className="h-5 w-5 text-green-600" />
+                  Tarifs Unitaires
+                </CardTitle>
+                <CardDescription>
+                  Configuration des prix de base
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingRates(!isEditingRates)}
+                className="shrink-0"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                {isEditingRates ? 'Verrouiller' : 'Modifier'}
+                {isEditingRates && (
+                  <Badge variant="secondary" className="ml-2">
+                    <Edit className="h-3 w-3 mr-1" />
+                    Actif
+                  </Badge>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Demi-journée
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={quoteData.halfDayRate}
+                    onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
+                    disabled={!isEditingRates}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">€ HT</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <Camera className="h-3 w-3" />
+                  Journée complète
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={quoteData.fullDayRate}
+                    onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
+                    disabled={!isEditingRates}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">€ HT</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <Edit className="h-3 w-3" />
+                  Post-prod normal
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={quoteData.postProdRateUnder10}
+                    onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
+                    disabled={!isEditingRates}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">€/pers</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <Edit className="h-3 w-3" />
+                  Post-prod dégressif
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={quoteData.postProdRateOver10}
+                    onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
+                    disabled={!isEditingRates}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">€/pers</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
           {/* Configuration Panel */}
@@ -150,7 +305,7 @@ export function QuoteCalculator() {
                 Configuration du Devis
               </CardTitle>
               <CardDescription>
-                Saisissez le nombre de personnes et ajustez les tarifs si nécessaire
+                Saisissez le nombre de personnes pour générer le devis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -171,138 +326,6 @@ export function QuoteCalculator() {
                 <p className="text-sm text-muted-foreground">
                   {quoteData.numberOfPeople > quoteData.maxPeopleHalfDay ? `Plus de ${quoteData.maxPeopleHalfDay} personnes : journée complète recommandée` : `Jusqu'à ${quoteData.maxPeopleHalfDay} personnes : demi-journée suffisante`}
                 </p>
-              </div>
-
-              <Separator />
-
-              {/* Rate Configuration */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Tarifs Unitaires</h3>
-                  {isEditingRates && (
-                    <Badge variant="secondary">
-                      <Edit className="h-3 w-3 mr-1" />
-                      Modification activée
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-
-                  {/* Half Day Rate */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Camera className="h-4 w-4" />
-                      Demi-journée (jusqu'à 10 personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.halfDayRate}
-                        onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">€ HT</span>
-                    </div>
-                  </div>
-
-                  {/* Full Day Rate */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Journée complète (plus de 10 personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.fullDayRate}
-                        onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">€ HT</span>
-                    </div>
-                  </div>
-
-                  {/* Post-prod Under 10 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Edit className="h-4 w-4" />
-                      Post-production (jusqu'à 10 personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.postProdRateUnder10}
-                        onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">€ HT / personne</span>
-                    </div>
-                  </div>
-
-                  {/* Post-prod Over threshold */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Edit className="h-4 w-4" />
-                      Post-production (au-delà de {quoteData.maxPeopleRegularRate} personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.postProdRateOver10}
-                        onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">€ HT / personne (tarif dégressif)</span>
-                    </div>
-                  </div>
-
-                  {/* Settings Section */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Seuil demi-journée (nb max personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={quoteData.maxPeopleHalfDay}
-                        onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">personnes</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Seuil tarif normal post-prod
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={quoteData.maxPeopleRegularRate}
-                        onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">personnes</span>
-                    </div>
-                  </div>
-
-                </div>
               </div>
             </CardContent>
           </Card>
