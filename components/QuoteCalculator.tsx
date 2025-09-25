@@ -13,7 +13,9 @@ import {
   Edit,
   Clock,
   Euro,
-  Settings
+  Settings,
+  Copy,
+  Check
 } from "lucide-react";
 
 interface QuoteData {
@@ -40,6 +42,7 @@ export function QuoteCalculator() {
   });
 
   const [isEditingRates, setIsEditingRates] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Calculate quote based on number of people
   const calculateQuote = () => {
@@ -122,6 +125,60 @@ export function QuoteCalculator() {
   const handleRateChange = (field: keyof QuoteData, value: string) => {
     const num = parseFloat(value) || 0;
     setQuoteData(prev => ({ ...prev, [field]: Math.max(0, num) }));
+  };
+
+  // Generate markdown content for the quote
+  const generateMarkdownQuote = () => {
+    const { numberOfPeople } = quoteData;
+    const quote = calculateQuote();
+
+    let markdown = `# Devis Photo\n\n`;
+    markdown += `**Nombre de personnes :** ${numberOfPeople}\n\n`;
+    markdown += `## Détail des prestations\n\n`;
+    markdown += `| Prestation | Détail | Prix HT |\n`;
+    markdown += `|------------|--------|---------|\n`;
+
+    // Shooting line
+    markdown += `| **Shooting** | ${quote.shootingDescription} | ${quote.shootingCost}€ HT |\n`;
+
+    // Post-production details
+    if (numberOfPeople <= quoteData.maxPeopleRegularRate) {
+      markdown += `| **Post-production** | ${numberOfPeople} personnes × ${quoteData.postProdRateUnder10}€ HT | ${quote.postProdCost}€ HT |\n`;
+    } else {
+      const regularCost = quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10;
+      const additionalCost = (numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10;
+      markdown += `| **Post-production** | ${quoteData.maxPeopleRegularRate} premières × ${quoteData.postProdRateUnder10}€ + ${numberOfPeople - quoteData.maxPeopleRegularRate} suivantes × ${quoteData.postProdRateOver10}€ | ${quote.postProdCost}€ HT |\n`;
+    }
+
+    markdown += `| | | |\n`;
+    markdown += `| **TOTAL HT** | | **${quote.total.toFixed(2)}€** |\n\n`;
+    markdown += `*Non assujetti à la TVA*\n\n`;
+    markdown += `---\n\n`;
+    markdown += `**Détail post-production :** Retouche professionnelle (lumière, contraste, peau, détails)\n`;
+    markdown += `**Installation :** Matériel photo professionnel + éclairage`;
+
+    return markdown;
+  };
+
+  // Copy to clipboard function
+  const copyToClipboard = async () => {
+    try {
+      const markdownContent = generateMarkdownQuote();
+      await navigator.clipboard.writeText(markdownContent);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error('Erreur lors de la copie:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = generateMarkdownQuote();
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
   };
 
   return (
@@ -440,6 +497,29 @@ export function QuoteCalculator() {
                 <p className="text-sm text-muted-foreground text-center">
                   Non assujetti à la TVA
                 </p>
+
+                {/* Copy to Markdown Button */}
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-2 hover:bg-green-50 hover:border-green-200"
+                    disabled={isCopied}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-600" />
+                        Copié !
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copier en Markdown
+                      </>
+                    )}
+                  </Button>
+                </div>
 
               </div>
             </CardContent>
