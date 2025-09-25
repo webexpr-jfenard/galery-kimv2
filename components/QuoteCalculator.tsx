@@ -14,8 +14,13 @@ import {
   Clock,
   Euro,
   Settings,
+  MapPin,
+  Plus,
+  Minus,
+  X,
+  Zap,
   Copy,
-  Check
+  BarChart3
 } from "lucide-react";
 
 interface QuoteData {
@@ -27,9 +32,54 @@ interface QuoteData {
   // Settings
   maxPeopleHalfDay: number;
   maxPeopleRegularRate: number;
+  // Travel
+  travelZone: 'local' | 'near' | 'far' | 'very_far';
+  // Additional options
+  additionalOptions: AdditionalOption[];
+}
+
+interface AdditionalOption {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  isPredefined: boolean;
+}
+
+interface TravelZone {
+  id: 'local' | 'near' | 'far' | 'very_far';
+  name: string;
+  description: string;
+  price: number;
+}
+
+interface QuoteComparison {
+  id: string;
+  name: string;
+  data: QuoteData;
 }
 
 export function QuoteCalculator() {
+  // Travel zones configuration
+  const travelZones: TravelZone[] = [
+    { id: 'local', name: 'Local', description: '0-20 km', price: 0 },
+    { id: 'near', name: 'Proche', description: '20-50 km', price: 30 },
+    { id: 'far', name: 'Éloigné', description: '50-100 km', price: 60 },
+    { id: 'very_far', name: 'Très éloigné', description: '100+ km', price: 120 }
+  ];
+
+  // Predefined equipment options
+  const predefinedOptions = [
+    { name: 'Fond photo professionnel', price: 50 },
+    { name: 'Flash additionnel', price: 30 },
+    { name: 'Réflecteur 5-en-1', price: 20 },
+    { name: 'Trépied professionnel', price: 25 },
+    { name: 'Objectif 85mm portrait', price: 40 },
+    { name: 'Diffuseur softbox', price: 35 },
+    { name: 'Drone (prise aérienne)', price: 150 },
+    { name: 'Éclairage continu LED', price: 60 }
+  ];
+
   const [quoteData, setQuoteData] = useState<QuoteData>({
     halfDayRate: 500,
     fullDayRate: 800,
@@ -38,15 +88,24 @@ export function QuoteCalculator() {
     numberOfPeople: 10,
     // Settings
     maxPeopleHalfDay: 10,
-    maxPeopleRegularRate: 10
+    maxPeopleRegularRate: 10,
+    // Travel
+    travelZone: 'local',
+    // Additional options
+    additionalOptions: []
   });
 
   const [isEditingRates, setIsEditingRates] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+  const [showQuickCalc, setShowQuickCalc] = useState(false);
+  const [quickPeople, setQuickPeople] = useState(10);
+  const [comparisons, setComparisons] = useState<QuoteComparison[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [newOptionName, setNewOptionName] = useState('');
+  const [newOptionPrice, setNewOptionPrice] = useState('');
 
   // Calculate quote based on number of people
-  const calculateQuote = () => {
-    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = quoteData;
+  const calculateQuote = (data = quoteData) => {
+    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate, travelZone, additionalOptions } = data;
 
     // Calculate shooting cost - use configurable threshold with mixed full/half days
     let shootingCost = 0;
@@ -105,13 +164,26 @@ export function QuoteCalculator() {
       postProdCost += additionalPeople * postProdRateOver10;
     }
 
-    const total = shootingCost + postProdCost;
+    // Calculate travel cost
+    const selectedTravelZone = travelZones.find(zone => zone.id === travelZone);
+    const travelCost = selectedTravelZone ? selectedTravelZone.price : 0;
+
+    // Calculate additional options cost
+    const additionalOptionsCost = additionalOptions.reduce((sum, option) => {
+      return sum + (option.price * option.quantity);
+    }, 0);
+
+    const subtotal = shootingCost + postProdCost + travelCost + additionalOptionsCost;
 
     return {
       shootingCost,
       shootingDescription,
       postProdCost,
-      total
+      travelCost,
+      travelDescription: selectedTravelZone ? `${selectedTravelZone.name} (${selectedTravelZone.description})` : 'Local',
+      additionalOptionsCost,
+      subtotal,
+      total: subtotal
     };
   };
 
@@ -127,59 +199,80 @@ export function QuoteCalculator() {
     setQuoteData(prev => ({ ...prev, [field]: Math.max(0, num) }));
   };
 
-  // Generate markdown content for the quote
-  const generateMarkdownQuote = () => {
-    const { numberOfPeople } = quoteData;
-    const quote = calculateQuote();
-
-    let markdown = `# Devis Photo\n\n`;
-    markdown += `**Nombre de personnes :** ${numberOfPeople}\n\n`;
-    markdown += `## Détail des prestations\n\n`;
-    markdown += `| Prestation | Détail | Prix HT |\n`;
-    markdown += `|------------|--------|---------|\n`;
-
-    // Shooting line
-    markdown += `| **Shooting** | ${quote.shootingDescription} | ${quote.shootingCost}€ HT |\n`;
-
-    // Post-production details
-    if (numberOfPeople <= quoteData.maxPeopleRegularRate) {
-      markdown += `| **Post-production** | ${numberOfPeople} personnes × ${quoteData.postProdRateUnder10}€ HT | ${quote.postProdCost}€ HT |\n`;
-    } else {
-      const regularCost = quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10;
-      const additionalCost = (numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10;
-      markdown += `| **Post-production** | ${quoteData.maxPeopleRegularRate} premières × ${quoteData.postProdRateUnder10}€ + ${numberOfPeople - quoteData.maxPeopleRegularRate} suivantes × ${quoteData.postProdRateOver10}€ | ${quote.postProdCost}€ HT |\n`;
-    }
-
-    markdown += `| | | |\n`;
-    markdown += `| **TOTAL HT** | | **${quote.total.toFixed(2)}€** |\n\n`;
-    markdown += `*Non assujetti à la TVA*\n\n`;
-    markdown += `---\n\n`;
-    markdown += `**Détail post-production :** Retouche professionnelle (lumière, contraste, peau, détails)\n`;
-    markdown += `**Installation :** Matériel photo professionnel + éclairage`;
-
-    return markdown;
+  // Quick calculator functions
+  const calculateQuickQuote = () => {
+    const quickData: QuoteData = {
+      ...quoteData,
+      numberOfPeople: quickPeople
+    };
+    return calculateQuote(quickData);
   };
 
-  // Copy to clipboard function
-  const copyToClipboard = async () => {
-    try {
-      const markdownContent = generateMarkdownQuote();
-      await navigator.clipboard.writeText(markdownContent);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
-      console.error('Erreur lors de la copie:', error);
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = generateMarkdownQuote();
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
+  // Additional options functions
+  const addPredefinedOption = (optionName: string, optionPrice: number) => {
+    const newOption: AdditionalOption = {
+      id: Date.now().toString(),
+      name: optionName,
+      price: optionPrice,
+      quantity: 1,
+      isPredefined: true
+    };
+    setQuoteData(prev => ({
+      ...prev,
+      additionalOptions: [...prev.additionalOptions, newOption]
+    }));
   };
+
+  const addCustomOption = () => {
+    if (!newOptionName.trim() || !newOptionPrice.trim()) return;
+
+    const newOption: AdditionalOption = {
+      id: Date.now().toString(),
+      name: newOptionName.trim(),
+      price: parseFloat(newOptionPrice) || 0,
+      quantity: 1,
+      isPredefined: false
+    };
+
+    setQuoteData(prev => ({
+      ...prev,
+      additionalOptions: [...prev.additionalOptions, newOption]
+    }));
+
+    setNewOptionName('');
+    setNewOptionPrice('');
+  };
+
+  const updateOptionQuantity = (optionId: string, quantity: number) => {
+    setQuoteData(prev => ({
+      ...prev,
+      additionalOptions: prev.additionalOptions.map(option =>
+        option.id === optionId ? { ...option, quantity: Math.max(0, quantity) } : option
+      )
+    }));
+  };
+
+  const removeOption = (optionId: string) => {
+    setQuoteData(prev => ({
+      ...prev,
+      additionalOptions: prev.additionalOptions.filter(option => option.id !== optionId)
+    }));
+  };
+
+  // Comparison functions
+  const addToComparison = () => {
+    const newComparison: QuoteComparison = {
+      id: Date.now().toString(),
+      name: `Devis ${comparisons.length + 1}`,
+      data: { ...quoteData }
+    };
+    setComparisons(prev => [...prev, newComparison]);
+  };
+
+  const removeFromComparison = (comparisonId: string) => {
+    setComparisons(prev => prev.filter(comp => comp.id !== comparisonId));
+  };
+
 
   return (
     <div className="min-h-screen bg-background-light">
@@ -204,13 +297,73 @@ export function QuoteCalculator() {
                   Calculateur de Devis
                 </h1>
                 <p className="text-muted-foreground">
-                  Génération automatique de devis photo selon le nombre de participants
+                  Génération automatique de devis photo avec options avancées
                 </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQuickCalc(!showQuickCalc)}
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Calcul rapide
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowComparison(!showComparison)}
+                className={showComparison ? 'bg-blue-50' : ''}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Comparaison
+                {comparisons.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{comparisons.length}</Badge>
+                )}
+              </Button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Quick Calculator Widget */}
+      {showQuickCalc && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center gap-4 justify-center">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-600" />
+                <Label className="font-medium">Calcul rapide:</Label>
+              </div>
+              <Input
+                type="number"
+                min="1"
+                value={quickPeople}
+                onChange={(e) => setQuickPeople(parseInt(e.target.value) || 1)}
+                className="w-20"
+                placeholder="10"
+              />
+              <span className="text-sm text-muted-foreground">personnes</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-amber-700">
+                  {calculateQuickQuote().total.toFixed(2)}€ HT
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setQuoteData(prev => ({ ...prev, numberOfPeople: quickPeople }));
+                    setShowQuickCalc(false);
+                  }}
+                >
+                  Utiliser
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Unit Rates Section */}
@@ -386,17 +539,17 @@ export function QuoteCalculator() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
           {/* Configuration Panel */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                Configuration du Devis
+                Configuration de Base
               </CardTitle>
               <CardDescription>
-                Saisissez le nombre de personnes pour générer le devis
+                Paramètres principaux du devis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -418,19 +571,159 @@ export function QuoteCalculator() {
                   {quoteData.numberOfPeople > quoteData.maxPeopleHalfDay ? `Plus de ${quoteData.maxPeopleHalfDay} personnes : journée complète recommandée` : `Jusqu'à ${quoteData.maxPeopleHalfDay} personnes : demi-journée suffisante`}
                 </p>
               </div>
+
+              {/* Travel Zone */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Zone de déplacement
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {travelZones.map((zone) => (
+                    <Button
+                      key={zone.id}
+                      variant={quoteData.travelZone === zone.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setQuoteData(prev => ({ ...prev, travelZone: zone.id }))}
+                      className="h-auto p-3 flex flex-col items-start"
+                    >
+                      <div className="font-medium">{zone.name}</div>
+                      <div className="text-xs opacity-70">{zone.description}</div>
+                      <div className="text-xs font-bold">{zone.price === 0 ? 'Gratuit' : `${zone.price}€`}</div>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Additional Options Panel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-primary" />
+                Options Supplémentaires
+              </CardTitle>
+              <CardDescription>
+                Matériel et services additionnels
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+
+              {/* Current Options */}
+              {quoteData.additionalOptions.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Options ajoutées :</h4>
+                  {quoteData.additionalOptions.map((option) => (
+                    <div key={option.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{option.name}</div>
+                        <div className="text-xs text-muted-foreground">{option.price}€ × {option.quantity}</div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateOptionQuantity(option.id, option.quantity - 1)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-sm w-8 text-center">{option.quantity}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => updateOptionQuantity(option.id, option.quantity + 1)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeOption(option.id)}
+                          className="h-6 w-6 p-0 text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Predefined Options */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Matériel disponible :</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {predefinedOptions.map((option) => (
+                    <Button
+                      key={option.name}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addPredefinedOption(option.name, option.price)}
+                      className="h-auto p-2 flex justify-between"
+                      disabled={quoteData.additionalOptions.some(added => added.name === option.name)}
+                    >
+                      <span className="text-xs">{option.name}</span>
+                      <span className="text-xs font-bold">{option.price}€</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Option */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Option personnalisée :</h4>
+                <Input
+                  placeholder="Nom de l'option"
+                  value={newOptionName}
+                  onChange={(e) => setNewOptionName(e.target.value)}
+                  className="text-sm"
+                />
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Prix €"
+                    value={newOptionPrice}
+                    onChange={(e) => setNewOptionPrice(e.target.value)}
+                    className="text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addCustomOption}
+                    disabled={!newOptionName.trim() || !newOptionPrice.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           {/* Quote Display */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Euro className="h-5 w-5 text-green-600" />
-                Devis Calculé
-              </CardTitle>
-              <CardDescription>
-                Calcul automatique basé sur {quoteData.numberOfPeople} personne{quoteData.numberOfPeople > 1 ? 's' : ''}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Euro className="h-5 w-5 text-green-600" />
+                    Devis Calculé
+                  </CardTitle>
+                  <CardDescription>
+                    Calcul pour {quoteData.numberOfPeople} personne{quoteData.numberOfPeople > 1 ? 's' : ''}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addToComparison}
+                  className="shrink-0"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Comparer
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
 
@@ -486,6 +779,45 @@ export function QuoteCalculator() {
                   </p>
                 </div>
 
+                {/* Travel Cost */}
+                {quote.travelCost > 0 && (
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Frais de déplacement
+                    </h3>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        {quote.travelDescription}
+                      </span>
+                      <span className="font-medium">{quote.travelCost}€ HT</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Options */}
+                {quote.additionalOptionsCost > 0 && (
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      Options supplémentaires
+                    </h3>
+                    <div className="space-y-1">
+                      {quoteData.additionalOptions.map((option) => (
+                        <div key={option.id} className="flex justify-between items-center text-sm">
+                          <span>{option.name} {option.quantity > 1 ? `× ${option.quantity}` : ''}</span>
+                          <span>{option.price * option.quantity}€ HT</span>
+                        </div>
+                      ))}
+                      <Separator />
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Total options</span>
+                        <span className="font-medium">{quote.additionalOptionsCost}€ HT</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <Separator />
 
                 {/* Total */}
@@ -498,33 +830,149 @@ export function QuoteCalculator() {
                   Non assujetti à la TVA
                 </p>
 
-                {/* Copy to Markdown Button */}
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="flex items-center gap-2 hover:bg-green-50 hover:border-green-200"
-                    disabled={isCopied}
-                  >
-                    {isCopied ? (
-                      <>
-                        <Check className="h-4 w-4 text-green-600" />
-                        Copié !
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        Copier en Markdown
-                      </>
-                    )}
-                  </Button>
-                </div>
-
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Comparison Section */}
+        {showComparison && comparisons.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                Comparaison des Devis
+              </CardTitle>
+              <CardDescription>
+                Comparez différents scénarios côte à côte
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Current Quote */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-blue-900">Devis Actuel</h3>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                      En cours
+                    </Badge>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Personnes :</span>
+                      <span className="font-medium">{quoteData.numberOfPeople}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Shooting :</span>
+                      <span className="font-medium">{quote.shootingCost}€</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Post-prod :</span>
+                      <span className="font-medium">{quote.postProdCost}€</span>
+                    </div>
+                    {quote.travelCost > 0 && (
+                      <div className="flex justify-between">
+                        <span>Déplacement :</span>
+                        <span className="font-medium">{quote.travelCost}€</span>
+                      </div>
+                    )}
+                    {quote.additionalOptionsCost > 0 && (
+                      <div className="flex justify-between">
+                        <span>Options :</span>
+                        <span className="font-medium">{quote.additionalOptionsCost}€</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-bold text-blue-900">
+                      <span>Total :</span>
+                      <span>{quote.total.toFixed(2)}€</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Saved Comparisons */}
+                {comparisons.slice(0, 2).map((comparison) => {
+                  const comparisonQuote = calculateQuote(comparison.data);
+                  return (
+                    <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFromComparison(comparison.id)}
+                          className="h-6 w-6 p-0 text-gray-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Personnes :</span>
+                          <span className="font-medium">{comparison.data.numberOfPeople}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Shooting :</span>
+                          <span className="font-medium">{comparisonQuote.shootingCost}€</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Post-prod :</span>
+                          <span className="font-medium">{comparisonQuote.postProdCost}€</span>
+                        </div>
+                        {comparisonQuote.travelCost > 0 && (
+                          <div className="flex justify-between">
+                            <span>Déplacement :</span>
+                            <span className="font-medium">{comparisonQuote.travelCost}€</span>
+                          </div>
+                        )}
+                        {comparisonQuote.additionalOptionsCost > 0 && (
+                          <div className="flex justify-between">
+                            <span>Options :</span>
+                            <span className="font-medium">{comparisonQuote.additionalOptionsCost}€</span>
+                          </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold">
+                          <span>Total :</span>
+                          <span className={comparisonQuote.total < quote.total ? 'text-green-700' : comparisonQuote.total > quote.total ? 'text-red-700' : ''}>
+                            {comparisonQuote.total.toFixed(2)}€
+                          </span>
+                        </div>
+                        {comparisonQuote.total !== quote.total && (
+                          <div className="text-xs text-center mt-2">
+                            <span className={comparisonQuote.total < quote.total ? 'text-green-700' : 'text-red-700'}>
+                              {comparisonQuote.total < quote.total ? '-' : '+'}{Math.abs(comparisonQuote.total - quote.total).toFixed(2)}€
+                              ({((Math.abs(comparisonQuote.total - quote.total) / quote.total) * 100).toFixed(1)}%)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {comparisons.length > 2 && (
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {comparisons.length - 2} autre{comparisons.length > 3 ? 's' : ''} comparaison{comparisons.length > 3 ? 's' : ''} disponible{comparisons.length > 3 ? 's' : ''}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setComparisons([])}
+                  className="text-gray-600"
+                >
+                  Vider la comparaison
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
