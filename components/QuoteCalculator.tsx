@@ -13,25 +13,23 @@ import {
   Edit,
   Clock,
   Euro,
-  FileText,
-  Settings,
-  Check
+  Settings
 } from "lucide-react";
 
 interface QuoteData {
   halfDayRate: number;
+  fullDayRate: number;
   postProdRateUnder10: number;
   postProdRateOver10: number;
-  fullPackageRate: number;
   numberOfPeople: number;
 }
 
 export function QuoteCalculator() {
   const [quoteData, setQuoteData] = useState<QuoteData>({
     halfDayRate: 500,
+    fullDayRate: 800,
     postProdRateUnder10: 50,
     postProdRateOver10: 40,
-    fullPackageRate: 1000,
     numberOfPeople: 10
   });
 
@@ -39,11 +37,28 @@ export function QuoteCalculator() {
 
   // Calculate quote based on number of people
   const calculateQuote = () => {
-    const { numberOfPeople, halfDayRate, postProdRateUnder10, postProdRateOver10, fullPackageRate } = quoteData;
+    const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10 } = quoteData;
 
-    // Calculate shooting sessions needed (every 10 people = 1 half-day)
-    const halfDaySessions = Math.ceil(numberOfPeople / 10);
-    const shootingCost = halfDaySessions * halfDayRate;
+    // Calculate shooting cost - if more than 10 people, use full day rate
+    let shootingCost = 0;
+    let shootingDescription = '';
+
+    if (numberOfPeople <= 10) {
+      shootingCost = halfDayRate;
+      shootingDescription = '1 demi-journée';
+    } else {
+      // Compare full day vs multiple half days
+      const halfDaySessions = Math.ceil(numberOfPeople / 10);
+      const multipleHalfDaysCost = halfDaySessions * halfDayRate;
+
+      if (fullDayRate < multipleHalfDaysCost) {
+        shootingCost = fullDayRate;
+        shootingDescription = '1 journée complète';
+      } else {
+        shootingCost = multipleHalfDaysCost;
+        shootingDescription = `${halfDaySessions} demi-journées`;
+      }
+    }
 
     // Calculate post-production cost
     let postProdCost = 0;
@@ -61,20 +76,13 @@ export function QuoteCalculator() {
     const tva = subtotal * 0.20; // 20% TVA
     const totalTTC = subtotal + tva;
 
-    // Check if full package is more advantageous
-    const fullPackageTTC = fullPackageRate * 1.20;
-    const isFullPackageBetter = numberOfPeople <= 10 && fullPackageTTC < totalTTC;
-
     return {
-      halfDaySessions,
       shootingCost,
+      shootingDescription,
       postProdCost,
       subtotal,
       tva,
-      totalTTC,
-      fullPackageRate,
-      fullPackageTTC,
-      isFullPackageBetter
+      totalTTC
     };
   };
 
@@ -159,7 +167,7 @@ export function QuoteCalculator() {
                   className="text-lg"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {quote.halfDaySessions > 1 && `${quote.halfDaySessions} séances nécessaires (1 séance = 10 personnes max)`}
+                  {quoteData.numberOfPeople > 10 ? 'Plus de 10 personnes : journée complète recommandée' : 'Jusqu\'à 10 personnes : demi-journée suffisante'}
                 </p>
               </div>
 
@@ -191,6 +199,25 @@ export function QuoteCalculator() {
                         step="0.01"
                         value={quoteData.halfDayRate}
                         onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
+                        disabled={!isEditingRates}
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground">€ HT</span>
+                    </div>
+                  </div>
+
+                  {/* Full Day Rate */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Journée complète (plus de 10 personnes)
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={quoteData.fullDayRate}
+                        onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
                         disabled={!isEditingRates}
                         className="flex-1"
                       />
@@ -236,24 +263,6 @@ export function QuoteCalculator() {
                     </div>
                   </div>
 
-                  {/* Full Package */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Forfait Complet (jusqu'à 10 personnes)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.fullPackageRate}
-                        onChange={(e) => handleRateChange('fullPackageRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="flex-1"
-                      />
-                      <span className="text-sm text-muted-foreground">€ HT</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -281,13 +290,12 @@ export function QuoteCalculator() {
                   </h3>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">
-                      {quote.halfDaySessions} demi-journée{quote.halfDaySessions > 1 ? 's' : ''}
-                      × {quoteData.halfDayRate}€ HT
+                      {quote.shootingDescription}
                     </span>
                     <span className="font-medium">{quote.shootingCost}€ HT</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Installation + prises de vue (max 10 personnes par séance)
+                    Installation + prises de vue
                   </p>
                 </div>
 
@@ -343,34 +351,6 @@ export function QuoteCalculator() {
                   <span>{quote.totalTTC.toFixed(2)}€</span>
                 </div>
 
-                {/* Full Package Alternative */}
-                {quoteData.numberOfPeople <= 10 && (
-                  <div className={`p-4 rounded-lg border-2 ${quote.isFullPackageBetter ? 'border-green-500 bg-green-50' : 'border-muted bg-muted/30'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      {quote.isFullPackageBetter && <Check className="h-4 w-4 text-green-600" />}
-                      <h4 className="font-semibold">
-                        Forfait Complet Alternative
-                      </h4>
-                      {quote.isFullPackageBetter && (
-                        <Badge className="bg-green-600">
-                          Recommandé
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Shooting + post-production + livraison HD (jusqu'à 10 personnes)
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <span>Forfait complet TTC</span>
-                      <span className="font-bold text-lg">{quote.fullPackageTTC.toFixed(2)}€</span>
-                    </div>
-                    {quote.isFullPackageBetter && (
-                      <p className="text-sm text-green-600 font-medium mt-1">
-                        Économie de {(quote.totalTTC - quote.fullPackageTTC).toFixed(2)}€ TTC
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
