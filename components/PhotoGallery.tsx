@@ -166,7 +166,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       }
     };
 
-    checkScroll();
+    // Use setTimeout to ensure DOM is fully rendered before checking
+    setTimeout(checkScroll, 100);
     window.addEventListener('resize', checkScroll);
     return () => window.removeEventListener('resize', checkScroll);
   }, [showSubfolderFilter, subfolders]);
@@ -680,10 +681,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {showSubfolderFilter && subfolders.length > 0 && (
               <>
                 <div className="h-6 w-px bg-border"></div>
-                <div className="relative flex items-center">
+                <div className="relative flex items-center flex-1">
                   <div
                     ref={scrollContainerRef}
-                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide max-w-[600px] scroll-smooth"
+                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 scroll-smooth"
                     onScroll={(e) => {
                       const target = e.target as HTMLDivElement;
                       const hasMore = target.scrollWidth > target.clientWidth;
@@ -721,13 +722,13 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   {/* Scroll indicator */}
                   {showScrollIndicator && (
                     <div
-                      className="absolute -right-1 bg-gradient-to-l from-background via-background to-transparent pl-8 pr-2"
+                      className="absolute right-0 top-0 bottom-0 flex items-center bg-gradient-to-l from-background via-background/95 to-transparent pl-12 pr-1"
                       onMouseEnter={() => {
                         if (scrollContainerRef.current && !isScrolling) {
                           setIsScrolling(true);
                           scrollIntervalRef.current = setInterval(() => {
                             if (scrollContainerRef.current) {
-                              scrollContainerRef.current.scrollLeft += 3;
+                              scrollContainerRef.current.scrollLeft += 4;
                               const target = scrollContainerRef.current;
                               if (target.scrollLeft + target.clientWidth >= target.scrollWidth - 10) {
                                 if (scrollIntervalRef.current) {
@@ -748,8 +749,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         }
                       }}
                     >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background border shadow-sm hover:shadow-md transition-all cursor-pointer">
-                        <ChevronRight className={`h-4 w-4 text-muted-foreground ${isScrolling ? 'animate-pulse' : ''}`} />
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 hover:border-primary/30 transition-all cursor-pointer">
+                        <ChevronRight className={`h-4 w-4 text-primary ${isScrolling ? 'animate-pulse' : ''}`} />
                       </div>
                     </div>
                   )}
