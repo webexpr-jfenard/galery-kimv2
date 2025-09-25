@@ -45,26 +45,49 @@ export function QuoteCalculator() {
   const calculateQuote = () => {
     const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = quoteData;
 
-    // Calculate shooting cost - use configurable threshold
+    // Calculate shooting cost - use configurable threshold with mixed full/half days
     let shootingCost = 0;
     let shootingDescription = '';
 
     if (numberOfPeople <= maxPeopleHalfDay) {
+      // Simple case: 1 half day
       shootingCost = halfDayRate;
       shootingDescription = '1 demi-journée';
     } else {
-      // Calculate multiple half days cost
-      const halfDaySessions = Math.ceil(numberOfPeople / maxPeopleHalfDay);
-      const multipleHalfDaysCost = halfDaySessions * halfDayRate;
+      // Calculate how many full days we can use
+      const fullDays = Math.floor(numberOfPeople / (maxPeopleHalfDay * 2)); // Each full day = 2 * maxPeopleHalfDay
+      const remainingPeople = numberOfPeople - (fullDays * maxPeopleHalfDay * 2);
 
-      // Compare all options: full day vs multiple half days
-      if (fullDayRate < multipleHalfDaysCost) {
-        shootingCost = fullDayRate;
-        shootingDescription = '1 journée complète';
-      } else {
-        shootingCost = multipleHalfDaysCost;
-        shootingDescription = `${halfDaySessions} demi-journées`;
+      // For remaining people, determine if we need a full day or half days
+      let additionalFullDays = 0;
+      let halfDays = 0;
+
+      if (remainingPeople > 0) {
+        if (remainingPeople <= maxPeopleHalfDay) {
+          // Remaining people fit in 1 half day
+          halfDays = 1;
+        } else {
+          // Remaining people need 1 full day + potentially 1 half day
+          additionalFullDays = 1;
+          const remainingAfterFullDay = remainingPeople - (maxPeopleHalfDay * 2);
+          if (remainingAfterFullDay > 0) {
+            halfDays = 1;
+          }
+        }
       }
+
+      const totalFullDays = fullDays + additionalFullDays;
+      shootingCost = (totalFullDays * fullDayRate) + (halfDays * halfDayRate);
+
+      // Create description
+      const parts = [];
+      if (totalFullDays > 0) {
+        parts.push(`${totalFullDays} journée${totalFullDays > 1 ? 's' : ''} complète${totalFullDays > 1 ? 's' : ''}`);
+      }
+      if (halfDays > 0) {
+        parts.push(`${halfDays} demi-journée`);
+      }
+      shootingDescription = parts.join(' + ');
     }
 
     // Calculate post-production cost - use configurable threshold
