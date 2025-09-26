@@ -59,6 +59,27 @@ export function QuoteCalculator() {
     { id: 'very_far', name: 'Très éloigné', description: '100+ km', price: 120 }
   ];
 
+  // Type colors
+  const getTypeColor = (type: CalculatorType) => {
+    switch (type) {
+      case 'corporate': return 'blue';
+      case 'wedding': return 'rose';
+      case 'reportage': return 'emerald';
+      default: return 'gray';
+    }
+  };
+
+  const getTypeClasses = (type: CalculatorType, variant: 'bg' | 'border' | 'text' | 'button' = 'bg') => {
+    const color = getTypeColor(type);
+    switch (variant) {
+      case 'bg': return `bg-${color}-50`;
+      case 'border': return `border-${color}-200`;
+      case 'text': return `text-${color}-700`;
+      case 'button': return `hover:bg-${color}-50 hover:border-${color}-200`;
+      default: return '';
+    }
+  };
+
   // Calculator type state
   const [calculatorType, setCalculatorType] = useState<CalculatorType>('corporate');
 
@@ -440,12 +461,39 @@ export function QuoteCalculator() {
 
   // Comparison functions
   const addToComparison = () => {
+    const name = prompt('Nom du devis :', `Devis ${comparisons.length + 1} - ${calculatorType}`);
+    if (!name) return;
+
     const newComparison: QuoteComparison = {
       id: Date.now().toString(),
-      name: `Devis ${comparisons.length + 1}`,
+      name,
       data: { type: calculatorType, ...currentData }
     };
     setComparisons(prev => [...prev, newComparison]);
+  };
+
+  // Load comparison configuration
+  const loadComparison = (comparison: QuoteComparison) => {
+    const savedType = comparison.data.type || 'corporate';
+
+    // Change calculator type
+    setCalculatorType(savedType);
+
+    // Load the appropriate data
+    switch (savedType) {
+      case 'corporate':
+        setCorporateData(comparison.data);
+        break;
+      case 'wedding':
+        setWeddingData(comparison.data);
+        break;
+      case 'reportage':
+        setReportageData(comparison.data);
+        break;
+    }
+
+    // Close comparison dialog
+    setShowComparison(false);
   };
 
   const removeFromComparison = (comparisonId: string) => {
@@ -489,7 +537,7 @@ export function QuoteCalculator() {
                     variant={calculatorType === 'corporate' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('corporate')}
-                    className="h-10 px-4 flex items-center gap-2"
+                    className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'corporate' ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
                   >
                     <Building2 className="h-4 w-4" />
                     <div className="flex flex-col items-start">
@@ -501,7 +549,7 @@ export function QuoteCalculator() {
                     variant={calculatorType === 'wedding' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('wedding')}
-                    className="h-10 px-4 flex items-center gap-2"
+                    className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'wedding' ? 'bg-rose-500 hover:bg-rose-600 text-white' : 'hover:bg-rose-50'}`}
                   >
                     <Heart className="h-4 w-4" />
                     <div className="flex flex-col items-start">
@@ -513,7 +561,7 @@ export function QuoteCalculator() {
                     variant={calculatorType === 'reportage' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('reportage')}
-                    className="h-10 px-4 flex items-center gap-2"
+                    className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'reportage' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'hover:bg-emerald-50'}`}
                   >
                     <Newspaper className="h-4 w-4" />
                     <div className="flex flex-col items-start">
@@ -1338,10 +1386,10 @@ export function QuoteCalculator() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
               {/* Current Quote */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className={`${calculatorType === 'corporate' ? 'bg-blue-50 border-blue-200' : calculatorType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-blue-900">Devis Actuel</h3>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                  <h3 className={`font-semibold ${calculatorType === 'corporate' ? 'text-blue-900' : calculatorType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>Devis Actuel</h3>
+                  <Badge variant="outline" className={`${calculatorType === 'corporate' ? 'bg-blue-100 text-blue-800 border-blue-300' : calculatorType === 'wedding' ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>
                     En cours
                   </Badge>
                 </div>
@@ -1399,17 +1447,28 @@ export function QuoteCalculator() {
                 })();
 
                 return (
-                  <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div key={comparison.id} className={`${savedType === 'corporate' ? 'bg-blue-50 border-blue-200' : savedType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFromComparison(comparison.id)}
-                        className="h-6 w-6 p-0 text-gray-500"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                      <h3 className={`font-semibold ${savedType === 'corporate' ? 'text-blue-900' : savedType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>{comparison.name}</h3>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadComparison(comparison)}
+                          className={`h-6 w-6 p-0 ${savedType === 'corporate' ? 'text-blue-600 hover:bg-blue-100' : savedType === 'wedding' ? 'text-rose-600 hover:bg-rose-100' : 'text-emerald-600 hover:bg-emerald-100'}`}
+                          title="Charger ce devis"
+                        >
+                          <ArrowLeft className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFromComparison(comparison.id)}
+                          className="h-6 w-6 p-0 text-gray-500 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -1451,6 +1510,16 @@ export function QuoteCalculator() {
                           </span>
                         </div>
                       )}
+                    </div>
+                    <div className="mt-3 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadComparison(comparison)}
+                        className={`w-full text-xs ${savedType === 'corporate' ? 'hover:bg-blue-50' : savedType === 'wedding' ? 'hover:bg-rose-50' : 'hover:bg-emerald-50'}`}
+                      >
+                        Charger cette configuration
+                      </Button>
                     </div>
                   </div>
                 );
