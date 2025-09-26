@@ -26,47 +26,6 @@ import {
 
 type CalculatorType = 'corporate' | 'wedding' | 'reportage';
 
-interface BaseQuoteData {
-  // Travel
-  travelZone: 'local' | 'near' | 'far' | 'very_far';
-  // Additional options
-  additionalOptions: AdditionalOption[];
-}
-
-interface CorporateQuoteData extends BaseQuoteData {
-  type: 'corporate';
-  halfDayRate: number;
-  fullDayRate: number;
-  postProdRateUnder10: number;
-  postProdRateOver10: number;
-  numberOfPeople: number;
-  // Settings
-  maxPeopleHalfDay: number;
-  maxPeopleRegularRate: number;
-}
-
-interface WeddingQuoteData extends BaseQuoteData {
-  type: 'wedding';
-  ceremonyRate: number;
-  fullDayRate: number;
-  extraHourRate: number;
-  selectedPackage: 'ceremony' | 'fullday' | 'custom';
-  extraHours: number;
-  retouchingRate: number;
-  numberOfPhotosToRetouch: number;
-}
-
-interface ReportageQuoteData extends BaseQuoteData {
-  type: 'reportage';
-  halfDayRate: number;
-  fullDayRate: number;
-  selectedDuration: 'halfday' | 'fullday';
-  numberOfPhotos: number;
-  postProdRatePerPhoto: number;
-}
-
-type QuoteData = CorporateQuoteData | WeddingQuoteData | ReportageQuoteData;
-
 interface AdditionalOption {
   id: string;
   name: string;
@@ -85,7 +44,7 @@ interface TravelZone {
 interface QuoteComparison {
   id: string;
   name: string;
-  data: QuoteData;
+  data: any;
 }
 
 export function QuoteCalculator() {
@@ -100,52 +59,42 @@ export function QuoteCalculator() {
   // Calculator type state
   const [calculatorType, setCalculatorType] = useState<CalculatorType>('corporate');
 
-  // Default configurations for each calculator type
-  const getDefaultConfig = (type: CalculatorType): QuoteData => {
-    switch (type) {
-      case 'corporate':
-        return {
-          type: 'corporate',
-          halfDayRate: 500,
-          fullDayRate: 800,
-          postProdRateUnder10: 50,
-          postProdRateOver10: 40,
-          numberOfPeople: 10,
-          maxPeopleHalfDay: 10,
-          maxPeopleRegularRate: 10,
-          travelZone: 'local',
-          additionalOptions: []
-        };
-      case 'wedding':
-        return {
-          type: 'wedding',
-          ceremonyRate: 800,
-          fullDayRate: 1500,
-          extraHourRate: 100,
-          selectedPackage: 'ceremony',
-          extraHours: 0,
-          retouchingRate: 15,
-          numberOfPhotosToRetouch: 50,
-          travelZone: 'local',
-          additionalOptions: []
-        };
-      case 'reportage':
-        return {
-          type: 'reportage',
-          halfDayRate: 400,
-          fullDayRate: 700,
-          selectedDuration: 'halfday',
-          numberOfPhotos: 100,
-          postProdRatePerPhoto: 2,
-          travelZone: 'local',
-          additionalOptions: []
-        };
-      default:
-        throw new Error(`Unknown calculator type: ${type}`);
-    }
-  };
+  // Corporate calculator state
+  const [corporateData, setCorporateData] = useState({
+    halfDayRate: 500,
+    fullDayRate: 800,
+    postProdRateUnder10: 50,
+    postProdRateOver10: 40,
+    numberOfPeople: 10,
+    maxPeopleHalfDay: 10,
+    maxPeopleRegularRate: 10,
+    travelZone: 'local' as 'local' | 'near' | 'far' | 'very_far',
+    additionalOptions: [] as AdditionalOption[]
+  });
 
-  const [quoteData, setQuoteData] = useState<QuoteData>(getDefaultConfig('corporate'));
+  // Wedding calculator state
+  const [weddingData, setWeddingData] = useState({
+    ceremonyRate: 800,
+    fullDayRate: 1500,
+    extraHourRate: 100,
+    selectedPackage: 'ceremony' as 'ceremony' | 'fullday' | 'custom',
+    extraHours: 0,
+    retouchingRate: 15,
+    numberOfPhotosToRetouch: 50,
+    travelZone: 'local' as 'local' | 'near' | 'far' | 'very_far',
+    additionalOptions: [] as AdditionalOption[]
+  });
+
+  // Reportage calculator state
+  const [reportageData, setReportageData] = useState({
+    halfDayRate: 400,
+    fullDayRate: 700,
+    selectedDuration: 'halfday' as 'halfday' | 'fullday',
+    numberOfPhotos: 100,
+    postProdRatePerPhoto: 2,
+    travelZone: 'local' as 'local' | 'near' | 'far' | 'very_far',
+    additionalOptions: [] as AdditionalOption[]
+  });
 
   const [isEditingRates, setIsEditingRates] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
@@ -158,6 +107,12 @@ export function QuoteCalculator() {
   const [arrivalAddress, setArrivalAddress] = useState('');
   const [calculatingDistance, setCalculatingDistance] = useState(false);
 
+  // Autocomplete suggestions for addresses
+  const [departureResults, setDepartureResults] = useState<string[]>([]);
+  const [arrivalResults, setArrivalResults] = useState<string[]>([]);
+  const [showDepartureSuggestions, setShowDepartureSuggestions] = useState(false);
+  const [showArrivalSuggestions, setShowArrivalSuggestions] = useState(false);
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
@@ -169,14 +124,28 @@ export function QuoteCalculator() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Change calculator type and reset data
-  const changeCalculatorType = (type: CalculatorType) => {
-    setCalculatorType(type);
-    setQuoteData(getDefaultConfig(type));
+  // Get current data based on calculator type
+  const getCurrentData = () => {
+    switch (calculatorType) {
+      case 'corporate': return corporateData;
+      case 'wedding': return weddingData;
+      case 'reportage': return reportageData;
+    }
   };
 
+  const getCurrentSetter = () => {
+    switch (calculatorType) {
+      case 'corporate': return setCorporateData;
+      case 'wedding': return setWeddingData;
+      case 'reportage': return setReportageData;
+    }
+  };
+
+  const currentData = getCurrentData();
+  const setCurrentData = getCurrentSetter();
+
   // Calculate quote based on calculator type
-  const calculateQuote = (data = quoteData) => {
+  const calculateQuote = (data = currentData) => {
     const { travelZone, additionalOptions } = data;
 
     // Calculate travel cost
@@ -184,7 +153,7 @@ export function QuoteCalculator() {
     const travelCost = selectedTravelZone ? selectedTravelZone.price : 0;
 
     // Calculate additional options cost
-    const additionalOptionsCost = additionalOptions.reduce((sum, option) => {
+    const additionalOptionsCost = additionalOptions.reduce((sum: number, option: AdditionalOption) => {
       return sum + (option.price * option.quantity);
     }, 0);
 
@@ -193,11 +162,12 @@ export function QuoteCalculator() {
     let postProdCost = 0;
     let postProdDescription = '';
 
-    switch (data.type) {
+    switch (calculatorType) {
       case 'corporate': {
-        const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = data;
+        const corpData = data as typeof corporateData;
+        const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = corpData;
 
-        // Corporate shooting calculation (existing logic)
+        // Corporate shooting calculation
         if (numberOfPeople <= maxPeopleHalfDay) {
           mainCost = halfDayRate;
           mainDescription = '1 demi-journée';
@@ -247,7 +217,8 @@ export function QuoteCalculator() {
       }
 
       case 'wedding': {
-        const { ceremonyRate, fullDayRate, extraHourRate, selectedPackage, extraHours, retouchingRate, numberOfPhotosToRetouch } = data;
+        const weddingDataTyped = data as typeof weddingData;
+        const { ceremonyRate, fullDayRate, extraHourRate, selectedPackage, extraHours, retouchingRate, numberOfPhotosToRetouch } = weddingDataTyped;
 
         // Wedding package calculation
         switch (selectedPackage) {
@@ -272,7 +243,8 @@ export function QuoteCalculator() {
       }
 
       case 'reportage': {
-        const { halfDayRate, fullDayRate, selectedDuration, numberOfPhotos, postProdRatePerPhoto } = data;
+        const reportageDataTyped = data as typeof reportageData;
+        const { halfDayRate, fullDayRate, selectedDuration, numberOfPhotos, postProdRatePerPhoto } = reportageDataTyped;
 
         // Reportage duration calculation
         if (selectedDuration === 'halfday') {
@@ -307,33 +279,27 @@ export function QuoteCalculator() {
 
   const quote = calculateQuote();
 
-  // Generic handlers for different calculator types
+  // Generic handlers
   const handleFieldChange = (field: string, value: string | number) => {
-    setQuoteData(prev => ({ ...prev, [field]: value }));
+    setCurrentData((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const handleNumberChange = (field: string, value: string) => {
     const num = parseFloat(value) || 0;
-    setQuoteData(prev => ({ ...prev, [field]: Math.max(0, num) }));
+    setCurrentData((prev: any) => ({ ...prev, [field]: Math.max(0, num) }));
   };
 
-  // Quick calculator functions (simplified for corporate only for now)
+  // Quick calculator functions (for corporate only)
   const calculateQuickQuote = () => {
-    if (calculatorType === 'corporate' && quoteData.type === 'corporate') {
-      const quickData: CorporateQuoteData = {
-        ...quoteData,
+    if (calculatorType === 'corporate') {
+      const quickData = {
+        ...corporateData,
         numberOfPeople: quickPeople
       };
       return calculateQuote(quickData);
     }
     return calculateQuote();
   };
-
-  // Autocomplete suggestions for addresses
-  const [departureResults, setDepartureResults] = useState<string[]>([]);
-  const [arrivalResults, setArrivalResults] = useState<string[]>([]);
-  const [showDepartureSuggestions, setShowDepartureSuggestions] = useState(false);
-  const [showArrivalSuggestions, setShowArrivalSuggestions] = useState(false);
 
   // Search address suggestions using Nominatim (OpenStreetMap - no CORS, free)
   const searchAddresses = async (query: string): Promise<string[]> => {
@@ -395,7 +361,7 @@ export function QuoteCalculator() {
       else if (distance > 50) newZone = 'far';
       else if (distance > 20) newZone = 'near';
 
-      setQuoteData(prev => ({ ...prev, travelZone: newZone }));
+      handleFieldChange('travelZone', newZone);
 
       alert(`Distance calculée: ${distance.toFixed(1)} km\nZone sélectionnée: ${travelZones.find(z => z.id === newZone)?.name}`);
 
@@ -441,7 +407,7 @@ export function QuoteCalculator() {
       isPredefined: false
     };
 
-    setQuoteData(prev => ({
+    setCurrentData((prev: any) => ({
       ...prev,
       additionalOptions: [...prev.additionalOptions, newOption]
     }));
@@ -451,18 +417,18 @@ export function QuoteCalculator() {
   };
 
   const updateOptionQuantity = (optionId: string, quantity: number) => {
-    setQuoteData(prev => ({
+    setCurrentData((prev: any) => ({
       ...prev,
-      additionalOptions: prev.additionalOptions.map(option =>
+      additionalOptions: prev.additionalOptions.map((option: AdditionalOption) =>
         option.id === optionId ? { ...option, quantity: Math.max(0, quantity) } : option
       )
     }));
   };
 
   const removeOption = (optionId: string) => {
-    setQuoteData(prev => ({
+    setCurrentData((prev: any) => ({
       ...prev,
-      additionalOptions: prev.additionalOptions.filter(option => option.id !== optionId)
+      additionalOptions: prev.additionalOptions.filter((option: AdditionalOption) => option.id !== optionId)
     }));
   };
 
@@ -471,7 +437,7 @@ export function QuoteCalculator() {
     const newComparison: QuoteComparison = {
       id: Date.now().toString(),
       name: `Devis ${comparisons.length + 1}`,
-      data: { ...quoteData }
+      data: { type: calculatorType, ...currentData }
     };
     setComparisons(prev => [...prev, newComparison]);
   };
@@ -479,7 +445,6 @@ export function QuoteCalculator() {
   const removeFromComparison = (comparisonId: string) => {
     setComparisons(prev => prev.filter(comp => comp.id !== comparisonId));
   };
-
 
   return (
     <div className="min-h-screen bg-background-light">
@@ -518,7 +483,7 @@ export function QuoteCalculator() {
                   <Button
                     variant={calculatorType === 'corporate' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => changeCalculatorType('corporate')}
+                    onClick={() => setCalculatorType('corporate')}
                     className="h-8 px-3 text-xs"
                   >
                     Corporate
@@ -526,7 +491,7 @@ export function QuoteCalculator() {
                   <Button
                     variant={calculatorType === 'wedding' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => changeCalculatorType('wedding')}
+                    onClick={() => setCalculatorType('wedding')}
                     className="h-8 px-3 text-xs"
                   >
                     Mariage
@@ -534,42 +499,42 @@ export function QuoteCalculator() {
                   <Button
                     variant={calculatorType === 'reportage' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => changeCalculatorType('reportage')}
+                    onClick={() => setCalculatorType('reportage')}
                     className="h-8 px-3 text-xs"
                   >
                     Reportage
                   </Button>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowQuickCalc(!showQuickCalc)}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Calcul rapide
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowComparison(!showComparison)}
-                className={showComparison ? 'bg-blue-50' : ''}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Comparaison
-                {comparisons.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">{comparisons.length}</Badge>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQuickCalc(!showQuickCalc)}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Calcul rapide
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowComparison(!showComparison)}
+                  className={showComparison ? 'bg-blue-50' : ''}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Comparaison
+                  {comparisons.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{comparisons.length}</Badge>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Calculator Widget */}
-      {showQuickCalc && (
+      {showQuickCalc && calculatorType === 'corporate' && (
         <div className="bg-amber-50 border-b border-amber-200">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center gap-4 justify-center">
@@ -594,7 +559,7 @@ export function QuoteCalculator() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setQuoteData(prev => ({ ...prev, numberOfPeople: quickPeople }));
+                    handleFieldChange('numberOfPeople', quickPeople);
                     setShowQuickCalc(false);
                   }}
                 >
@@ -614,7 +579,7 @@ export function QuoteCalculator() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Euro className="h-5 w-5 text-green-600" />
-                  Tarifs Unitaires
+                  Tarifs Unitaires - {calculatorType === 'corporate' ? 'Corporate' : calculatorType === 'wedding' ? 'Mariage' : 'Reportage'}
                 </CardTitle>
                 <CardDescription>
                   Configuration des prix de base
@@ -638,145 +603,288 @@ export function QuoteCalculator() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Shooting rates - vertical stack */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                  <Camera className="h-4 w-4" />
-                  Prestations Shooting
-                </h3>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Demi-journée</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.halfDayRate}
-                        onChange={(e) => handleRateChange('halfDayRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-12"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+            {/* Corporate Rates */}
+            {calculatorType === 'corporate' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Prestations Shooting
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Demi-journée</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={corporateData.halfDayRate}
+                          onChange={(e) => handleNumberChange('halfDayRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Journée complète</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.fullDayRate}
-                        onChange={(e) => handleRateChange('fullDayRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-12"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Journée complète</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={corporateData.fullDayRate}
+                          onChange={(e) => handleNumberChange('fullDayRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Post-production rates */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                  <Edit className="h-4 w-4" />
-                  Post-production
-                </h3>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Tarif normal</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.postProdRateUnder10}
-                        onChange={(e) => handleRateChange('postProdRateUnder10', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-16"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
+                    Post-production
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Tarif normal</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={corporateData.postProdRateUnder10}
+                          onChange={(e) => handleNumberChange('postProdRateUnder10', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-16"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Tarif dégressif</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={quoteData.postProdRateOver10}
-                        onChange={(e) => handleRateChange('postProdRateOver10', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-16"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Tarif dégressif</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={corporateData.postProdRateOver10}
+                          onChange={(e) => handleNumberChange('postProdRateOver10', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-16"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/pers</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Settings - thresholds */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Seuils
-                </h3>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Seuil demi-journée</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={quoteData.maxPeopleHalfDay}
-                        onChange={(e) => handleRateChange('maxPeopleHalfDay', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-12"
-                        placeholder="10"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Seuils
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Seuil demi-journée</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={corporateData.maxPeopleHalfDay}
+                          onChange={(e) => handleNumberChange('maxPeopleHalfDay', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                          placeholder="10"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Seuil tarif normal</Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={quoteData.maxPeopleRegularRate}
-                        onChange={(e) => handleRateChange('maxPeopleRegularRate', e.target.value)}
-                        disabled={!isEditingRates}
-                        className="pr-12"
-                        placeholder="10"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Seuil tarif normal</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={corporateData.maxPeopleRegularRate}
+                          onChange={(e) => handleNumberChange('maxPeopleRegularRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                          placeholder="10"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">pers</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Info column */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Informations
-                </h3>
-                <div className="space-y-3 text-xs text-muted-foreground">
-                  <div className="p-2 bg-muted/30 rounded">
-                    <p className="font-medium mb-1">Demi-journée :</p>
-                    <p>Jusqu'à {quoteData.maxPeopleHalfDay} personnes</p>
-                  </div>
-                  <div className="p-2 bg-muted/30 rounded">
-                    <p className="font-medium mb-1">Tarif dégressif :</p>
-                    <p>À partir de {quoteData.maxPeopleRegularRate + 1} personnes</p>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Informations
+                  </h3>
+                  <div className="space-y-3 text-xs text-muted-foreground">
+                    <div className="p-2 bg-muted/30 rounded">
+                      <p className="font-medium mb-1">Demi-journée :</p>
+                      <p>Jusqu'à {corporateData.maxPeopleHalfDay} personnes</p>
+                    </div>
+                    <div className="p-2 bg-muted/30 rounded">
+                      <p className="font-medium mb-1">Tarif dégressif :</p>
+                      <p>À partir de {corporateData.maxPeopleRegularRate + 1} personnes</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Wedding Rates */}
+            {calculatorType === 'wedding' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Forfaits
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Cérémonie</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={weddingData.ceremonyRate}
+                          onChange={(e) => handleNumberChange('ceremonyRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Journée complète</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={weddingData.fullDayRate}
+                          onChange={(e) => handleNumberChange('fullDayRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Heure supplémentaire</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={weddingData.extraHourRate}
+                          onChange={(e) => handleNumberChange('extraHourRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/h</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
+                    Retouche
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Tarif par photo</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={weddingData.retouchingRate}
+                          onChange={(e) => handleNumberChange('retouchingRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-16"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/photo</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Reportage Rates */}
+            {calculatorType === 'reportage' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Forfaits
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Demi-journée</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={reportageData.halfDayRate}
+                          onChange={(e) => handleNumberChange('halfDayRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Journée complète</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={reportageData.fullDayRate}
+                          onChange={(e) => handleNumberChange('fullDayRate', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€ HT</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
+                    Post-production
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Tarif par photo</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={reportageData.postProdRatePerPhoto}
+                          onChange={(e) => handleNumberChange('postProdRatePerPhoto', e.target.value)}
+                          disabled={!isEditingRates}
+                          className="pr-16"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">€/photo</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -795,23 +903,112 @@ export function QuoteCalculator() {
             </CardHeader>
             <CardContent className="space-y-6">
 
-              {/* Number of People */}
-              <div className="space-y-2">
-                <Label htmlFor="numberOfPeople" className="text-base font-medium">
-                  Nombre de personnes *
-                </Label>
-                <Input
-                  id="numberOfPeople"
-                  type="number"
-                  min="1"
-                  value={quoteData.numberOfPeople}
-                  onChange={(e) => handleNumberOfPeopleChange(e.target.value)}
-                  className="text-lg"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {quoteData.numberOfPeople > quoteData.maxPeopleHalfDay ? `Plus de ${quoteData.maxPeopleHalfDay} personnes : journée complète recommandée` : `Jusqu'à ${quoteData.maxPeopleHalfDay} personnes : demi-journée suffisante`}
-                </p>
-              </div>
+              {/* Corporate Configuration */}
+              {calculatorType === 'corporate' && (
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfPeople" className="text-base font-medium">
+                    Nombre de personnes *
+                  </Label>
+                  <Input
+                    id="numberOfPeople"
+                    type="number"
+                    min="1"
+                    value={corporateData.numberOfPeople}
+                    onChange={(e) => handleNumberChange('numberOfPeople', e.target.value)}
+                    className="text-lg"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {corporateData.numberOfPeople > corporateData.maxPeopleHalfDay ? `Plus de ${corporateData.maxPeopleHalfDay} personnes : journée complète recommandée` : `Jusqu'à ${corporateData.maxPeopleHalfDay} personnes : demi-journée suffisante`}
+                  </p>
+                </div>
+              )}
+
+              {/* Wedding Configuration */}
+              {calculatorType === 'wedding' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Forfait sélectionné *</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button
+                        variant={weddingData.selectedPackage === 'ceremony' ? 'default' : 'outline'}
+                        onClick={() => handleFieldChange('selectedPackage', 'ceremony')}
+                        className="justify-start"
+                      >
+                        Cérémonie ({weddingData.ceremonyRate}€)
+                      </Button>
+                      <Button
+                        variant={weddingData.selectedPackage === 'fullday' ? 'default' : 'outline'}
+                        onClick={() => handleFieldChange('selectedPackage', 'fullday')}
+                        className="justify-start"
+                      >
+                        Journée complète ({weddingData.fullDayRate}€)
+                      </Button>
+                      <Button
+                        variant={weddingData.selectedPackage === 'custom' ? 'default' : 'outline'}
+                        onClick={() => handleFieldChange('selectedPackage', 'custom')}
+                        className="justify-start"
+                      >
+                        Personnalisé (Cérémonie + Extra)
+                      </Button>
+                    </div>
+                  </div>
+
+                  {weddingData.selectedPackage === 'custom' && (
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">Heures supplémentaires</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={weddingData.extraHours}
+                        onChange={(e) => handleNumberChange('extraHours', e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Nombre de photos à retoucher</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={weddingData.numberOfPhotosToRetouch}
+                      onChange={(e) => handleNumberChange('numberOfPhotosToRetouch', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reportage Configuration */}
+              {calculatorType === 'reportage' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Durée du reportage *</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant={reportageData.selectedDuration === 'halfday' ? 'default' : 'outline'}
+                        onClick={() => handleFieldChange('selectedDuration', 'halfday')}
+                      >
+                        Demi-journée
+                      </Button>
+                      <Button
+                        variant={reportageData.selectedDuration === 'fullday' ? 'default' : 'outline'}
+                        onClick={() => handleFieldChange('selectedDuration', 'fullday')}
+                      >
+                        Journée complète
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-base font-medium">Nombre de photos estimé</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={reportageData.numberOfPhotos}
+                      onChange={(e) => handleNumberChange('numberOfPhotos', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Travel Zone */}
               <div className="space-y-2">
@@ -893,9 +1090,9 @@ export function QuoteCalculator() {
                     {travelZones.map((zone) => (
                       <Button
                         key={zone.id}
-                        variant={quoteData.travelZone === zone.id ? "default" : "outline"}
+                        variant={currentData.travelZone === zone.id ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setQuoteData(prev => ({ ...prev, travelZone: zone.id }))}
+                        onClick={() => handleFieldChange('travelZone', zone.id)}
                         className="h-auto p-3 flex flex-col items-start"
                       >
                         <div className="font-medium">{zone.name}</div>
@@ -923,10 +1120,10 @@ export function QuoteCalculator() {
             <CardContent className="space-y-6">
 
               {/* Current Options */}
-              {quoteData.additionalOptions.length > 0 && (
+              {currentData.additionalOptions.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm">Options ajoutées :</h4>
-                  {quoteData.additionalOptions.map((option) => (
+                  {currentData.additionalOptions.map((option: AdditionalOption) => (
                     <div key={option.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
                       <div className="flex-1">
                         <div className="text-sm font-medium">{option.name}</div>
@@ -963,7 +1160,6 @@ export function QuoteCalculator() {
                   ))}
                 </div>
               )}
-
 
               {/* Custom Option */}
               <div className="space-y-2">
@@ -1004,7 +1200,9 @@ export function QuoteCalculator() {
                     Devis Calculé
                   </CardTitle>
                   <CardDescription>
-                    Calcul pour {quoteData.numberOfPeople} personne{quoteData.numberOfPeople > 1 ? 's' : ''}
+                    {calculatorType === 'corporate' && `Calcul pour ${corporateData.numberOfPeople} personne${corporateData.numberOfPeople > 1 ? 's' : ''}`}
+                    {calculatorType === 'wedding' && `Forfait ${weddingData.selectedPackage}`}
+                    {calculatorType === 'reportage' && `${reportageData.selectedDuration === 'halfday' ? 'Demi-journée' : 'Journée complète'}`}
                   </CardDescription>
                 </div>
                 <Button
@@ -1025,50 +1223,32 @@ export function QuoteCalculator() {
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    Prestation Shooting
+                    {calculatorType === 'corporate' ? 'Prestation Shooting' : calculatorType === 'wedding' ? 'Forfait Mariage' : 'Forfait Reportage'}
                   </h3>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">
-                      {quote.shootingDescription}
+                      {quote.mainDescription}
                     </span>
-                    <span className="font-medium">{quote.shootingCost}€ HT</span>
+                    <span className="font-medium">{quote.mainCost}€ HT</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Installation + prises de vue
+                    {calculatorType === 'corporate' ? 'Installation + prises de vue' : calculatorType === 'wedding' ? 'Prestation photo mariage' : 'Prestation reportage'}
                   </p>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <Edit className="h-4 w-4" />
-                    Post-production
+                    {calculatorType === 'wedding' ? 'Retouche' : 'Post-production'}
                   </h3>
-                  {quoteData.numberOfPeople <= quoteData.maxPeopleRegularRate ? (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        {quoteData.numberOfPeople} personnes × {quoteData.postProdRateUnder10}€ HT
-                      </span>
-                      <span className="font-medium">{quote.postProdCost}€ HT</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-sm">
-                        <span>{quoteData.maxPeopleRegularRate} premières personnes × {quoteData.postProdRateUnder10}€ HT</span>
-                        <span>{quoteData.maxPeopleRegularRate * quoteData.postProdRateUnder10}€ HT</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span>{quoteData.numberOfPeople - quoteData.maxPeopleRegularRate} personnes supplémentaires × {quoteData.postProdRateOver10}€ HT</span>
-                        <span>{(quoteData.numberOfPeople - quoteData.maxPeopleRegularRate) * quoteData.postProdRateOver10}€ HT</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Total Post-production</span>
-                        <span className="font-medium">{quote.postProdCost}€ HT</span>
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">
+                      {quote.postProdDescription}
+                    </span>
+                    <span className="font-medium">{quote.postProdCost}€ HT</span>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Retouche professionnelle (lumière, contraste, peau, détails)
+                    {calculatorType === 'wedding' ? 'Retouche professionnelle des photos sélectionnées' : 'Retouche professionnelle (lumière, contraste, peau, détails)'}
                   </p>
                 </div>
 
@@ -1096,7 +1276,7 @@ export function QuoteCalculator() {
                       Options supplémentaires
                     </h3>
                     <div className="space-y-1">
-                      {quoteData.additionalOptions.map((option) => (
+                      {currentData.additionalOptions.map((option: AdditionalOption) => (
                         <div key={option.id} className="flex justify-between items-center text-sm">
                           <span>{option.name} {option.quantity > 1 ? `× ${option.quantity}` : ''}</span>
                           <span>{option.price * option.quantity}€ HT</span>
@@ -1149,12 +1329,12 @@ export function QuoteCalculator() {
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Personnes :</span>
-                    <span className="font-medium">{quoteData.numberOfPeople}</span>
+                    <span>Type :</span>
+                    <span className="font-medium capitalize">{calculatorType}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Shooting :</span>
-                    <span className="font-medium">{quote.shootingCost}€</span>
+                    <span>Principal :</span>
+                    <span className="font-medium">{quote.mainCost}€</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Post-prod :</span>
@@ -1181,65 +1361,30 @@ export function QuoteCalculator() {
               </div>
 
               {/* Saved Comparisons */}
-              {comparisons.slice(0, 2).map((comparison) => {
-                const comparisonQuote = calculateQuote(comparison.data);
-                return (
-                  <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFromComparison(comparison.id)}
-                        className="h-6 w-6 p-0 text-gray-500"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+              {comparisons.slice(0, 2).map((comparison) => (
+                <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFromComparison(comparison.id)}
+                      className="h-6 w-6 p-0 text-gray-500"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Type :</span>
+                      <span className="font-medium capitalize">{comparison.data.type || 'corporate'}</span>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Personnes :</span>
-                        <span className="font-medium">{comparison.data.numberOfPeople}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Shooting :</span>
-                        <span className="font-medium">{comparisonQuote.shootingCost}€</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Post-prod :</span>
-                        <span className="font-medium">{comparisonQuote.postProdCost}€</span>
-                      </div>
-                      {comparisonQuote.travelCost > 0 && (
-                        <div className="flex justify-between">
-                          <span>Déplacement :</span>
-                          <span className="font-medium">{comparisonQuote.travelCost}€</span>
-                        </div>
-                      )}
-                      {comparisonQuote.additionalOptionsCost > 0 && (
-                        <div className="flex justify-between">
-                          <span>Options :</span>
-                          <span className="font-medium">{comparisonQuote.additionalOptionsCost}€</span>
-                        </div>
-                      )}
-                      <Separator />
-                      <div className="flex justify-between font-bold">
-                        <span>Total :</span>
-                        <span className={comparisonQuote.total < quote.total ? 'text-green-700' : comparisonQuote.total > quote.total ? 'text-red-700' : ''}>
-                          {comparisonQuote.total.toFixed(2)}€
-                        </span>
-                      </div>
-                      {comparisonQuote.total !== quote.total && (
-                        <div className="text-xs text-center mt-2">
-                          <span className={comparisonQuote.total < quote.total ? 'text-green-700' : 'text-red-700'}>
-                            {comparisonQuote.total < quote.total ? '-' : '+'}{Math.abs(comparisonQuote.total - quote.total).toFixed(2)}€
-                            ({((Math.abs(comparisonQuote.total - quote.total) / quote.total) * 100).toFixed(1)}%)
-                          </span>
-                        </div>
-                      )}
+                    <div className="text-xs text-muted-foreground">
+                      Configuration sauvegardée
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
 
             {comparisons.length > 2 && (
