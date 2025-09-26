@@ -24,7 +24,11 @@ import {
   BarChart3,
   Building2,
   Heart,
-  Newspaper
+  Newspaper,
+  History,
+  Save,
+  Download,
+  FileText
 } from "lucide-react";
 
 type CalculatorType = 'corporate' | 'wedding' | 'reportage';
@@ -69,13 +73,14 @@ export function QuoteCalculator() {
     }
   };
 
-  const getTypeClasses = (type: CalculatorType, variant: 'bg' | 'border' | 'text' | 'button' = 'bg') => {
+  const getTypeClasses = (type: CalculatorType, variant: 'bg' | 'border' | 'text' | 'button' | 'button-primary' = 'bg') => {
     const color = getTypeColor(type);
     switch (variant) {
       case 'bg': return `bg-${color}-50`;
       case 'border': return `border-${color}-200`;
       case 'text': return `text-${color}-700`;
       case 'button': return `hover:bg-${color}-50 hover:border-${color}-200`;
+      case 'button-primary': return `bg-${color}-500 hover:bg-${color}-600 text-white`;
       default: return '';
     }
   };
@@ -123,8 +128,9 @@ export function QuoteCalculator() {
   const [isEditingRates, setIsEditingRates] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
   const [quickPeople, setQuickPeople] = useState(10);
-  const [comparisons, setComparisons] = useState<QuoteComparison[]>([]);
-  const [showComparison, setShowComparison] = useState(false);
+  const [history, setHistory] = useState<QuoteComparison[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [quoteName, setQuoteName] = useState('');
   const [newOptionName, setNewOptionName] = useState('');
   const [newOptionPrice, setNewOptionPrice] = useState('');
   const [departureAddress, setDepartureAddress] = useState('');
@@ -459,22 +465,22 @@ export function QuoteCalculator() {
     }));
   };
 
-  // Comparison functions
-  const addToComparison = () => {
-    const name = prompt('Nom du devis :', `Devis ${comparisons.length + 1} - ${calculatorType}`);
-    if (!name) return;
+  // History functions
+  const addToHistory = () => {
+    if (!quoteName.trim()) return;
 
-    const newComparison: QuoteComparison = {
+    const newQuote: QuoteComparison = {
       id: Date.now().toString(),
-      name,
+      name: quoteName.trim(),
       data: { type: calculatorType, ...currentData }
     };
-    setComparisons(prev => [...prev, newComparison]);
+    setHistory(prev => [...prev, newQuote]);
+    setQuoteName('');
   };
 
-  // Load comparison configuration
-  const loadComparison = (comparison: QuoteComparison) => {
-    const savedType = comparison.data.type || 'corporate';
+  // Load history configuration
+  const loadFromHistory = (quote: QuoteComparison) => {
+    const savedType = quote.data.type || 'corporate';
 
     // Change calculator type
     setCalculatorType(savedType);
@@ -482,22 +488,119 @@ export function QuoteCalculator() {
     // Load the appropriate data
     switch (savedType) {
       case 'corporate':
-        setCorporateData(comparison.data);
+        setCorporateData(quote.data);
         break;
       case 'wedding':
-        setWeddingData(comparison.data);
+        setWeddingData(quote.data);
         break;
       case 'reportage':
-        setReportageData(comparison.data);
+        setReportageData(quote.data);
         break;
     }
 
-    // Close comparison dialog
-    setShowComparison(false);
+    // Close history dialog
+    setShowHistory(false);
   };
 
-  const removeFromComparison = (comparisonId: string) => {
-    setComparisons(prev => prev.filter(comp => comp.id !== comparisonId));
+  const removeFromHistory = (quoteId: string) => {
+    setHistory(prev => prev.filter(quote => quote.id !== quoteId));
+  };
+
+  // PDF Generation
+  const generatePDF = () => {
+    const quote = calculateQuote();
+    const currentDate = new Date().toLocaleDateString('fr-FR');
+
+    // Create PDF content
+    const pdfContent = `
+**DEVIS PHOTO - ${calculatorType.toUpperCase()}**
+
+Date: ${currentDate}
+Type: ${calculatorType === 'corporate' ? 'Corporate' : calculatorType === 'wedding' ? 'Mariage' : 'Reportage'}
+
+---
+
+**DÉTAIL DU DEVIS**
+
+${calculatorType === 'corporate' ? 'PRESTATION SHOOTING' : calculatorType === 'wedding' ? 'FORFAIT MARIAGE' : 'FORFAIT REPORTAGE'}
+• ${quote.mainDescription}
+• Prix: ${quote.mainCost}€ HT
+• Description: ${
+  calculatorType === 'corporate' ? 'Installation + prises de vue' :
+  calculatorType === 'wedding' ? 'Prestation photo mariage' :
+  'Prestation reportage'
+}
+
+${calculatorType === 'wedding' ? 'RETOUCHE' : 'POST-PRODUCTION'}
+• ${quote.postProdDescription}
+• Prix: ${quote.postProdCost}€ HT
+• Description: ${
+  calculatorType === 'wedding' ? 'Retouche professionnelle des photos sélectionnées' :
+  'Retouche professionnelle (lumière, contraste, peau, détails)'
+}
+
+${quote.travelCost > 0 ? `FRAIS DE DÉPLACEMENT
+• ${quote.travelDescription}
+• Prix: ${quote.travelCost}€ HT
+
+` : ''}
+
+${quote.additionalOptionsCost > 0 ? `OPTIONS SUPPLÉMENTAIRES
+${currentData.additionalOptions.map((option: AdditionalOption) =>
+  `• ${option.name} ${option.quantity > 1 ? `× ${option.quantity}` : ''}: ${option.price * option.quantity}€ HT`
+).join('\n')}
+• Total options: ${quote.additionalOptionsCost}€ HT
+
+` : ''}
+
+---
+
+**TOTAL GÉNÉRAL: ${quote.total.toFixed(2)}€ HT**
+
+Non assujetti à la TVA
+
+---
+
+**PARAMÈTRES DE CALCUL**
+
+${calculatorType === 'corporate' ? `• Nombre de personnes: ${corporateData.numberOfPeople}
+• Tarif demi-journée: ${corporateData.halfDayRate}€
+• Tarif journée complète: ${corporateData.fullDayRate}€
+• Post-production normale: ${corporateData.postProdRateUnder10}€/pers
+• Post-production dégressif: ${corporateData.postProdRateOver10}€/pers
+• Seuil demi-journée: ${corporateData.maxPeopleHalfDay} personnes
+• Seuil tarif normal: ${corporateData.maxPeopleRegularRate} personnes` :
+
+calculatorType === 'wedding' ? `• Forfait: ${weddingData.selectedPackage === 'ceremony' ? 'Cérémonie' : weddingData.selectedPackage === 'fullday' ? 'Journée complète' : 'Personnalisé'}
+• Tarif cérémonie: ${weddingData.ceremonyRate}€
+• Tarif journée complète: ${weddingData.fullDayRate}€
+• Heures supplémentaires: ${weddingData.extraHours}h à ${weddingData.extraHourRate}€/h
+• Photos à retoucher: ${weddingData.numberOfPhotosToRetouch}
+• Tarif retouche: ${weddingData.retouchingRate}€/photo` :
+
+`• Durée: ${reportageData.selectedDuration === 'halfday' ? 'Demi-journée' : 'Journée complète'}
+• Tarif demi-journée: ${reportageData.halfDayRate}€
+• Tarif journée complète: ${reportageData.fullDayRate}€
+• Photos estimées: ${reportageData.numberOfPhotos}
+• Tarif post-production: ${reportageData.postProdRatePerPhoto}€/photo`}
+
+• Zone de déplacement: ${travelZones.find(z => z.id === currentData.travelZone)?.name} (${travelZones.find(z => z.id === currentData.travelZone)?.description})
+
+---
+
+Généré avec Claude Code le ${currentDate}
+    `;
+
+    // Create and download PDF
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `devis-${calculatorType}-${currentDate.replace(/\//g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -642,7 +745,7 @@ export function QuoteCalculator() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditingRates(!isEditingRates)}
-                className="shrink-0"
+                className={`shrink-0 ${getTypeClasses(calculatorType, 'button')}`}
               >
                 <Settings className="h-4 w-4 mr-2" />
                 {isEditingRates ? 'Verrouiller' : 'Modifier'}
@@ -985,21 +1088,21 @@ export function QuoteCalculator() {
                       <Button
                         variant={weddingData.selectedPackage === 'ceremony' ? 'default' : 'outline'}
                         onClick={() => handleFieldChange('selectedPackage', 'ceremony')}
-                        className="justify-start"
+                        className={`justify-start ${weddingData.selectedPackage === 'ceremony' ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}`}
                       >
                         Cérémonie ({weddingData.ceremonyRate}€)
                       </Button>
                       <Button
                         variant={weddingData.selectedPackage === 'fullday' ? 'default' : 'outline'}
                         onClick={() => handleFieldChange('selectedPackage', 'fullday')}
-                        className="justify-start"
+                        className={`justify-start ${weddingData.selectedPackage === 'fullday' ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}`}
                       >
                         Journée complète ({weddingData.fullDayRate}€)
                       </Button>
                       <Button
                         variant={weddingData.selectedPackage === 'custom' ? 'default' : 'outline'}
                         onClick={() => handleFieldChange('selectedPackage', 'custom')}
-                        className="justify-start"
+                        className={`justify-start ${weddingData.selectedPackage === 'custom' ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}`}
                       >
                         Personnalisé (Cérémonie + Extra)
                       </Button>
@@ -1039,12 +1142,14 @@ export function QuoteCalculator() {
                       <Button
                         variant={reportageData.selectedDuration === 'halfday' ? 'default' : 'outline'}
                         onClick={() => handleFieldChange('selectedDuration', 'halfday')}
+                        className={reportageData.selectedDuration === 'halfday' ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}
                       >
                         Demi-journée
                       </Button>
                       <Button
                         variant={reportageData.selectedDuration === 'fullday' ? 'default' : 'outline'}
                         onClick={() => handleFieldChange('selectedDuration', 'fullday')}
+                        className={reportageData.selectedDuration === 'fullday' ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}
                       >
                         Journée complète
                       </Button>
@@ -1146,7 +1251,7 @@ export function QuoteCalculator() {
                         variant={currentData.travelZone === zone.id ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleFieldChange('travelZone', zone.id)}
-                        className="h-auto p-3 flex flex-col items-start"
+                        className={`h-auto p-3 flex flex-col items-start ${currentData.travelZone === zone.id ? getTypeClasses(calculatorType, 'button-primary') : getTypeClasses(calculatorType, 'button')}`}
                       >
                         <div className="font-medium">{zone.name}</div>
                         <div className="text-xs opacity-70">{zone.description}</div>
@@ -1235,6 +1340,7 @@ export function QuoteCalculator() {
                     size="sm"
                     onClick={addCustomOption}
                     disabled={!newOptionName.trim() || !newOptionPrice.trim()}
+                    className={getTypeClasses(calculatorType, 'button-primary')}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -1345,28 +1451,49 @@ export function QuoteCalculator() {
                   Non assujetti à la TVA
                 </p>
 
-                {/* Comparison buttons */}
-                <div className="flex justify-center gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addToComparison}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Ajouter à la comparaison
-                  </Button>
-                  {comparisons.length > 0 && (
+                {/* History section */}
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Nom du devis</Label>
+                    <Input
+                      placeholder={`Devis ${history.length + 1} - ${calculatorType}`}
+                      value={quoteName}
+                      onChange={(e) => setQuoteName(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="flex justify-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setShowComparison(true)}
-                      className="flex items-center gap-2"
+                      onClick={addToHistory}
+                      disabled={!quoteName.trim()}
+                      className={`flex items-center gap-2 ${getTypeClasses(calculatorType, 'button')}`}
                     >
-                      <BarChart3 className="h-4 w-4" />
-                      Voir comparaisons ({comparisons.length})
+                      <Save className="h-4 w-4" />
+                      Enregistrer le devis
                     </Button>
-                  )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generatePDF}
+                      className={`flex items-center gap-2 ${getTypeClasses(calculatorType, 'button')}`}
+                    >
+                      <Download className="h-4 w-4" />
+                      PDF
+                    </Button>
+                    {history.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowHistory(true)}
+                        className={`flex items-center gap-2 ${getTypeClasses(calculatorType, 'button')}`}
+                      >
+                        <History className="h-4 w-4" />
+                        Historique ({history.length})
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -1374,13 +1501,13 @@ export function QuoteCalculator() {
           </Card>
         </div>
 
-        {/* Comparison Dialog */}
-        <Dialog open={showComparison && comparisons.length > 0} onOpenChange={setShowComparison}>
+        {/* History Dialog */}
+        <Dialog open={showHistory && history.length > 0} onOpenChange={setShowHistory}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                Comparaison des Devis
+                <History className="h-5 w-5 text-blue-600" />
+                Historique des Devis
               </DialogTitle>
             </DialogHeader>
 
@@ -1426,35 +1553,35 @@ export function QuoteCalculator() {
                 </div>
               </div>
 
-              {/* Saved Comparisons */}
-              {comparisons.slice(0, 2).map((comparison) => {
-                // Calculate quote for saved comparison
-                const savedType = comparison.data.type || 'corporate';
+              {/* Saved Quotes */}
+              {history.slice(0, 2).map((quote) => {
+                // Calculate quote for saved data
+                const savedType = quote.data.type || 'corporate';
                 const previousCalcType = calculatorType;
 
                 // Temporarily set the calculator type to match the saved data
                 const tempQuote = (() => {
                   switch (savedType) {
                     case 'corporate':
-                      return calculateQuote(comparison.data);
+                      return calculateQuote(quote.data);
                     case 'wedding':
-                      return calculateQuote(comparison.data);
+                      return calculateQuote(quote.data);
                     case 'reportage':
-                      return calculateQuote(comparison.data);
+                      return calculateQuote(quote.data);
                     default:
-                      return calculateQuote(comparison.data);
+                      return calculateQuote(quote.data);
                   }
                 })();
 
                 return (
-                  <div key={comparison.id} className={`${savedType === 'corporate' ? 'bg-blue-50 border-blue-200' : savedType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
+                  <div key={quote.id} className={`${savedType === 'corporate' ? 'bg-blue-50 border-blue-200' : savedType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className={`font-semibold ${savedType === 'corporate' ? 'text-blue-900' : savedType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>{comparison.name}</h3>
+                      <h3 className={`font-semibold ${savedType === 'corporate' ? 'text-blue-900' : savedType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>{quote.name}</h3>
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => loadComparison(comparison)}
+                          onClick={() => loadFromHistory(quote)}
                           className={`h-6 w-6 p-0 ${savedType === 'corporate' ? 'text-blue-600 hover:bg-blue-100' : savedType === 'wedding' ? 'text-rose-600 hover:bg-rose-100' : 'text-emerald-600 hover:bg-emerald-100'}`}
                           title="Charger ce devis"
                         >
@@ -1463,7 +1590,7 @@ export function QuoteCalculator() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeFromComparison(comparison.id)}
+                          onClick={() => removeFromHistory(quote.id)}
                           className="h-6 w-6 p-0 text-gray-500 hover:text-destructive"
                         >
                           <X className="h-3 w-3" />
@@ -1515,7 +1642,7 @@ export function QuoteCalculator() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => loadComparison(comparison)}
+                        onClick={() => loadFromHistory(quote)}
                         className={`w-full text-xs ${savedType === 'corporate' ? 'hover:bg-blue-50' : savedType === 'wedding' ? 'hover:bg-rose-50' : 'hover:bg-emerald-50'}`}
                       >
                         Charger cette configuration
@@ -1526,10 +1653,10 @@ export function QuoteCalculator() {
               })}
             </div>
 
-            {comparisons.length > 2 && (
+            {history.length > 2 && (
               <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {comparisons.length - 2} autre{comparisons.length > 3 ? 's' : ''} comparaison{comparisons.length > 3 ? 's' : ''} disponible{comparisons.length > 3 ? 's' : ''}
+                  {history.length - 2} autre{history.length > 3 ? 's' : ''} devis disponible{history.length > 3 ? 's' : ''}
                 </p>
               </div>
             )}
@@ -1538,10 +1665,10 @@ export function QuoteCalculator() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setComparisons([])}
+                onClick={() => setHistory([])}
                 className="text-gray-600"
               >
-                Vider la comparaison
+                Vider l'historique
               </Button>
             </div>
           </DialogContent>
