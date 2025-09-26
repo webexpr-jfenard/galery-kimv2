@@ -21,7 +21,10 @@ import {
   X,
   Zap,
   Copy,
-  BarChart3
+  BarChart3,
+  Building2,
+  Heart,
+  Newspaper
 } from "lucide-react";
 
 type CalculatorType = 'corporate' | 'wedding' | 'reportage';
@@ -162,7 +165,10 @@ export function QuoteCalculator() {
     let postProdCost = 0;
     let postProdDescription = '';
 
-    switch (calculatorType) {
+    // Determine the type of data being calculated
+    const dataType = (data as any).type || calculatorType;
+
+    switch (dataType) {
       case 'corporate': {
         const corpData = data as typeof corporateData;
         const { numberOfPeople, halfDayRate, fullDayRate, postProdRateUnder10, postProdRateOver10, maxPeopleHalfDay, maxPeopleRegularRate } = corpData;
@@ -478,35 +484,46 @@ export function QuoteCalculator() {
             <div className="flex items-center gap-4">
               {/* Calculator Type Selector */}
               <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium">Type :</Label>
-                <div className="flex gap-1 border rounded-md p-1 bg-background">
+                <div className="flex gap-2 p-2 bg-background rounded-lg border">
                   <Button
                     variant={calculatorType === 'corporate' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('corporate')}
-                    className="h-8 px-3 text-xs"
+                    className="h-10 px-4 flex items-center gap-2"
                   >
-                    Corporate
+                    <Building2 className="h-4 w-4" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-semibold">Corporate</span>
+                      <span className="text-xs opacity-70">Entreprise</span>
+                    </div>
                   </Button>
                   <Button
                     variant={calculatorType === 'wedding' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('wedding')}
-                    className="h-8 px-3 text-xs"
+                    className="h-10 px-4 flex items-center gap-2"
                   >
-                    Mariage
+                    <Heart className="h-4 w-4" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-semibold">Mariage</span>
+                      <span className="text-xs opacity-70">Cérémonie</span>
+                    </div>
                   </Button>
                   <Button
                     variant={calculatorType === 'reportage' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setCalculatorType('reportage')}
-                    className="h-8 px-3 text-xs"
+                    className="h-10 px-4 flex items-center gap-2"
                   >
-                    Reportage
+                    <Newspaper className="h-4 w-4" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-semibold">Reportage</span>
+                      <span className="text-xs opacity-70">Événement</span>
+                    </div>
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              {showQuickCalc && calculatorType === 'corporate' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -515,19 +532,7 @@ export function QuoteCalculator() {
                   <Zap className="h-4 w-4 mr-2" />
                   Calcul rapide
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowComparison(!showComparison)}
-                  className={showComparison ? 'bg-blue-50' : ''}
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Comparaison
-                  {comparisons.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">{comparisons.length}</Badge>
-                  )}
-                </Button>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1193,27 +1198,16 @@ export function QuoteCalculator() {
           {/* Quote Display */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Euro className="h-5 w-5 text-green-600" />
-                    Devis Calculé
-                  </CardTitle>
-                  <CardDescription>
-                    {calculatorType === 'corporate' && `Calcul pour ${corporateData.numberOfPeople} personne${corporateData.numberOfPeople > 1 ? 's' : ''}`}
-                    {calculatorType === 'wedding' && `Forfait ${weddingData.selectedPackage}`}
-                    {calculatorType === 'reportage' && `${reportageData.selectedDuration === 'halfday' ? 'Demi-journée' : 'Journée complète'}`}
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={addToComparison}
-                  className="shrink-0"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Comparer
-                </Button>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Euro className="h-5 w-5 text-green-600" />
+                  Devis Calculé
+                </CardTitle>
+                <CardDescription>
+                  {calculatorType === 'corporate' && `Calcul pour ${corporateData.numberOfPeople} personne${corporateData.numberOfPeople > 1 ? 's' : ''}`}
+                  {calculatorType === 'wedding' && `Forfait ${weddingData.selectedPackage}`}
+                  {calculatorType === 'reportage' && `${reportageData.selectedDuration === 'halfday' ? 'Demi-journée' : 'Journée complète'}`}
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
@@ -1303,6 +1297,30 @@ export function QuoteCalculator() {
                   Non assujetti à la TVA
                 </p>
 
+                {/* Comparison buttons */}
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addToComparison}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Ajouter à la comparaison
+                  </Button>
+                  {comparisons.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowComparison(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Voir comparaisons ({comparisons.length})
+                    </Button>
+                  )}
+                </div>
+
               </div>
             </CardContent>
           </Card>
@@ -1361,30 +1379,82 @@ export function QuoteCalculator() {
               </div>
 
               {/* Saved Comparisons */}
-              {comparisons.slice(0, 2).map((comparison) => (
-                <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFromComparison(comparison.id)}
-                      className="h-6 w-6 p-0 text-gray-500"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Type :</span>
-                      <span className="font-medium capitalize">{comparison.data.type || 'corporate'}</span>
+              {comparisons.slice(0, 2).map((comparison) => {
+                // Calculate quote for saved comparison
+                const savedType = comparison.data.type || 'corporate';
+                const previousCalcType = calculatorType;
+
+                // Temporarily set the calculator type to match the saved data
+                const tempQuote = (() => {
+                  switch (savedType) {
+                    case 'corporate':
+                      return calculateQuote(comparison.data);
+                    case 'wedding':
+                      return calculateQuote(comparison.data);
+                    case 'reportage':
+                      return calculateQuote(comparison.data);
+                    default:
+                      return calculateQuote(comparison.data);
+                  }
+                })();
+
+                return (
+                  <div key={comparison.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">{comparison.name}</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFromComparison(comparison.id)}
+                        className="h-6 w-6 p-0 text-gray-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Configuration sauvegardée
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Type :</span>
+                        <span className="font-medium capitalize">{savedType}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Principal :</span>
+                        <span className="font-medium">{tempQuote.mainCost}€</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Post-prod :</span>
+                        <span className="font-medium">{tempQuote.postProdCost}€</span>
+                      </div>
+                      {tempQuote.travelCost > 0 && (
+                        <div className="flex justify-between">
+                          <span>Déplacement :</span>
+                          <span className="font-medium">{tempQuote.travelCost}€</span>
+                        </div>
+                      )}
+                      {tempQuote.additionalOptionsCost > 0 && (
+                        <div className="flex justify-between">
+                          <span>Options :</span>
+                          <span className="font-medium">{tempQuote.additionalOptionsCost}€</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-bold">
+                        <span>Total :</span>
+                        <span className={tempQuote.total < quote.total ? 'text-green-700' : tempQuote.total > quote.total ? 'text-red-700' : ''}>
+                          {tempQuote.total.toFixed(2)}€
+                        </span>
+                      </div>
+                      {tempQuote.total !== quote.total && (
+                        <div className="text-xs text-center mt-2">
+                          <span className={tempQuote.total < quote.total ? 'text-green-700' : 'text-red-700'}>
+                            {tempQuote.total < quote.total ? '-' : '+'}{Math.abs(tempQuote.total - quote.total).toFixed(2)}€
+                            ({((Math.abs(tempQuote.total - quote.total) / quote.total) * 100).toFixed(1)}%)
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {comparisons.length > 2 && (
