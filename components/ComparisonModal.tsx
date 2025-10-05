@@ -167,9 +167,9 @@ export function ComparisonModal({
             })}
           </div>
         ) : (
-          // Horizontal scroll view - multiple photos
-          <div className="h-full p-6">
-            <div className="h-full flex gap-6 overflow-x-auto pb-4">
+          // Horizontal scroll view - multiple photos aligned to top
+          <div className="p-6 h-full">
+            <div className="flex gap-6 overflow-x-auto h-full items-start">
               {orderedPhotos.map((photo, index) => {
                 const isFavorite = favorites.has(photo.id);
                 const photoFavorites = favoriteDetails.filter(f => f.photoId === photo.id);
@@ -181,14 +181,9 @@ export function ComparisonModal({
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`flex-shrink-0 bg-white rounded-lg shadow-sm border overflow-hidden transition-all ${
+                    className={`flex-shrink-0 bg-white rounded-lg shadow-sm border overflow-hidden transition-all inline-block ${
                       draggedIndex === index ? 'opacity-50' : ''
                     }`}
-                    style={{
-                      width: orderedPhotos.length === 1 ? '100%' :
-                             orderedPhotos.length === 2 ? 'calc(50% - 12px)' :
-                             '500px'
-                    }}
                   >
                     {/* Drag Handle */}
                     <div className="bg-gray-50 px-3 py-2 border-b flex items-center gap-2 cursor-move">
@@ -196,9 +191,9 @@ export function ComparisonModal({
                       <span className="text-xs text-gray-500">Glisser pour réorganiser</span>
                     </div>
 
-                    {/* Photo Container - Dynamic height with overlays */}
+                    {/* Photo Container - Height fills available space, width auto */}
                     <div
-                      className="relative bg-gray-100 flex items-center justify-center group"
+                      className="relative bg-gray-100 group"
                       style={{
                         height: 'calc(100vh - 280px)',
                         maxHeight: 'calc(100vh - 280px)'
@@ -207,7 +202,7 @@ export function ComparisonModal({
                       <img
                         src={photo.url}
                         alt={getPhotoDisplayName(photo)}
-                        className="w-full h-full object-contain"
+                        className="h-full w-auto object-contain mx-auto"
                       />
 
                       {/* Photo Name Overlay - Bottom */}
