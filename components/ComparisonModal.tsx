@@ -106,50 +106,61 @@ export function ComparisonModal({
               const photoFavorites = favoriteDetails.filter(f => f.photoId === photo.id);
 
               return (
-                <div key={photo.id} className="h-full flex flex-col">
-                  {/* Photo Container - Full height */}
-                  <div className="flex-1 relative bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                <div key={photo.id} className="h-full">
+                  {/* Photo Container - Full height with overlays */}
+                  <div className="h-full relative bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden group">
                     <img
                       src={photo.url}
                       alt={getPhotoDisplayName(photo)}
                       className="max-w-full max-h-full object-contain"
                     />
 
-                    {/* Collapse Button */}
-                    <button
-                      onClick={() => setExpandedPhoto(null)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
-                      title="Réduire"
-                    >
-                      <Minimize2 className="h-4 w-4 text-gray-700" />
-                    </button>
-                  </div>
-
-                  {/* Photo Info - Compact */}
-                  <div className="mt-4 bg-white rounded-lg shadow-sm border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-gray-900 truncate flex-1">
+                    {/* Photo Name Overlay - Bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="text-white font-medium drop-shadow-lg">
                         {getPhotoDisplayName(photo)}
                       </div>
-
-                      <Button
-                        variant={isFavorite ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => onToggleFavorite(photo.id)}
-                        className="flex items-center gap-1.5 shrink-0"
-                      >
-                        <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
-                        {photoFavorites.length > 0 && (
-                          <span className="text-xs">{photoFavorites.length}</span>
-                        )}
-                      </Button>
+                      {photoFavorites.length > 0 && (
+                        <div className="text-white/80 text-xs mt-1">
+                          {photoFavorites.map(f => f.userName).join(', ')}
+                        </div>
+                      )}
                     </div>
 
-                    {photoFavorites.length > 0 && (
-                      <div className="text-xs text-gray-500 mt-2">
-                        {photoFavorites.map(f => f.userName).join(', ')}
-                      </div>
-                    )}
+                    {/* Top Right Controls */}
+                    <div className="absolute top-3 right-3 flex items-center gap-2">
+                      {/* Favorite Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite(photo.id);
+                        }}
+                        className={`p-2 rounded-lg shadow-md transition-all ${
+                          isFavorite
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : 'bg-white/90 hover:bg-white text-gray-700'
+                        }`}
+                        title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                      >
+                        <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                      </button>
+
+                      {/* Favorite Count Badge */}
+                      {photoFavorites.length > 0 && (
+                        <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                          {photoFavorites.length}
+                        </div>
+                      )}
+
+                      {/* Collapse Button */}
+                      <button
+                        onClick={() => setExpandedPhoto(null)}
+                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
+                        title="Réduire"
+                      >
+                        <Minimize2 className="h-4 w-4 text-gray-700" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -170,7 +181,7 @@ export function ComparisonModal({
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`flex-shrink-0 bg-white rounded-lg shadow-sm border overflow-hidden cursor-move transition-all ${
+                    className={`flex-shrink-0 bg-white rounded-lg shadow-sm border overflow-hidden transition-all ${
                       draggedIndex === index ? 'opacity-50' : ''
                     }`}
                     style={{
@@ -180,14 +191,14 @@ export function ComparisonModal({
                     }}
                   >
                     {/* Drag Handle */}
-                    <div className="bg-gray-50 px-3 py-2 border-b flex items-center gap-2">
+                    <div className="bg-gray-50 px-3 py-2 border-b flex items-center gap-2 cursor-move">
                       <GripVertical className="h-4 w-4 text-gray-400" />
                       <span className="text-xs text-gray-500">Glisser pour réorganiser</span>
                     </div>
 
-                    {/* Photo Container - Dynamic height based on available space */}
+                    {/* Photo Container - Dynamic height with overlays */}
                     <div
-                      className="relative bg-gray-100 flex items-center justify-center"
+                      className="relative bg-gray-100 flex items-center justify-center group"
                       style={{
                         height: 'calc(100vh - 280px)',
                         maxHeight: 'calc(100vh - 280px)'
@@ -199,41 +210,52 @@ export function ComparisonModal({
                         className="w-full h-full object-contain"
                       />
 
-                      {/* Expand Button */}
-                      <button
-                        onClick={() => setExpandedPhoto(photo.id)}
-                        className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
-                        title="Agrandir"
-                      >
-                        <Maximize2 className="h-4 w-4 text-gray-700" />
-                      </button>
-                    </div>
-
-                    {/* Photo Info - Compact */}
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium text-gray-900 truncate flex-1">
+                      {/* Photo Name Overlay - Bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="text-white font-medium text-sm drop-shadow-lg">
                           {getPhotoDisplayName(photo)}
                         </div>
-
-                        <Button
-                          variant={isFavorite ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => onToggleFavorite(photo.id)}
-                          className="flex items-center gap-1.5 shrink-0"
-                        >
-                          <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
-                          {photoFavorites.length > 0 && (
-                            <span className="text-xs">{photoFavorites.length}</span>
-                          )}
-                        </Button>
+                        {photoFavorites.length > 0 && (
+                          <div className="text-white/80 text-xs mt-1">
+                            {photoFavorites.map(f => f.userName).join(', ')}
+                          </div>
+                        )}
                       </div>
 
-                      {photoFavorites.length > 0 && (
-                        <div className="text-xs text-gray-500">
-                          {photoFavorites.map(f => f.userName).join(', ')}
-                        </div>
-                      )}
+                      {/* Top Right Controls */}
+                      <div className="absolute top-3 right-3 flex items-center gap-2">
+                        {/* Favorite Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite(photo.id);
+                          }}
+                          className={`p-2 rounded-lg shadow-md transition-all ${
+                            isFavorite
+                              ? 'bg-red-500 hover:bg-red-600 text-white'
+                              : 'bg-white/90 hover:bg-white text-gray-700'
+                          }`}
+                          title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                        >
+                          <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                        </button>
+
+                        {/* Favorite Count Badge */}
+                        {photoFavorites.length > 0 && (
+                          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                            {photoFavorites.length}
+                          </div>
+                        )}
+
+                        {/* Expand Button */}
+                        <button
+                          onClick={() => setExpandedPhoto(photo.id)}
+                          className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
+                          title="Agrandir"
+                        >
+                          <Maximize2 className="h-4 w-4 text-gray-700" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
