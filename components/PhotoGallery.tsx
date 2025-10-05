@@ -6,6 +6,7 @@ import { AuthDialog } from "./AuthDialog";
 import { Lightbox } from "./Lightbox";
 import { SelectionSubmitButton } from "./SelectionSubmitButton";
 import { UserNameDialog } from "./UserNameDialog";
+import { ComparisonModal } from "./ComparisonModal";
 import {
   ArrowLeft,
   Heart,
@@ -19,7 +20,8 @@ import {
   Grid3X3,
   Tag,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  GitCompare
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
@@ -75,7 +77,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Mobile search state
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  
+
   // Desktop search state
   const [showDesktopSearch, setShowDesktopSearch] = useState(false);
 
@@ -84,6 +86,11 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Comparison mode state
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
+  const [comparisonSelection, setComparisonSelection] = useState<Set<string>>(new Set());
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
 
   // Handle view mode change
   const handleViewModeChange = (mode: 'masonry' | 'grid') => {
@@ -381,6 +388,46 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     toast.info('Ajout aux favoris annulé');
   };
 
+  // Comparison mode handlers
+  const toggleComparisonMode = () => {
+    const newMode = !isComparisonMode;
+    setIsComparisonMode(newMode);
+    if (!newMode) {
+      // Exit comparison mode - clear selection
+      setComparisonSelection(new Set());
+    } else {
+      toast.info('Sélectionnez des photos à comparer');
+    }
+  };
+
+  const toggleComparisonSelection = (photoId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    setComparisonSelection(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(photoId)) {
+        newSelection.delete(photoId);
+      } else {
+        newSelection.add(photoId);
+      }
+      return newSelection;
+    });
+  };
+
+  const openComparisonModal = () => {
+    if (comparisonSelection.size === 0) {
+      toast.error('Veuillez sélectionner au moins une photo à comparer');
+      return;
+    }
+    setShowComparisonModal(true);
+  };
+
+  const closeComparisonModal = () => {
+    setShowComparisonModal(false);
+  };
+
   const submitComment = async (photoId: string, comment: string) => {
     if (!comment.trim()) return;
 
@@ -592,6 +639,32 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
               <Button
+                variant={isComparisonMode ? "default" : "outline"}
+                size="sm"
+                onClick={toggleComparisonMode}
+                className="flex items-center"
+              >
+                <GitCompare className="h-4 w-4 mr-2" />
+                Comparer
+                {comparisonSelection.size > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {comparisonSelection.size}
+                  </Badge>
+                )}
+              </Button>
+
+              {isComparisonMode && comparisonSelection.size > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={openComparisonModal}
+                  className="flex items-center"
+                >
+                  Voir la comparaison ({comparisonSelection.size})
+                </Button>
+              )}
+
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => window.appRouter.navigateTo(`/favorites/${galleryId}`)}
@@ -600,8 +673,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 <Heart className="h-4 w-4 mr-2" />
                 Ma sélection ({selection.size})
               </Button>
-              
-              <SelectionSubmitButton 
+
+              <SelectionSubmitButton
                 galleryId={galleryId}
                 galleryName={gallery.name}
                 variant="default"
@@ -813,6 +886,31 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
           {/* Compact controls row */}
           <div className="flex items-center gap-2">
+            {/* Comparison mode button */}
+            <Button
+              variant={isComparisonMode ? "default" : "outline"}
+              size="sm"
+              onClick={toggleComparisonMode}
+              className="shrink-0"
+            >
+              <GitCompare className="h-4 w-4" />
+              {comparisonSelection.size > 0 && (
+                <span className="ml-1 text-xs">{comparisonSelection.size}</span>
+              )}
+            </Button>
+
+            {/* Show comparison button when in comparison mode */}
+            {isComparisonMode && comparisonSelection.size > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={openComparisonModal}
+                className="shrink-0 text-xs"
+              >
+                Voir ({comparisonSelection.size})
+              </Button>
+            )}
+
             {/* Search toggle button */}
             <Button
               variant="outline"
@@ -1003,7 +1101,19 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                           style={getGridItemStyle(photo)}
                         >
                           {/* Photo */}
-                          <div className={viewMode === 'masonry' ? 'photo-container' : ''} onClick={() => openLightbox(originalIndex)}>
+                          <div
+                            className={`${viewMode === 'masonry' ? 'photo-container' : ''} ${
+                              isComparisonMode && comparisonSelection.has(photo.id) ? 'ring-4 ring-blue-500' : ''
+                            }`}
+                            onClick={(e) => {
+                              if (isComparisonMode) {
+                                toggleComparisonSelection(photo.id, e);
+                              } else {
+                                openLightbox(originalIndex);
+                              }
+                            }}
+                            style={{ cursor: isComparisonMode ? 'pointer' : 'zoom-in' }}
+                          >
                             <img
                               src={photo.url}
                               alt={getPhotoDisplayName(photo)}
@@ -1011,15 +1121,32 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                               className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
                             />
 
+                            {/* Comparison mode checkbox indicator */}
+                            {isComparisonMode && (
+                              <div className="absolute top-2 left-2 z-10">
+                                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${
+                                  comparisonSelection.has(photo.id)
+                                    ? 'bg-blue-500 border-blue-500'
+                                    : 'bg-white/80 border-gray-400'
+                                }`}>
+                                  {comparisonSelection.has(photo.id) && (
+                                    <svg className="w-4 h-4 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Photo name overlay */}
                             <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
                               {getPhotoDisplayName(photo)}
                             </div>
 
-                            {/* Selection indicator */}
-                            {userService.isUserLoggedIn() ? (
+                            {/* Selection indicator (favorites) - hide in comparison mode */}
+                            {!isComparisonMode && userService.isUserLoggedIn() ? (
                               <div className={`favorite-indicator ${
-                                userSelection.has(photo.id) ? 'is-favorite' : 
+                                userSelection.has(photo.id) ? 'is-favorite' :
                                 selection.has(photo.id) ? 'is-favorite-other' : ''
                               }`}>
                                 <button
@@ -1044,7 +1171,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                   </div>
                                 )}
                               </div>
-                            ) : (
+                            ) : !isComparisonMode ? (
                               <div className={`favorite-indicator ${
                                 selection.has(photo.id) ? 'is-favorite-other' : ''
                               }`}>
@@ -1057,14 +1184,14 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                     selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
                                   }`} />
                                 </button>
-                                
+
                                 {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 0 && (
                                   <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                                     {favoritesList.filter(f => f.photoId === photo.id).length}
                                   </div>
                                 )}
                               </div>
-                            )}
+                            ) : null}
 
                             {/* Comment indicator */}
                             {photoCommentCounts[photo.id] > 0 && (
@@ -1127,13 +1254,42 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 style={getGridItemStyle(photo)}
               >
                 {/* Photo */}
-                <div className={viewMode === 'masonry' ? 'photo-container' : ''} onClick={() => openLightbox(index)}>
+                <div
+                  className={`${viewMode === 'masonry' ? 'photo-container' : ''} ${
+                    isComparisonMode && comparisonSelection.has(photo.id) ? 'ring-4 ring-blue-500' : ''
+                  }`}
+                  onClick={(e) => {
+                    if (isComparisonMode) {
+                      toggleComparisonSelection(photo.id, e);
+                    } else {
+                      openLightbox(index);
+                    }
+                  }}
+                  style={{ cursor: isComparisonMode ? 'pointer' : 'zoom-in' }}
+                >
                   <img
                     src={photo.url}
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
                   />
+
+                  {/* Comparison mode checkbox indicator */}
+                  {isComparisonMode && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center ${
+                        comparisonSelection.has(photo.id)
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'bg-white/80 border-gray-400'
+                      }`}>
+                        {comparisonSelection.has(photo.id) && (
+                          <svg className="w-4 h-4 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Photo name overlay - NEW */}
                   <div className={`photo-name-overlay ${showPhotoNames ? 'show-always' : ''}`}>
@@ -1142,7 +1298,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
                   {/* Selection indicator - shows user's own selection */}
                   {/* Only show clickable heart if user is logged in */}
-                  {userService.isUserLoggedIn() ? (
+                  {!isComparisonMode && userService.isUserLoggedIn() ? (
                     <div className={`favorite-indicator ${
                       userSelection.has(photo.id) ? 'is-favorite' : 
                       selection.has(photo.id) ? 'is-favorite-other' : ''
@@ -1170,7 +1326,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : !isComparisonMode ? (
                     // Show non-clickable heart for non-logged users
                     <div className={`favorite-indicator ${
                       selection.has(photo.id) ? 'is-favorite-other' : ''
@@ -1184,7 +1340,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                           selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
                         }`} />
                       </button>
-                      
+
                       {/* Global selection indicator for non-logged users */}
                       {selection.has(photo.id) && favoritesList.filter(f => f.photoId === photo.id).length > 0 && (
                         <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
@@ -1192,7 +1348,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         </div>
                       )}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Comment indicator */}
                   {photoCommentCounts[photo.id] > 0 && (
@@ -1266,6 +1422,21 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         galleryId={galleryId} // Add galleryId for custom order
         allPhotos={photos} // All photos for correct position calculation
       />
+
+      {/* Comparison Modal */}
+      {showComparisonModal && (
+        <ComparisonModal
+          photos={filteredPhotos}
+          selectedPhotos={comparisonSelection}
+          onClose={closeComparisonModal}
+          favorites={userSelection}
+          favoriteDetails={favoritesList}
+          commentCounts={photoCommentCounts}
+          comments={comments}
+          onToggleFavorite={toggleSelection}
+          onAddComment={submitComment}
+        />
+      )}
 
       {/* User Name Dialog */}
       <UserNameDialog
