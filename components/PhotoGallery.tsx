@@ -646,23 +646,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               >
                 <GitCompare className="h-4 w-4 mr-2" />
                 Comparer
-                {comparisonSelection.size > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {comparisonSelection.size}
-                  </Badge>
-                )}
               </Button>
-
-              {isComparisonMode && comparisonSelection.size > 0 && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={openComparisonModal}
-                  className="flex items-center"
-                >
-                  Voir la comparaison ({comparisonSelection.size})
-                </Button>
-              )}
 
               <Button
                 variant="outline"
@@ -894,22 +878,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               className="shrink-0"
             >
               <GitCompare className="h-4 w-4" />
-              {comparisonSelection.size > 0 && (
-                <span className="ml-1 text-xs">{comparisonSelection.size}</span>
-              )}
             </Button>
-
-            {/* Show comparison button when in comparison mode */}
-            {isComparisonMode && comparisonSelection.size > 0 && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={openComparisonModal}
-                className="shrink-0 text-xs"
-              >
-                Voir ({comparisonSelection.size})
-              </Button>
-            )}
 
             {/* Search toggle button */}
             <Button
@@ -1444,6 +1413,20 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         onConfirm={handleUserNameConfirm}
         onCancel={handleUserNameCancel}
       />
+
+      {/* Fixed comparison button - Bottom right */}
+      {isComparisonMode && comparisonSelection.size > 0 && (
+        <button
+          onClick={openComparisonModal}
+          className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-full shadow-lg flex items-center gap-3 transition-all z-50 animate-in slide-in-from-bottom-5"
+        >
+          <GitCompare className="h-5 w-5" />
+          <span className="font-medium">Voir la comparaison</span>
+          <Badge variant="secondary" className="bg-white/20 text-white border-0">
+            {comparisonSelection.size}
+          </Badge>
+        </button>
+      )}
     </div>
   );
 }

@@ -129,25 +129,28 @@ export function ComparisonModal({
 
                     {/* Top Right Controls */}
                     <div className="absolute top-3 right-3 flex items-center gap-2">
-                      {/* Favorite Button */}
+                      {/* Favorite Button - Style like gallery */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleFavorite(photo.id);
                         }}
-                        className={`p-2 rounded-lg shadow-md transition-all ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
                           isFavorite
-                            ? 'bg-red-500 hover:bg-red-600 text-white'
-                            : 'bg-white/90 hover:bg-white text-gray-700'
+                            ? 'bg-green-500/95 hover:bg-green-600'
+                            : 'bg-white/95 hover:bg-white'
                         }`}
+                        style={{
+                          backdropFilter: 'blur(8px)'
+                        }}
                         title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                       >
-                        <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                        <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current text-white' : 'text-gray-600'}`} />
                       </button>
 
                       {/* Favorite Count Badge */}
-                      {photoFavorites.length > 0 && (
-                        <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                      {photoFavorites.length > 1 && (
+                        <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                           {photoFavorites.length}
                         </div>
                       )}
@@ -155,7 +158,10 @@ export function ComparisonModal({
                       {/* Collapse Button */}
                       <button
                         onClick={() => setExpandedPhoto(null)}
-                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
+                        className="w-9 h-9 rounded-full flex items-center justify-center bg-white/95 hover:bg-white shadow-md transition-all ml-2"
+                        style={{
+                          backdropFilter: 'blur(8px)'
+                        }}
                         title="Réduire"
                       >
                         <Minimize2 className="h-4 w-4 text-gray-700" />
@@ -219,25 +225,28 @@ export function ComparisonModal({
 
                       {/* Top Right Controls */}
                       <div className="absolute top-3 right-3 flex items-center gap-2">
-                        {/* Favorite Button */}
+                        {/* Favorite Button - Style like gallery */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleFavorite(photo.id);
                           }}
-                          className={`p-2 rounded-lg shadow-md transition-all ${
+                          className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-all ${
                             isFavorite
-                              ? 'bg-red-500 hover:bg-red-600 text-white'
-                              : 'bg-white/90 hover:bg-white text-gray-700'
+                              ? 'bg-green-500/95 hover:bg-green-600'
+                              : 'bg-white/95 hover:bg-white'
                           }`}
+                          style={{
+                            backdropFilter: 'blur(8px)'
+                          }}
                           title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                         >
-                          <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                          <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current text-white' : 'text-gray-600'}`} />
                         </button>
 
                         {/* Favorite Count Badge */}
-                        {photoFavorites.length > 0 && (
-                          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full shadow-md">
+                        {photoFavorites.length > 1 && (
+                          <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                             {photoFavorites.length}
                           </div>
                         )}
@@ -245,7 +254,10 @@ export function ComparisonModal({
                         {/* Expand Button */}
                         <button
                           onClick={() => setExpandedPhoto(photo.id)}
-                          className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-md transition-colors"
+                          className="w-9 h-9 rounded-full flex items-center justify-center bg-white/95 hover:bg-white shadow-md transition-all ml-2"
+                          style={{
+                            backdropFilter: 'blur(8px)'
+                          }}
                           title="Agrandir"
                         >
                           <Maximize2 className="h-4 w-4 text-gray-700" />
