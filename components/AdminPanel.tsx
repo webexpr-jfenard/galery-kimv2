@@ -726,9 +726,7 @@ export function AdminPanel() {
                   <FolderOpen className="h-5 w-5" />
                   Galeries ({filteredGalleries.length})
                 </CardTitle>
-                <CardDescription>
-                  Gérez vos galeries photos, téléchargez des photos avec organisation par sous-dossiers et configurez les paramètres.
-                </CardDescription>
+                
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {/* Sort Selector */}
