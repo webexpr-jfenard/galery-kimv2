@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Check, ChevronsUpDown, X, Tag } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "./ui/utils";
 import { galleryService } from "../services/galleryService";
 
 interface CategorySelectorProps {
