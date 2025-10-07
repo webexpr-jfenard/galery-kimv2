@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Check, ChevronsUpDown, X, Tag } from "lucide-react";
 import { cn } from "./ui/utils";
 import { galleryService } from "../services/galleryService";
@@ -20,10 +19,26 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
   const [categories, setCategories] = useState<string[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setIsCreatingNew(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [open]);
 
   const loadCategories = async () => {
     const cats = await galleryService.getCategories();
@@ -57,31 +72,31 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={containerRef}>
       <Label htmlFor="category" className="flex items-center gap-2 text-sm font-medium">
         <Tag className="h-4 w-4" />
         {label}
       </Label>
 
-      <div className="flex gap-2">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between"
-              disabled={disabled}
-            >
-              {value ? (
-                <span className="truncate">{value}</span>
-              ) : (
-                <span className="text-muted-foreground">Sélectionner ou créer une catégorie...</span>
-              )}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0" align="start" side="bottom">
+      <div className="flex gap-2 relative">
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          disabled={disabled}
+          onClick={() => setOpen(!open)}
+        >
+          {value ? (
+            <span className="truncate">{value}</span>
+          ) : (
+            <span className="text-muted-foreground">Sélectionner ou créer une catégorie...</span>
+          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+
+        {open && (
+          <div className="absolute top-full left-0 mt-2 w-[400px] z-50 bg-popover text-popover-foreground border rounded-md shadow-md max-h-[400px] overflow-hidden">
             <Command>
               <CommandInput placeholder="Rechercher une catégorie..." />
               <CommandList>
@@ -172,8 +187,8 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
                 </CommandGroup>
               </CommandList>
             </Command>
-          </PopoverContent>
-        </Popover>
+          </div>
+        )}
 
         {value && (
           <Button
