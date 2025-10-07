@@ -351,6 +351,10 @@ export function AdminPanel() {
       allowFavorites: gallery.allowFavorites,
       category: gallery.category || ''
     });
+    // Switch to list view when editing from category view
+    if (viewMode === 'category') {
+      setViewMode('list');
+    }
   };
 
   const saveGalleryEdit = async () => {
