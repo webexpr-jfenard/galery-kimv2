@@ -18,6 +18,7 @@ export interface Gallery {
   allowFavorites?: boolean;
   featuredPhotoUrl?: string; // URL of the featured photo for gallery preview
   featuredPhotoId?: string; // ID of the featured photo
+  category?: string; // Client name or category for organization
 }
 
 export interface Photo {
@@ -285,7 +286,8 @@ class GalleryService {
         allowComments: row.allow_comments !== false,
         allowFavorites: row.allow_favorites !== false,
         featuredPhotoUrl: row.featured_photo_url || undefined,
-        featuredPhotoId: row.featured_photo_id || undefined
+        featuredPhotoId: row.featured_photo_id || undefined,
+        category: row.category || undefined
       }));
 
       console.log(`✅ Loaded ${galleries.length} galleries from Supabase`);
@@ -380,7 +382,8 @@ class GalleryService {
         allowComments: data.allow_comments !== false,
         allowFavorites: data.allow_favorites !== false,
         featuredPhotoUrl: data.featured_photo_url || undefined,
-        featuredPhotoId: data.featured_photo_id || undefined
+        featuredPhotoId: data.featured_photo_id || undefined,
+        category: data.category || undefined
       };
 
       console.log(`✅ Found gallery in Supabase: ${gallery.name}`);
@@ -457,6 +460,7 @@ class GalleryService {
     bucketName?: string;
     allowComments?: boolean;
     allowFavorites?: boolean;
+    category?: string;
   }): Promise<Gallery> {
     try {
       const id = this.generateId();
@@ -481,7 +485,8 @@ class GalleryService {
         allowComments: options?.allowComments ?? true,
         allowFavorites: options?.allowFavorites ?? true,
         featuredPhotoUrl: undefined,
-        featuredPhotoId: undefined
+        featuredPhotoId: undefined,
+        category: options?.category || undefined
       };
 
       // With hardcoded credentials, always use Supabase
@@ -511,7 +516,8 @@ class GalleryService {
             allow_comments: newGallery.allowComments,
             allow_favorites: newGallery.allowFavorites,
             featured_photo_url: newGallery.featuredPhotoUrl || null,
-            featured_photo_id: newGallery.featuredPhotoId || null
+            featured_photo_id: newGallery.featuredPhotoId || null,
+            category: newGallery.category || null
           }]);
 
         if (error) {
@@ -586,6 +592,7 @@ class GalleryService {
         if (updates.allowFavorites !== undefined) supabaseUpdates.allow_favorites = updates.allowFavorites;
         if (updates.featuredPhotoUrl !== undefined) supabaseUpdates.featured_photo_url = updates.featuredPhotoUrl || null;
         if (updates.featuredPhotoId !== undefined) supabaseUpdates.featured_photo_id = updates.featuredPhotoId || null;
+        if (updates.category !== undefined) supabaseUpdates.category = updates.category || null;
 
         const { data, error } = await supabaseService.client
           .from(this.GALLERIES_TABLE)
@@ -617,7 +624,8 @@ class GalleryService {
           allowComments: data.allow_comments !== false,
           allowFavorites: data.allow_favorites !== false,
           featuredPhotoUrl: data.featured_photo_url || undefined,
-          featuredPhotoId: data.featured_photo_id || undefined
+          featuredPhotoId: data.featured_photo_id || undefined,
+          category: data.category || undefined
         };
       } else {
         // Fallback to local storage
@@ -1397,6 +1405,25 @@ class GalleryService {
   // Check if Supabase is configured
   isSupabaseConfigured(): boolean {
     return supabaseService.isReady();
+  }
+
+  // Get all unique categories from galleries
+  async getCategories(): Promise<string[]> {
+    try {
+      const galleries = await this.getGalleries();
+      const categories = new Set<string>();
+
+      galleries.forEach(gallery => {
+        if (gallery.category && gallery.category.trim()) {
+          categories.add(gallery.category.trim());
+        }
+      });
+
+      return Array.from(categories).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+    } catch (error) {
+      console.error('Error getting categories:', error);
+      return [];
+    }
   }
 
   // Get gallery statistics

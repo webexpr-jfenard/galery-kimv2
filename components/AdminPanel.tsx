@@ -12,6 +12,7 @@ import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
 import { GmailConfigDialog } from "./GmailConfigDialog";
+import { CategorySelector } from "./CategorySelector";
 import { Alert, AlertDescription } from "./ui/alert";
 import {
   Settings,
@@ -45,7 +46,10 @@ import {
   FolderOpen,
   Mail,
   Star,
-  Calculator
+  Calculator,
+  Tag,
+  List,
+  LayoutGrid
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -64,6 +68,8 @@ export function AdminPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'category'>('list');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   // Supabase state (simplified - always connected now)
   const [connectionStatus, setConnectionStatus] = useState({
@@ -83,7 +89,8 @@ export function AdminPanel() {
     password: '',
     isPublic: true,
     allowComments: true,
-    allowFavorites: true
+    allowFavorites: true,
+    category: ''
   });
   
   // Edit gallery state
@@ -271,7 +278,8 @@ export function AdminPanel() {
         password: newGallery.password || undefined,
         isPublic: newGallery.isPublic,
         allowComments: newGallery.allowComments,
-        allowFavorites: newGallery.allowFavorites
+        allowFavorites: newGallery.allowFavorites,
+        category: newGallery.category || undefined
       });
 
       console.log('✅ Gallery created:', createdGallery);
@@ -285,7 +293,8 @@ export function AdminPanel() {
         password: '',
         isPublic: true,
         allowComments: true,
-        allowFavorites: true
+        allowFavorites: true,
+        category: ''
       });
 
       toast.success(`Galerie "${createdGallery.name}" créée avec succès !`);
@@ -333,7 +342,8 @@ export function AdminPanel() {
       password: gallery.password || '',
       isPublic: gallery.isPublic,
       allowComments: gallery.allowComments,
-      allowFavorites: gallery.allowFavorites
+      allowFavorites: gallery.allowFavorites,
+      category: gallery.category || ''
     });
   };
 
@@ -440,11 +450,39 @@ export function AdminPanel() {
     }));
   };
 
-  const filteredGalleries = galleries.filter(gallery =>
-    gallery.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    gallery.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    gallery.bucketFolder?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGalleries = galleries.filter(gallery => {
+    const matchesSearch = gallery.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gallery.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gallery.bucketFolder?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gallery.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory = viewMode === 'list' ||
+      (selectedCategory === null && !gallery.category) ||
+      gallery.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // Group galleries by category
+  const galleriesByCategory = React.useMemo(() => {
+    const grouped = new Map<string, Gallery[]>();
+
+    galleries.forEach(gallery => {
+      const category = gallery.category || 'Sans catégorie';
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category)!.push(gallery);
+    });
+
+    // Sort categories alphabetically, with "Sans catégorie" at the end
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => {
+        if (a === 'Sans catégorie') return 1;
+        if (b === 'Sans catégorie') return -1;
+        return a.localeCompare(b, 'fr', { sensitivity: 'base' });
+      });
+  }, [galleries]);
 
   // Format time remaining
   const formatTimeRemaining = (ms: number) => {
@@ -649,6 +687,30 @@ export function AdminPanel() {
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                  <Button
+                    size="sm"
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    onClick={() => {
+                      setViewMode('list');
+                      setSelectedCategory(null);
+                    }}
+                    className="h-8"
+                  >
+                    <List className="h-4 w-4 mr-1" />
+                    Liste
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewMode === 'category' ? 'default' : 'ghost'}
+                    onClick={() => setViewMode('category')}
+                    className="h-8"
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-1" />
+                    Par catégorie
+                  </Button>
+                </div>
                 {/* Create Gallery Dialog */}
                 <Dialog>
                   <DialogTrigger asChild>
@@ -678,6 +740,11 @@ export function AdminPanel() {
                             onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
                           />
                         </div>
+
+                        <CategorySelector
+                          value={newGallery.category || undefined}
+                          onChange={(category) => setNewGallery(prev => ({ ...prev, category: category || '' }))}
+                        />
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -802,11 +869,94 @@ export function AdminPanel() {
                 <RefreshCw className="h-6 w-6 animate-spin mr-2" />
                 Chargement des galeries...
               </div>
+            ) : viewMode === 'category' ? (
+              // Category View
+              <div className="space-y-6">
+                {galleriesByCategory.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucune galerie créée pour le moment.
+                  </div>
+                ) : (
+                  galleriesByCategory.map(([category, categoryGalleries]) => (
+                    <div key={category} className="space-y-3">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <Tag className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">{category}</h3>
+                        <Badge variant="secondary" className="ml-2">
+                          {categoryGalleries.length}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {categoryGalleries.map((gallery) => (
+                          <div key={gallery.id} className="border rounded-lg p-4 space-y-3 bg-background hover:border-primary/50 transition-colors">
+                            <div className="flex items-start gap-3">
+                              {/* Compact Featured photo thumbnail */}
+                              {gallery.featuredPhotoUrl ? (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-orange-300 shrink-0">
+                                  <img
+                                    src={gallery.featuredPhotoUrl}
+                                    alt={`Featured photo for ${gallery.name}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 shrink-0 flex items-center justify-center">
+                                  <FileImage className="h-6 w-6 text-muted-foreground/50" />
+                                </div>
+                              )}
+
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold truncate mb-1">{gallery.name}</h4>
+                                {gallery.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                    {gallery.description}
+                                  </p>
+                                )}
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{gallery.photoCount || 0} photos</span>
+                                  {gallery.password && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Key className="h-2 w-2 mr-1" />
+                                      Protégée
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 pt-2 border-t">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.appRouter.navigateTo(`/gallery/${gallery.id}`)}
+                                className="flex-1"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Voir
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => startEditingGallery(gallery)}
+                                className="flex-1"
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Modifier
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             ) : filteredGalleries.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 {searchTerm ? 'Aucune galerie ne correspond à votre recherche.' : 'Aucune galerie créée pour le moment.'}
               </div>
             ) : (
+              // List View
               <div className="space-y-4">
                 {filteredGalleries.map((gallery) => (
                   <div key={gallery.id} className="border rounded-lg p-4 lg:p-6 space-y-4 bg-background">
@@ -875,6 +1025,11 @@ export function AdminPanel() {
                           />
                         </div>
 
+                        <CategorySelector
+                          value={editForm.category || undefined}
+                          onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
+                        />
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
@@ -940,6 +1095,12 @@ export function AdminPanel() {
                               <div className="flex items-center gap-3 mb-2">
                                 <h3 className="text-lg font-semibold truncate">{gallery.name}</h3>
                                 <div className="flex gap-2 shrink-0">
+                                  {gallery.category && (
+                                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                      <Tag className="h-3 w-3 mr-1" />
+                                      {gallery.category}
+                                    </Badge>
+                                  )}
                                   {gallery.password && (
                                     <Badge variant="secondary">
                                       <Key className="h-3 w-3 mr-1" />
