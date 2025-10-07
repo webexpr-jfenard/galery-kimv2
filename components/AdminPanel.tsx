@@ -8,6 +8,7 @@ import { Separator } from "./ui/separator";
 import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AuthDialog } from "./AuthDialog";
 import { SubfolderSelector } from "./SubfolderSelector";
 import { PhotoManager } from "./PhotoManager";
@@ -49,7 +50,11 @@ import {
   Calculator,
   Tag,
   List,
-  LayoutGrid
+  LayoutGrid,
+  ArrowUpDown,
+  ArrowUpAZ,
+  ArrowDownAZ,
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -70,6 +75,7 @@ export function AdminPanel() {
   const [isCreating, setIsCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'category'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'date-newest' | 'date-oldest'>('date-newest');
   
   // Supabase state (simplified - always connected now)
   const [connectionStatus, setConnectionStatus] = useState({
@@ -450,18 +456,38 @@ export function AdminPanel() {
     }));
   };
 
-  const filteredGalleries = galleries.filter(gallery => {
-    const matchesSearch = gallery.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      gallery.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      gallery.bucketFolder?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      gallery.category?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredGalleries = React.useMemo(() => {
+    let filtered = galleries.filter(gallery => {
+      const matchesSearch = gallery.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        gallery.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        gallery.bucketFolder?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        gallery.category?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = viewMode === 'list' ||
-      (selectedCategory === null && !gallery.category) ||
-      gallery.category === selectedCategory;
+      const matchesCategory = viewMode === 'list' ||
+        (selectedCategory === null && !gallery.category) ||
+        gallery.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
-  });
+      return matchesSearch && matchesCategory;
+    });
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'name-asc':
+        filtered.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+        break;
+      case 'name-desc':
+        filtered.sort((a, b) => b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' }));
+        break;
+      case 'date-newest':
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case 'date-oldest':
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+    }
+
+    return filtered;
+  }, [galleries, searchTerm, viewMode, selectedCategory, sortBy]);
 
   // Group galleries by category
   const galleriesByCategory = React.useMemo(() => {
@@ -687,6 +713,40 @@ export function AdminPanel() {
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Sort Selector */}
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date-newest">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Plus récent
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="date-oldest">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Plus ancien
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="name-asc">
+                      <div className="flex items-center gap-2">
+                        <ArrowUpAZ className="h-4 w-4" />
+                        A → Z
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="name-desc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDownAZ className="h-4 w-4" />
+                        Z → A
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
                 {/* View Mode Toggle */}
                 <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
                   <Button

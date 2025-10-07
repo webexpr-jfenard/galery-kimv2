@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "./ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Check, ChevronsUpDown, X, Tag } from "lucide-react";
 import { cn } from "./ui/utils";
@@ -84,20 +84,21 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
           <PopoverContent className="w-[400px] p-0">
             <Command>
               <CommandInput placeholder="Rechercher une catégorie..." />
-              <CommandEmpty>
-                <div className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">Aucune catégorie trouvée</p>
-                  <Button
-                    size="sm"
-                    onClick={() => setIsCreatingNew(true)}
-                    className="w-full"
-                  >
-                    <Tag className="h-4 w-4 mr-2" />
-                    Créer une nouvelle catégorie
-                  </Button>
-                </div>
-              </CommandEmpty>
-              <CommandGroup>
+              <CommandList>
+                <CommandEmpty>
+                  <div className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground mb-3">Aucune catégorie trouvée</p>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsCreatingNew(true)}
+                      className="w-full"
+                    >
+                      <Tag className="h-4 w-4 mr-2" />
+                      Créer une nouvelle catégorie
+                    </Button>
+                  </div>
+                </CommandEmpty>
+                <CommandGroup>
                 {!isCreatingNew && categories.length > 0 && (
                   <>
                     {categories.map((category) => (
@@ -168,7 +169,8 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
                     </div>
                   </div>
                 )}
-              </CommandGroup>
+                </CommandGroup>
+              </CommandList>
             </Command>
           </PopoverContent>
         </Popover>
