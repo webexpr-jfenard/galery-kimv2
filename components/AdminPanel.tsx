@@ -1222,7 +1222,7 @@ export function AdminPanel() {
                                       </div>
 
                                       {/* Upload Progress */}
-                                      {uploadProgress.galleryId === gallery.id && uploadProgress.total > 0 && (
+                                      {uploadProgress && uploadProgress.galleryId === gallery.id && uploadProgress.total > 0 && (
                                         <div className="mt-4 space-y-2">
                                           <div className="text-sm text-muted-foreground">
                                             Téléchargement {uploadProgress.completed}/{uploadProgress.total}
