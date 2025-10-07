@@ -501,6 +501,24 @@ export function AdminPanel() {
       grouped.get(category)!.push(gallery);
     });
 
+    // Apply sorting to each category's galleries
+    grouped.forEach((categoryGalleries, category) => {
+      switch (sortBy) {
+        case 'name-asc':
+          categoryGalleries.sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+          break;
+        case 'name-desc':
+          categoryGalleries.sort((a, b) => b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' }));
+          break;
+        case 'date-newest':
+          categoryGalleries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          break;
+        case 'date-oldest':
+          categoryGalleries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          break;
+      }
+    });
+
     // Sort categories alphabetically, with "Sans catégorie" at the end
     return Array.from(grouped.entries())
       .sort(([a], [b]) => {
@@ -508,7 +526,7 @@ export function AdminPanel() {
         if (b === 'Sans catégorie') return -1;
         return a.localeCompare(b, 'fr', { sensitivity: 'base' });
       });
-  }, [galleries]);
+  }, [galleries, sortBy]);
 
   // Format time remaining
   const formatTimeRemaining = (ms: number) => {
@@ -716,7 +734,6 @@ export function AdminPanel() {
                 {/* Sort Selector */}
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
                   <SelectTrigger className="w-[180px]">
-                    <ArrowUpDown className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

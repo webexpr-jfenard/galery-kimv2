@@ -81,7 +81,7 @@ export function CategorySelector({ value, onChange, disabled, label = "Catégori
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0">
+          <PopoverContent className="w-[400px] p-0" align="start" side="bottom">
             <Command>
               <CommandInput placeholder="Rechercher une catégorie..." />
               <CommandList>
