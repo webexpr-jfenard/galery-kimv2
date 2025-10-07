@@ -351,10 +351,6 @@ export function AdminPanel() {
       allowFavorites: gallery.allowFavorites,
       category: gallery.category || ''
     });
-    // Switch to list view when editing from category view
-    if (viewMode === 'category') {
-      setViewMode('list');
-    }
   };
 
   const saveGalleryEdit = async () => {
@@ -959,7 +955,7 @@ export function AdminPanel() {
                   </div>
                 ) : (
                   galleriesByCategory.map(([category, categoryGalleries]) => (
-                    <div key={category} className="space-y-3">
+                    <div key={category} className="space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b">
                         <Tag className="h-5 w-5 text-primary" />
                         <h3 className="text-lg font-semibold">{category}</h3>
@@ -967,64 +963,283 @@ export function AdminPanel() {
                           {categoryGalleries.length}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="space-y-4">
                         {categoryGalleries.map((gallery) => (
-                          <div key={gallery.id} className="border rounded-lg p-4 space-y-3 bg-background hover:border-primary/50 transition-colors">
-                            <div className="flex items-start gap-3">
-                              {/* Compact Featured photo thumbnail */}
-                              {gallery.featuredPhotoUrl ? (
-                                <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-orange-300 shrink-0">
-                                  <img
-                                    src={gallery.featuredPhotoUrl}
-                                    alt={`Featured photo for ${gallery.name}`}
-                                    className="w-full h-full object-cover"
+                          <div key={gallery.id} className="border rounded-lg p-4 lg:p-6 space-y-4 bg-background">
+                            {editingGallery === gallery.id ? (
+                              // Edit mode - Same as list view
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor={`edit-name-${gallery.id}`} className="text-sm font-medium">Nom</Label>
+                                    <Input
+                                      id={`edit-name-${gallery.id}`}
+                                      value={editForm.name || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`edit-bucket-${gallery.id}`} className="text-sm font-medium">Dossier Bucket</Label>
+                                    <Input
+                                      id={`edit-bucket-${gallery.id}`}
+                                      value={editForm.bucketFolder || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, bucketFolder: e.target.value }))}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Label htmlFor={`edit-password-${gallery.id}`} className="text-sm font-medium flex items-center gap-2">
+                                    <Key className="h-4 w-4" />
+                                    Mot de passe (laisser vide pour supprimer la protection)
+                                  </Label>
+                                  <div className="relative">
+                                    <Input
+                                      id={`edit-password-${gallery.id}`}
+                                      type={showEditPassword[gallery.id] ? 'text' : 'password'}
+                                      placeholder="Nouveau mot de passe..."
+                                      value={editForm.password || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                                      className="pr-10"
+                                    />
+                                    {editForm.password && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowEditPassword(prev => ({
+                                          ...prev,
+                                          [gallery.id]: !prev[gallery.id]
+                                        }))}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                      >
+                                        {showEditPassword[gallery.id] ? (
+                                          <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                          <Eye className="h-4 w-4" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <Label htmlFor={`edit-description-${gallery.id}`} className="text-sm font-medium">Description</Label>
+                                  <Textarea
+                                    id={`edit-description-${gallery.id}`}
+                                    value={editForm.description || ''}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                    rows={2}
                                   />
                                 </div>
-                              ) : (
-                                <div className="w-16 h-16 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 shrink-0 flex items-center justify-center">
-                                  <FileImage className="h-6 w-6 text-muted-foreground/50" />
-                                </div>
-                              )}
 
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold truncate mb-1">{gallery.name}</h4>
-                                {gallery.description && (
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                    {gallery.description}
-                                  </p>
-                                )}
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{gallery.photoCount || 0} photos</span>
-                                  {gallery.password && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      <Key className="h-2 w-2 mr-1" />
-                                      Protégée
-                                    </Badge>
-                                  )}
+                                <CategorySelector
+                                  value={editForm.category || undefined}
+                                  onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
+                                />
+
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-6">
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={editForm.isPublic ?? true}
+                                        onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, isPublic: checked }))}
+                                      />
+                                      <Label className="text-sm">Publique</Label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={editForm.allowComments ?? true}
+                                        onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowComments: checked }))}
+                                      />
+                                      <Label className="text-sm">Commentaires</Label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={editForm.allowFavorites ?? true}
+                                        onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowFavorites: checked }))}
+                                      />
+                                      <Label className="text-sm">Favoris</Label>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={saveGalleryEdit}>
+                                      <Save className="h-4 w-4 mr-2" />
+                                      Enregistrer
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={cancelEdit}>
+                                      <X className="h-4 w-4 mr-2" />
+                                      Annuler
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              // View mode - Same as list view
+                              <>
+                                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                                  <div className="flex gap-4 flex-1 min-w-0">
+                                    {/* Featured photo thumbnail */}
+                                    {gallery.featuredPhotoUrl ? (
+                                      <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-lg overflow-hidden border-2 border-orange-300 shrink-0 relative">
+                                        <img
+                                          src={gallery.featuredPhotoUrl}
+                                          alt={`Featured photo for ${gallery.name}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute top-1 right-1">
+                                          <Badge className="bg-orange-600 text-white text-xs px-1 py-0.5">
+                                            <Star className="h-2 w-2 mr-0.5 fill-current" />
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 shrink-0 flex items-center justify-center">
+                                        <FileImage className="h-8 w-8 lg:h-10 lg:w-10 text-muted-foreground/50" />
+                                      </div>
+                                    )}
 
-                            <div className="flex flex-wrap gap-2 pt-2 border-t">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.appRouter.navigateTo(`/gallery/${gallery.id}`)}
-                                className="flex-1"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Voir
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => startEditingGallery(gallery)}
-                                className="flex-1"
-                              >
-                                <Edit className="h-3 w-3 mr-1" />
-                                Modifier
-                              </Button>
-                            </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <h3 className="text-lg font-semibold truncate">{gallery.name}</h3>
+                                        <div className="flex gap-2 shrink-0">
+                                          {gallery.category && (
+                                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                              <Tag className="h-3 w-3 mr-1" />
+                                              {gallery.category}
+                                            </Badge>
+                                          )}
+                                          {gallery.password && (
+                                            <Badge variant="secondary">
+                                              <Key className="h-3 w-3 mr-1" />
+                                              Protégée
+                                            </Badge>
+                                          )}
+                                          <Badge variant="outline">
+                                            ID: {gallery.id}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                      {gallery.description && (
+                                        <p className="text-sm text-muted-foreground mb-2">
+                                          {gallery.description}
+                                        </p>
+                                      )}
+                                      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                                        <span>{gallery.photoCount || 0} photos</span>
+                                        {gallery.bucketFolder && (
+                                          <span className="flex items-center gap-1">
+                                            <Folder className="h-3 w-3" />
+                                            {gallery.bucketFolder}
+                                          </span>
+                                        )}
+                                        <span>{gallery.isPublic ? 'Publique' : 'Privée'}</span>
+                                        <span>Créée le {new Date(gallery.createdAt).toLocaleDateString('fr-FR')}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => window.appRouter.navigateTo(`/gallery/${gallery.id}`)}
+                                      title="Voir la galerie"
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Voir
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setManagingPhotosGallery(gallery.id)}
+                                      title="Gérer les photos"
+                                    >
+                                      <FileImage className="h-4 w-4 mr-2" />
+                                      Gérer les photos
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => toggleUploadSection(gallery.id)}
+                                      title="Ajouter des photos"
+                                    >
+                                      <Upload className="h-4 w-4" />
+                                      {showUploadSections[gallery.id] && (
+                                        <ChevronDown className="h-4 w-4 ml-1 rotate-180 transition-transform" />
+                                      )}
+                                      {!showUploadSections[gallery.id] && (
+                                        <ChevronDown className="h-4 w-4 ml-1 transition-transform" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      onClick={() => startEditingGallery(gallery)}
+                                      title="Modifier"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      onClick={() => deleteGallery(gallery.id, gallery.name)}
+                                      className="text-destructive hover:text-destructive"
+                                      title="Supprimer"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Collapsible Upload Section */}
+                                {showUploadSections[gallery.id] && (
+                                  <div className="border-t pt-4">
+                                    <div className="p-4 bg-gray-50 rounded-lg border">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Subfolder Section - Left side on desktop */}
+                                        <div className="space-y-2">
+                                          <SubfolderSelector
+                                            galleryId={gallery.id}
+                                            selectedSubfolder={uploadSubfolders[gallery.id]}
+                                            onSubfolderChange={(subfolder) => handleSubfolderChange(gallery.id, subfolder)}
+                                          />
+                                        </div>
+
+                                        {/* Upload Section - Right side on desktop */}
+                                        <div className="space-y-2">
+                                          <Label htmlFor={`upload-${gallery.id}`} className="flex items-center gap-2 text-sm font-medium">
+                                            <Upload className="h-4 w-4" />
+                                            Sélectionner les photos
+                                          </Label>
+                                          <Input
+                                            id={`upload-${gallery.id}`}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) => handleFileSelect(e, gallery.id)}
+                                            className="cursor-pointer"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Upload Progress */}
+                                      {uploadProgress.galleryId === gallery.id && uploadProgress.total > 0 && (
+                                        <div className="mt-4 space-y-2">
+                                          <div className="text-sm text-muted-foreground">
+                                            Téléchargement {uploadProgress.completed}/{uploadProgress.total}
+                                          </div>
+                                          <div className="w-full bg-muted rounded-full h-2">
+                                            <div
+                                              className="bg-primary h-2 rounded-full transition-all duration-300"
+                                              style={{ width: `${(uploadProgress.completed / uploadProgress.total) * 100}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1217,6 +1432,7 @@ export function AdminPanel() {
                               size="sm"
                               variant="outline"
                               onClick={() => window.appRouter.navigateTo(`/gallery/${gallery.id}`)}
+                              title="Voir la galerie"
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               Voir
@@ -1225,6 +1441,7 @@ export function AdminPanel() {
                               size="sm"
                               variant="outline"
                               onClick={() => setManagingPhotosGallery(gallery.id)}
+                              title="Gérer les photos"
                             >
                               <FileImage className="h-4 w-4 mr-2" />
                               Gérer les photos
@@ -1232,43 +1449,41 @@ export function AdminPanel() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => startEditingGallery(gallery)}
+                              onClick={() => toggleUploadSection(gallery.id)}
+                              title="Ajouter des photos"
                             >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Modifier
+                              <Upload className="h-4 w-4" />
+                              {showUploadSections[gallery.id] && (
+                                <ChevronDown className="h-4 w-4 ml-1 rotate-180 transition-transform" />
+                              )}
+                              {!showUploadSections[gallery.id] && (
+                                <ChevronDown className="h-4 w-4 ml-1 transition-transform" />
+                              )}
                             </Button>
                             <Button
-                              size="sm"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => startEditingGallery(gallery)}
+                              title="Modifier"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
                               variant="outline"
                               onClick={() => deleteGallery(gallery.id, gallery.name)}
                               className="text-destructive hover:text-destructive"
+                              title="Supprimer"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
 
-                        {/* Add Photos Button */}
-                        <div className="border-t pt-4">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => toggleUploadSection(gallery.id)}
-                            className="flex items-center gap-2"
-                          >
-                            <Upload className="h-4 w-4" />
-                            Ajouter photos
-                            {showUploadSections[gallery.id] ? (
-                              <ChevronDown className="h-4 w-4 rotate-180 transition-transform" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 transition-transform" />
-                            )}
-                          </Button>
-
-                          {/* Collapsible Upload Section */}
-                          {showUploadSections[gallery.id] && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                        {/* Collapsible Upload Section */}
+                        {showUploadSections[gallery.id] && (
+                          <div className="border-t pt-4">
+                            <div className="p-4 bg-gray-50 rounded-lg border">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Subfolder Section - Left side on desktop */}
                                 <div className="space-y-2">
@@ -1322,8 +1537,8 @@ export function AdminPanel() {
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
