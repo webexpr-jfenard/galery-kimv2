@@ -5,10 +5,10 @@ import { Badge } from "./ui/badge";
 import { Lightbox } from "./Lightbox";
 import { SelectionSubmitButton } from "./SelectionSubmitButton";
 import { UserNameDialog } from "./UserNameDialog";
-import { 
-  ArrowLeft, 
-  Heart, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  Heart,
+  MessageSquare,
   Search,
   Download,
   Share2,
@@ -17,7 +17,8 @@ import {
   Grid,
   List,
   Eye,
-  Tag
+  Tag,
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
@@ -44,6 +45,9 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   
   // Search
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Admin filter by user
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
   
   // Photo names display
   const [showPhotoNames, setShowPhotoNames] = useState(false);
@@ -284,10 +288,24 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     setLightboxIndex(newIndex);
   }, [lightboxIndex]);
 
-  // Get actual photo objects for favorited photos
-  const favoritePhotos = allPhotos.filter(photo => 
-    favorites.some(fav => fav.photoId === photo.id)
-  );
+  // Extract unique users from favorites (for admin filter)
+  const uniqueUsers = React.useMemo(() => {
+    const usersMap = new Map<string, string>();
+    favorites.forEach(fav => {
+      if (fav.userId && !usersMap.has(fav.userId)) {
+        usersMap.set(fav.userId, fav.userName || 'Anonyme');
+      }
+    });
+    return Array.from(usersMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [favorites]);
+
+  // Get actual photo objects for favorited photos, optionally filtered by user
+  const favoritePhotos = allPhotos.filter(photo => {
+    if (isAdmin && selectedUserId !== 'all') {
+      return favorites.some(fav => fav.photoId === photo.id && fav.userId === selectedUserId);
+    }
+    return favorites.some(fav => fav.photoId === photo.id);
+  });
 
   // Filter favorite photos based on search
   const filteredFavoritePhotos = favoritePhotos.filter(photo =>
@@ -492,6 +510,13 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       Recherche: "{searchTerm}"
                     </Badge>
                   )}
+                  {isAdmin && selectedUserId !== 'all' && (
+                    <Badge variant="outline" className="cursor-pointer" onClick={() => setSelectedUserId('all')}>
+                      <Users className="h-3 w-3 mr-1" />
+                      {uniqueUsers.find(u => u.id === selectedUserId)?.name}
+                      <span className="ml-1 text-muted-foreground">&times;</span>
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -523,7 +548,26 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   {/* Admin View Controls */}
                   {isAdmin && (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground mr-2">Vue :</span>
+                      {/* Filter by user */}
+                      {uniqueUsers.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <select
+                            value={selectedUserId}
+                            onChange={(e) => setSelectedUserId(e.target.value)}
+                            className="text-sm border rounded-md px-2 py-1.5 bg-background text-foreground"
+                          >
+                            <option value="all">Tous ({favorites.length})</option>
+                            {uniqueUsers.map(user => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} ({favorites.filter(f => f.userId === user.id).length})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <span className="text-sm text-muted-foreground ml-2">Vue :</span>
                       <Button
                         variant={viewMode === 'grid' ? 'default' : 'outline'}
                         size="sm"
