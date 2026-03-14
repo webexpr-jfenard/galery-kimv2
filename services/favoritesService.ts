@@ -10,8 +10,8 @@ export interface FavoritePhoto {
   userName?: string;
   createdAt: string;
   updatedAt: string;
-  // Extended fields from join
-  photo_id: string;
+  // Extended fields from join (optional, for raw Supabase data)
+  photo_id?: string;
   photo_name?: string;
   photo_url?: string;
   original_name?: string;
@@ -592,12 +592,18 @@ class FavoritesService {
 
   private async removeCommentSupabase(commentId: string): Promise<boolean> {
     console.log(`🗑️ Removing comment ${commentId} from Supabase...`);
-    
+
+    const currentUser = userService.getCurrentSession();
+    if (!currentUser) {
+      console.error('No user session found');
+      return false;
+    }
+
     const { error } = await supabaseService.client
       .from(this.COMMENTS_TABLE)
       .delete()
       .eq('id', commentId)
-      .eq('device_id', this.deviceId); // Only allow deleting own comments
+      .eq('user_id', currentUser.userId); // Only allow deleting own comments
 
     if (error) {
       console.error('Error removing comment from Supabase:', error);

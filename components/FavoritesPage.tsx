@@ -300,20 +300,27 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   }, [favorites]);
 
   // Get actual photo objects for favorited photos, optionally filtered by user
-  const favoritePhotos = allPhotos.filter(photo => {
-    if (isAdmin && selectedUserId !== 'all') {
-      return favorites.some(fav => fav.photoId === photo.id && fav.userId === selectedUserId);
-    }
-    return favorites.some(fav => fav.photoId === photo.id);
-  });
+  const favoritePhotos = React.useMemo(() => {
+    const favPhotoIds = new Set(
+      (isAdmin && selectedUserId !== 'all'
+        ? favorites.filter(fav => fav.userId === selectedUserId)
+        : favorites
+      ).map(fav => fav.photoId)
+    );
+    return allPhotos.filter(photo => favPhotoIds.has(photo.id));
+  }, [allPhotos, favorites, isAdmin, selectedUserId]);
 
   // Filter favorite photos based on search
-  const filteredFavoritePhotos = favoritePhotos.filter(photo =>
-    photo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.subfolder?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFavoritePhotos = React.useMemo(() => {
+    if (!searchTerm) return favoritePhotos;
+    const term = searchTerm.toLowerCase();
+    return favoritePhotos.filter(photo =>
+      photo.name.toLowerCase().includes(term) ||
+      photo.originalName.toLowerCase().includes(term) ||
+      photo.description?.toLowerCase().includes(term) ||
+      photo.subfolder?.toLowerCase().includes(term)
+    );
+  }, [favoritePhotos, searchTerm]);
 
   // Create selection set for lightbox - only user's own favorites
   const currentUser = userService.getCurrentSession();

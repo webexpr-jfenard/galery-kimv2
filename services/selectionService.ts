@@ -195,7 +195,7 @@ class SelectionService {
       const filteredFavorites = isCompleteSelection 
         ? favorites 
         : currentUserId 
-          ? favorites.filter(f => f.user_id === currentUserId)
+          ? favorites.filter(f => f.userId === currentUserId)
           : favorites;
 
       if (filteredFavorites.length === 0) {
@@ -216,7 +216,7 @@ class SelectionService {
       const filteredComments = isCompleteSelection 
         ? allComments 
         : currentUserId
-          ? allComments.filter(c => c.user_id === currentUserId)
+          ? allComments.filter(c => c.userId === currentUserId)
           : allComments;
       
       // Group data by photo for multi-user view
@@ -226,27 +226,27 @@ class SelectionService {
       }>();
 
       filteredFavorites.forEach(fav => {
-        if (!photoGroups.has(fav.photo_id)) {
-          photoGroups.set(fav.photo_id, { users: [], comments: [] });
+        if (!photoGroups.has(fav.photoId)) {
+          photoGroups.set(fav.photoId, { users: [], comments: [] });
         }
-        const group = photoGroups.get(fav.photo_id)!;
-        
+        const group = photoGroups.get(fav.photoId)!;
+
         // Add user if not already present
-        const userExists = group.users.some(u => u.userId === fav.user_id);
+        const userExists = group.users.some(u => u.userId === fav.userId);
         if (!userExists) {
           group.users.push({
-            userName: fav.user_name || undefined,
-            userId: fav.user_id
+            userName: fav.userName || undefined,
+            userId: fav.userId
           });
         }
       });
 
       // Add comments to photo groups
       filteredComments.forEach(comment => {
-        if (photoGroups.has(comment.photo_id)) {
-          photoGroups.get(comment.photo_id)!.comments.push({
+        if (photoGroups.has(comment.photoId)) {
+          photoGroups.get(comment.photoId)!.comments.push({
             comment: comment.comment,
-            userName: comment.user_name || undefined
+            userName: comment.userName || undefined
           });
         }
       });
@@ -256,11 +256,11 @@ class SelectionService {
       console.log('📸 Gallery photos loaded:', galleryPhotos.length);
       
       // Process each unique photo
-      const uniquePhotos = Array.from(new Set(filteredFavorites.map(f => f.photoId || f.photo_id)));
+      const uniquePhotos = Array.from(new Set(filteredFavorites.map(f => f.photoId)));
       const selectedPhotos: SelectionExport['selectedPhotos'] = [];
 
       for (const photoId of uniquePhotos) {
-        const firstFav = filteredFavorites.find(f => (f.photoId || f.photo_id) === photoId);
+        const firstFav = filteredFavorites.find(f => f.photoId === photoId);
         if (!firstFav) continue;
 
         // Find the photo details from gallery photos - match by photo ID
@@ -270,8 +270,8 @@ class SelectionService {
 
         // Get all comments for this photo
         const photoComments = filteredComments
-          .filter(c => c.photo_id === photoId)
-          .map(c => c.user_name ? `${c.comment} (${c.user_name})` : c.comment);
+          .filter(c => c.photoId === photoId)
+          .map(c => c.userName ? `${c.comment} (${c.userName})` : c.comment);
 
         selectedPhotos.push({
           photoId: photoId,
@@ -323,12 +323,9 @@ class SelectionService {
       console.log('Selection file created:', uploadResult.fileName);
       console.log('Download URL:', uploadResult.downloadUrl);
 
-      // Send Gmail notification with hardcoded photographer info
+      // Send Gmail notification
       const gmailConfig = this.getGmailConfig();
       if (gmailConfig && gmailConfig.enableNotifications) {
-        // Override with hardcoded photographer details
-        gmailConfig.photographerEmail = 'redlerkim@gmail.com';
-        gmailConfig.photographerName = 'Kim Redler';
         console.log('Sending Gmail notification with download URL:', uploadResult.downloadUrl);
         
         const gmailService = new GmailService(gmailConfig);
@@ -380,22 +377,18 @@ class SelectionService {
     }
   }
 
-  // Get Gmail configuration from localStorage with hardcoded fallback
+  // Get Gmail configuration from localStorage
   private getGmailConfig(): GmailConfig | null {
     try {
       const saved = localStorage.getItem('gmail-config');
       if (saved) {
-        const config = JSON.parse(saved);
-        // Always override with hardcoded photographer info
-        config.photographerEmail = 'redlerkim@gmail.com';
-        config.photographerName = 'Kim Redler';
-        return config;
+        return JSON.parse(saved);
       }
     } catch (error) {
       console.error('Failed to load Gmail config:', error);
     }
-    
-    // Return hardcoded configuration if nothing saved
+
+    // Return default configuration if nothing saved
     return {
       enableNotifications: true,
       photographerEmail: 'redlerkim@gmail.com',
@@ -407,13 +400,13 @@ class SelectionService {
   async clearSelection(galleryId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const deleteResult = await favoritesService.clearAllFavorites(galleryId);
-      
-      if (deleteResult.success) {
+
+      if (deleteResult) {
         return { success: true };
       } else {
         return {
           success: false,
-          error: deleteResult.error || 'Erreur lors de la suppression des sélections'
+          error: 'Erreur lors de la suppression des sélections'
         };
       }
     } catch (error) {

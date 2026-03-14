@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS galleries (
   photo_count INTEGER DEFAULT 0,
   view_count INTEGER DEFAULT 0,
   allow_comments BOOLEAN DEFAULT TRUE,
-  allow_favorites BOOLEAN DEFAULT TRUE
+  allow_favorites BOOLEAN DEFAULT TRUE,
+  category TEXT,
+  featured_photo_url TEXT,
+  featured_photo_id TEXT
 );
 
 -- 2. Create the favorites table for photo selections
@@ -27,10 +30,12 @@ CREATE TABLE IF NOT EXISTS favorites (
   gallery_id TEXT NOT NULL,
   photo_id TEXT NOT NULL,
   device_id TEXT NOT NULL, -- To identify the device/session
+  user_id TEXT,
+  user_name TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  -- Ensure one favorite per photo per device
-  UNIQUE(gallery_id, photo_id, device_id)
+  -- Ensure one favorite per photo per user
+  UNIQUE(gallery_id, photo_id, user_id)
 );
 
 -- 3. Create the comments table for photo comments
@@ -39,6 +44,8 @@ CREATE TABLE IF NOT EXISTS comments (
   gallery_id TEXT NOT NULL,
   photo_id TEXT NOT NULL,
   device_id TEXT NOT NULL, -- To identify the device/session
+  user_id TEXT,
+  user_name TEXT,
   comment TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -52,11 +59,15 @@ CREATE INDEX IF NOT EXISTS idx_galleries_public ON galleries(is_public) WHERE is
 CREATE INDEX IF NOT EXISTS idx_favorites_gallery_id ON favorites(gallery_id);
 CREATE INDEX IF NOT EXISTS idx_favorites_device_id ON favorites(device_id);
 CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_gallery_user ON favorites(gallery_id, user_id);
 
 CREATE INDEX IF NOT EXISTS idx_comments_gallery_id ON comments(gallery_id);
 CREATE INDEX IF NOT EXISTS idx_comments_photo_id ON comments(photo_id);
 CREATE INDEX IF NOT EXISTS idx_comments_device_id ON comments(device_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_comments_gallery_user ON comments(gallery_id, user_id);
 
 -- 5. Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

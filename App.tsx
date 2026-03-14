@@ -6,6 +6,7 @@ import { AdminPanel } from "./components/AdminPanel";
 import { QuoteCalculator } from "./components/QuoteCalculator";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toaster } from "./components/ui/sonner";
+import { authService } from "./services/authService";
 
 // Router utility functions - FIXED ROUTING FOR PAGE REFRESH
 const router = {
@@ -258,7 +259,7 @@ export default function App() {
         ) : favoritesGalleryId ? (
           <FavoritesPage galleryId={favoritesGalleryId} />
         ) : isQuoteCalculator ? (
-          <QuoteCalculator />
+          authService.isAdminAuthenticated() ? <QuoteCalculator /> : <AdminPanel />
         ) : isAdmin ? (
           <AdminPanel />
         ) : (

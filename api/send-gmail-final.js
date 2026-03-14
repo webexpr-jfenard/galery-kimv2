@@ -13,6 +13,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Optional API authentication
+  const apiSecret = process.env.GMAIL_API_SECRET;
+  if (apiSecret) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== `Bearer ${apiSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
   try {
     // Validate Gmail SMTP environment variables
     const gmailUser = process.env.GMAIL_USER;

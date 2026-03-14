@@ -212,6 +212,7 @@ ${this.config.photographerName || 'Galerie Photo'}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_GMAIL_API_SECRET || ''}`
         },
         body: JSON.stringify(emailData)
       });

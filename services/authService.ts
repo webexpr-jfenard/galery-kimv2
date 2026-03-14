@@ -5,19 +5,51 @@ interface AdminSession {
 }
 
 class AuthService {
-  private readonly ADMIN_PASSWORD = 'admin123'; // Change this to your desired password
   private readonly ADMIN_SESSION_KEY = 'admin-session';
+  private readonly CUSTOM_PASSWORD_KEY = 'admin-custom-password';
   private readonly SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+  // Rate limiting
+  private failedAttempts = 0;
+  private lockoutUntil: number | null = null;
+  private readonly MAX_ATTEMPTS = 5;
+  private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+  private getAdminPassword(): string {
+    // Check for custom password first (set via changeAdminPassword)
+    const custom = localStorage.getItem(this.CUSTOM_PASSWORD_KEY);
+    if (custom) return custom;
+    // Then env var
+    const envPassword = (import.meta as any).env?.VITE_ADMIN_PASSWORD;
+    if (envPassword) return envPassword;
+    // Fallback
+    return 'admin123';
+  }
 
   // Admin Authentication
   authenticateAdmin(password: string): boolean {
     try {
-      const isValid = password === this.ADMIN_PASSWORD;
-      
-      if (isValid) {
-        this.setAdminSession();
+      // Check lockout
+      if (this.lockoutUntil && Date.now() < this.lockoutUntil) {
+        const remaining = Math.ceil((this.lockoutUntil - Date.now()) / 60000);
+        console.warn(`Account locked. Try again in ${remaining} minutes.`);
+        return false;
       }
-      
+
+      const isValid = password === this.getAdminPassword();
+
+      if (isValid) {
+        this.failedAttempts = 0;
+        this.lockoutUntil = null;
+        this.setAdminSession();
+      } else {
+        this.failedAttempts++;
+        if (this.failedAttempts >= this.MAX_ATTEMPTS) {
+          this.lockoutUntil = Date.now() + this.LOCKOUT_DURATION;
+          this.failedAttempts = 0;
+        }
+      }
+
       return isValid;
     } catch (error) {
       console.error('Error authenticating admin:', error);
@@ -127,21 +159,10 @@ class AuthService {
   // Change admin password (requires current password)
   changeAdminPassword(currentPassword: string, newPassword: string): boolean {
     try {
-      // Verify current password
-      if (currentPassword !== this.ADMIN_PASSWORD) {
-        return false;
-      }
-
-      // Validate new password
+      if (currentPassword !== this.getAdminPassword()) return false;
       const validation = AuthService.validatePassword(newPassword);
-      if (!validation.isValid) {
-        return false;
-      }
-
-      // Note: In a real implementation, you would update the password in a secure way
-      // For this demo, we would need to modify the ADMIN_PASSWORD constant
-      console.warn('Password change requested. Update ADMIN_PASSWORD constant in authService.ts');
-      
+      if (!validation.isValid) return false;
+      localStorage.setItem(this.CUSTOM_PASSWORD_KEY, newPassword);
       return true;
     } catch (error) {
       console.error('Error changing admin password:', error);
