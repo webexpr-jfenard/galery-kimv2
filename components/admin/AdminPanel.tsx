@@ -355,21 +355,6 @@ export function AdminPanel() {
               totalCount={filteredGalleries.length}
             />
 
-            {/* Upload zone (when toggled for a gallery) */}
-            {showUploadForGallery && (
-              <UploadZone
-                galleryId={showUploadForGallery}
-                isUploading={isUploading}
-                uploadProgress={uploadProgress}
-                selectedSubfolder={uploadSubfolders[showUploadForGallery]}
-                onSubfolderChange={(sf) =>
-                  setUploadSubfolders((prev) => ({ ...prev, [showUploadForGallery!]: sf }))
-                }
-                onPhotoUpload={handlePhotoUpload}
-                onClose={() => { if (!isUploading) setShowUploadForGallery(null); }}
-              />
-            )}
-
             {/* Gallery list/grid */}
             {isLoading ? (
               <div className="flex items-center justify-center py-16 text-gray-400">
@@ -388,29 +373,61 @@ export function AdminPanel() {
             ) : viewMode === "list" ? (
               <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
                 {filteredGalleries.map((gallery) => (
-                  <GalleryListItem
-                    key={gallery.id}
-                    gallery={gallery}
-                    onEdit={(g) => { setEditingGallery(g); setIsEditDialogOpen(true); }}
-                    onDelete={handleDeleteGallery}
-                    onManagePhotos={setManagingPhotosGallery}
-                    onView={(id) => window.appRouter.navigateTo(`/gallery/${id}`)}
-                    onToggleUpload={handleToggleUpload}
-                  />
+                  <React.Fragment key={gallery.id}>
+                    <GalleryListItem
+                      gallery={gallery}
+                      onEdit={(g) => { setEditingGallery(g); setIsEditDialogOpen(true); }}
+                      onDelete={handleDeleteGallery}
+                      onManagePhotos={setManagingPhotosGallery}
+                      onView={(id) => window.appRouter.navigateTo(`/gallery/${id}`)}
+                      onToggleUpload={handleToggleUpload}
+                    />
+                    {showUploadForGallery === gallery.id && (
+                      <div className="px-4 py-3 bg-[#FAFAFA]">
+                        <UploadZone
+                          galleryId={gallery.id}
+                          isUploading={isUploading}
+                          uploadProgress={uploadProgress}
+                          selectedSubfolder={uploadSubfolders[gallery.id]}
+                          onSubfolderChange={(sf) =>
+                            setUploadSubfolders((prev) => ({ ...prev, [gallery.id]: sf }))
+                          }
+                          onPhotoUpload={handlePhotoUpload}
+                          onClose={() => { if (!isUploading) setShowUploadForGallery(null); }}
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredGalleries.map((gallery) => (
-                  <GalleryGridCard
-                    key={gallery.id}
-                    gallery={gallery}
-                    onEdit={(g) => { setEditingGallery(g); setIsEditDialogOpen(true); }}
-                    onDelete={handleDeleteGallery}
-                    onManagePhotos={setManagingPhotosGallery}
-                    onView={(id) => window.appRouter.navigateTo(`/gallery/${id}`)}
-                    onToggleUpload={handleToggleUpload}
-                  />
+                  <div key={gallery.id}>
+                    <GalleryGridCard
+                      gallery={gallery}
+                      onEdit={(g) => { setEditingGallery(g); setIsEditDialogOpen(true); }}
+                      onDelete={handleDeleteGallery}
+                      onManagePhotos={setManagingPhotosGallery}
+                      onView={(id) => window.appRouter.navigateTo(`/gallery/${id}`)}
+                      onToggleUpload={handleToggleUpload}
+                    />
+                    {showUploadForGallery === gallery.id && (
+                      <div className="mt-2">
+                        <UploadZone
+                          galleryId={gallery.id}
+                          isUploading={isUploading}
+                          uploadProgress={uploadProgress}
+                          selectedSubfolder={uploadSubfolders[gallery.id]}
+                          onSubfolderChange={(sf) =>
+                            setUploadSubfolders((prev) => ({ ...prev, [gallery.id]: sf }))
+                          }
+                          onPhotoUpload={handlePhotoUpload}
+                          onClose={() => { if (!isUploading) setShowUploadForGallery(null); }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
