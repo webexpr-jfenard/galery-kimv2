@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { HomePage } from "./components/HomePage";
 import { PhotoGallery } from "./components/PhotoGallery";
 import { FavoritesPage } from "./components/FavoritesPage";
-import { AdminPanel } from "./components/AdminPanel";
+import { AdminPanel } from "./components/admin";
 import { QuoteCalculator } from "./components/QuoteCalculator";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Toaster } from "./components/ui/sonner";
