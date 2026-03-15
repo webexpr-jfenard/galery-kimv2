@@ -50,6 +50,7 @@ export function SelectionSubmitButton({
     phone: ''
   });
   const [errors, setErrors] = useState<string[]>([]);
+  const [emailError, setEmailError] = useState('');
   const [result, setResult] = useState<{ fileName?: string; downloadUrl?: string } | null>(null);
 
   // Load selection count when opening dialog
@@ -126,11 +127,20 @@ export function SelectionSubmitButton({
     }
   };
 
+  const validateEmail = (email: string) => {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Format d\'email invalide');
+    } else {
+      setEmailError('');
+    }
+  };
+
   const handleClose = () => {
     setIsOpen(false);
     setStep('info');
     setResult(null);
     setErrors([]);
+    setEmailError('');
     setClientInfo({ name: '', email: '', phone: '' });
   };
 
@@ -153,7 +163,7 @@ export function SelectionSubmitButton({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {step === 'success' ? (
@@ -258,8 +268,15 @@ export function SelectionSubmitButton({
                     type="email"
                     placeholder="votre@email.com"
                     value={clientInfo.email}
-                    onChange={(e) => setClientInfo(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => {
+                      setClientInfo(prev => ({ ...prev, email: e.target.value }));
+                      if (emailError) setEmailError('');
+                    }}
+                    onBlur={(e) => validateEmail(e.target.value)}
                   />
+                  {emailError && (
+                    <p className="text-xs text-destructive">{emailError}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -343,14 +360,14 @@ export function SelectionSubmitButton({
                     className="flex-1"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Télécharger
+                    Télécharger une copie
                   </Button>
                 )}
                 <Button
                   onClick={handleClose}
                   className="flex-1"
                 >
-                  Fermer
+                  Terminé
                 </Button>
               </div>
             </div>

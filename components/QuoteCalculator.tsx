@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -125,10 +126,17 @@ export function QuoteCalculator() {
     additionalOptions: [] as AdditionalOption[]
   });
 
+  const HISTORY_KEY = 'quote-calculator-history';
+
   const [isEditingRates, setIsEditingRates] = useState(false);
   const [showQuickCalc, setShowQuickCalc] = useState(false);
   const [quickPeople, setQuickPeople] = useState(10);
-  const [history, setHistory] = useState<QuoteComparison[]>([]);
+  const [history, setHistory] = useState<QuoteComparison[]>(() => {
+    try {
+      const saved = localStorage.getItem('quote-calculator-history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [showHistory, setShowHistory] = useState(false);
   const [quoteName, setQuoteName] = useState('');
   const [newOptionName, setNewOptionName] = useState('');
@@ -153,6 +161,21 @@ export function QuoteCalculator() {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  // Persist history to localStorage on every change
+  useEffect(() => {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }, [history]);
+
+  // Handle calculator type switch with UX hint about options
+  const handleTypeChange = (newType: CalculatorType) => {
+    if (newType === calculatorType) return;
+    const hasOptions = currentData.additionalOptions.length > 0;
+    setCalculatorType(newType);
+    if (hasOptions) {
+      toast.info('Les options du devis précédent sont conservées dans chaque onglet');
+    }
+  };
 
   // Get current data based on calculator type
   const getCurrentData = () => {
@@ -506,8 +529,8 @@ export function QuoteCalculator() {
     setHistory(prev => prev.filter(quote => quote.id !== quoteId));
   };
 
-  // PDF Generation
-  const generatePDF = () => {
+  // Quote export (plain text format)
+  const exportQuote = () => {
     const quote = calculateQuote();
     const currentDate = new Date().toLocaleDateString('fr-FR');
 
@@ -639,7 +662,7 @@ Généré avec Claude Code le ${currentDate}
                   <Button
                     variant={calculatorType === 'corporate' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setCalculatorType('corporate')}
+                    onClick={() => handleTypeChange('corporate')}
                     className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'corporate' ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
                   >
                     <Building2 className="h-4 w-4" />
@@ -651,7 +674,7 @@ Généré avec Claude Code le ${currentDate}
                   <Button
                     variant={calculatorType === 'wedding' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setCalculatorType('wedding')}
+                    onClick={() => handleTypeChange('wedding')}
                     className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'wedding' ? 'bg-rose-500 hover:bg-rose-600 text-white' : 'hover:bg-rose-50'}`}
                   >
                     <Heart className="h-4 w-4" />
@@ -663,7 +686,7 @@ Généré avec Claude Code le ${currentDate}
                   <Button
                     variant={calculatorType === 'reportage' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setCalculatorType('reportage')}
+                    onClick={() => handleTypeChange('reportage')}
                     className={`h-10 px-4 flex items-center gap-2 ${calculatorType === 'reportage' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'hover:bg-emerald-50'}`}
                   >
                     <Newspaper className="h-4 w-4" />
@@ -1476,11 +1499,11 @@ Généré avec Claude Code le ${currentDate}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={generatePDF}
+                      onClick={exportQuote}
                       className={`flex items-center gap-2 ${getTypeClasses(calculatorType, 'button')}`}
                     >
-                      <Download className="h-4 w-4" />
-                      PDF
+                      <FileText className="h-4 w-4" />
+                      Exporter (.txt)
                     </Button>
                     {history.length > 0 && (
                       <Button

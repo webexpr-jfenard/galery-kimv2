@@ -24,6 +24,7 @@ interface StorageFile {
 class SupabaseService {
   public client: any; // Made public for galleryService access
   private isConfigured = true; // Always configured with hardcoded credentials
+  private _adminMode = false;
 
   constructor() {
     // Validate environment variables
@@ -32,10 +33,31 @@ class SupabaseService {
       console.log('Please check your .env.local file contains VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
       throw new Error('Supabase credentials not configured');
     }
-    
+
     // Initialize with environment credentials
     this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('✅ Supabase initialized with environment credentials');
+  }
+
+  // Admin mode: sends x-admin-secret header for RLS write access on galleries/photos
+  enableAdminMode(secret: string): void {
+    if (this._adminMode) return;
+    this._adminMode = true;
+    this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { 'x-admin-secret': secret } }
+    });
+    console.log('🔐 Supabase admin mode enabled');
+  }
+
+  disableAdminMode(): void {
+    if (!this._adminMode) return;
+    this._adminMode = false;
+    this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('🔓 Supabase admin mode disabled');
+  }
+
+  isAdminMode(): boolean {
+    return this._adminMode;
   }
 
   // Check if service is ready (always true now)

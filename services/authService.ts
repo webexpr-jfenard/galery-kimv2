@@ -1,3 +1,5 @@
+import { supabaseService } from './supabaseService';
+
 interface AdminSession {
   isAuthenticated: boolean;
   timestamp: number;
@@ -26,6 +28,20 @@ class AuthService {
     return 'admin123';
   }
 
+  private getAdminSecret(): string | null {
+    return (import.meta as any).env?.VITE_ADMIN_SECRET || null;
+  }
+
+  private syncAdminMode(enabled: boolean): void {
+    const secret = this.getAdminSecret();
+    if (!secret) return;
+    if (enabled) {
+      supabaseService.enableAdminMode(secret);
+    } else {
+      supabaseService.disableAdminMode();
+    }
+  }
+
   // Admin Authentication
   authenticateAdmin(password: string): boolean {
     try {
@@ -42,6 +58,7 @@ class AuthService {
         this.failedAttempts = 0;
         this.lockoutUntil = null;
         this.setAdminSession();
+        this.syncAdminMode(true);
       } else {
         this.failedAttempts++;
         if (this.failedAttempts >= this.MAX_ATTEMPTS) {
@@ -61,13 +78,19 @@ class AuthService {
     try {
       const session = this.getAdminSession();
       if (!session) return false;
-      
+
       // Check if session is expired
       if (Date.now() > session.expiresAt) {
         this.clearAdminSession();
+        this.syncAdminMode(false);
         return false;
       }
-      
+
+      // Ensure Supabase admin mode is in sync
+      if (session.isAuthenticated && !supabaseService.isAdminMode()) {
+        this.syncAdminMode(true);
+      }
+
       return session.isAuthenticated;
     } catch (error) {
       console.error('Error checking admin auth:', error);
@@ -102,6 +125,7 @@ class AuthService {
   clearAdminSession(): void {
     try {
       localStorage.removeItem(this.ADMIN_SESSION_KEY);
+      this.syncAdminMode(false);
     } catch (error) {
       console.error('Error clearing admin session:', error);
     }
