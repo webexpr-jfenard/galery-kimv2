@@ -236,17 +236,9 @@ export function CreateGalleryDialog({
                       role="switch"
                       aria-checked={form[key]}
                       onClick={() => updateField(key, !form[key])}
-                      className={`
-                        w-9 h-5 rounded-full transition-colors duration-150 cursor-pointer relative
-                        ${form[key] ? "bg-orange-500" : "bg-gray-200"}
-                      `}
+                      className={form[key] ? "w-9 h-5 rounded-full bg-orange-500 relative cursor-pointer transition-colors duration-150" : "w-9 h-5 rounded-full bg-gray-200 relative cursor-pointer transition-colors duration-150"}
                     >
-                      <span
-                        className={`
-                          absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150
-                          ${form[key] ? "translate-x-4" : "translate-x-0.5"}
-                        `}
-                      />
+                      <span className={form[key] ? "absolute top-0.5 left-4 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150" : "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150"} />
                     </button>
                   </div>
                 ))}

@@ -191,17 +191,9 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
                   role="switch"
                   aria-checked={editForm[key] ?? true}
                   onClick={() => setEditForm(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))}
-                  className={`
-                    w-9 h-5 rounded-full transition-colors duration-150 cursor-pointer relative
-                    ${(editForm[key] ?? true) ? "bg-orange-500" : "bg-gray-200"}
-                  `}
+                  className={(editForm[key] ?? true) ? "w-9 h-5 rounded-full bg-orange-500 relative cursor-pointer transition-colors duration-150" : "w-9 h-5 rounded-full bg-gray-200 relative cursor-pointer transition-colors duration-150"}
                 >
-                  <span
-                    className={`
-                      absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150
-                      ${(editForm[key] ?? true) ? "translate-x-4" : "translate-x-0.5"}
-                    `}
-                  />
+                  <span className={(editForm[key] ?? true) ? "absolute top-0.5 left-4 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150" : "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150"} />
                 </button>
               </div>
             ))}

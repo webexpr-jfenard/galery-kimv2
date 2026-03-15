@@ -163,17 +163,9 @@ export function GmailConfigDialog({ isOpen, onClose }: GmailConfigDialogProps) {
                   enableNotifications: !prev.enableNotifications,
                 }))
               }
-              className={`
-                w-9 h-5 rounded-full transition-colors duration-150 cursor-pointer relative flex-shrink-0 ml-4
-                ${config.enableNotifications ? "bg-orange-500" : "bg-gray-200"}
-              `}
+              className={config.enableNotifications ? "w-9 h-5 rounded-full bg-orange-500 relative cursor-pointer transition-colors duration-150 flex-shrink-0 ml-4" : "w-9 h-5 rounded-full bg-gray-200 relative cursor-pointer transition-colors duration-150 flex-shrink-0 ml-4"}
             >
-              <span
-                className={`
-                  absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150
-                  ${config.enableNotifications ? "translate-x-4" : "translate-x-0.5"}
-                `}
-              />
+              <span className={config.enableNotifications ? "absolute top-0.5 left-4 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150" : "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150"} />
             </button>
           </div>
 
