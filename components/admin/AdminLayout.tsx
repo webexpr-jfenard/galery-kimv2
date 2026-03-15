@@ -55,7 +55,7 @@ export function AdminLayout({
           flex flex-col transition-all duration-200 ease-out
           ${sidebarCollapsed ? "w-[72px]" : "w-[240px]"}
           ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:relative
+          lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shrink-0
         `}
       >
         {/* Logo area */}

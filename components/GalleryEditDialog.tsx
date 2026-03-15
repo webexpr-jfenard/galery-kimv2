@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Switch } from "./ui/switch";
 import { CategorySelector } from "./CategorySelector";
-import { Edit, Key, Folder, Eye, EyeOff, Save, X } from "lucide-react";
+import { Edit, Key, Folder, Eye, EyeOff, Save, X, RefreshCw } from "lucide-react";
 import type { Gallery } from "../services/galleryService";
 
 interface GalleryEditDialogProps {
@@ -53,66 +47,101 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
     if (!open) onClose();
   };
 
-  if (!gallery) return null;
+  if (!gallery || !isOpen) return null;
+
+  const toggles = [
+    { key: "isPublic" as const, label: "Galerie publique" },
+    { key: "allowComments" as const, label: "Autoriser les commentaires" },
+    { key: "allowFavorites" as const, label: "Autoriser les favoris" },
+  ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit className="h-5 w-5" />
-            Modifier la galerie
-          </DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center font-['DM_Sans',sans-serif]">
+      {/* Overlay */}
+      <div
+        className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+        onClick={() => handleOpenChange(false)}
+      />
 
-        <div className="space-y-4 py-2">
+      {/* Dialog */}
+      <div className="relative w-full max-w-[560px] mx-4 bg-white rounded-2xl shadow-xl shadow-gray-200/50 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 pb-0">
+          <h2 className="text-[16px] font-semibold text-gray-900 flex items-center gap-2">
+            <Edit className="h-4 w-4" />
+            Modifier la galerie
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            aria-label="Fermer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
           {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-dialog-name" className="text-sm font-medium">
+          <div>
+            <label
+              htmlFor="edit-dialog-name"
+              className="block text-[13px] font-medium text-gray-700 mb-1.5"
+            >
               Nom de la galerie *
-            </Label>
-            <Input
+            </label>
+            <input
               id="edit-dialog-name"
+              type="text"
               value={editForm.name || ''}
               onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Nom de la galerie"
+              className="w-full h-10 px-3.5 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
             />
           </div>
 
           {/* Bucket Folder */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-dialog-bucket" className="flex items-center gap-2 text-sm font-medium">
-              <Folder className="h-4 w-4" />
+          <div>
+            <label
+              htmlFor="edit-dialog-bucket"
+              className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700 mb-1.5"
+            >
+              <Folder className="h-3 w-3" />
               Dossier Bucket
-            </Label>
-            <Input
+            </label>
+            <input
               id="edit-dialog-bucket"
+              type="text"
               value={editForm.bucketFolder || ''}
               onChange={(e) => setEditForm(prev => ({ ...prev, bucketFolder: e.target.value }))}
               placeholder="ex: mariage-jean-marie-2024"
+              className="w-full h-10 px-3.5 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
             />
           </div>
 
           {/* Password */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-dialog-password" className="flex items-center gap-2 text-sm font-medium">
-              <Key className="h-4 w-4" />
+          <div>
+            <label
+              htmlFor="edit-dialog-password"
+              className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700 mb-1.5"
+            >
+              <Key className="h-3 w-3" />
               Mot de passe (laisser vide pour supprimer la protection)
-            </Label>
+            </label>
             <div className="relative">
-              <Input
+              <input
                 id="edit-dialog-password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Nouveau mot de passe..."
                 value={editForm.password || ''}
                 onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                className="pr-10"
+                className="w-full h-10 px-3.5 pr-10 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(prev => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
                 tabIndex={-1}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -124,64 +153,95 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-dialog-description" className="text-sm font-medium">Description</Label>
-            <Textarea
+          <div>
+            <label
+              htmlFor="edit-dialog-description"
+              className="block text-[13px] font-medium text-gray-700 mb-1.5"
+            >
+              Description
+            </label>
+            <textarea
               id="edit-dialog-description"
               value={editForm.description || ''}
               onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
               placeholder="Description optionnelle de la galerie..."
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors resize-none"
             />
           </div>
 
           {/* Category */}
-          <CategorySelector
-            value={editForm.category || undefined}
-            onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
-          />
+          <div>
+            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">
+              Catégorie
+            </label>
+            <CategorySelector
+              value={editForm.category || undefined}
+              onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
+            />
+          </div>
 
-          {/* Switches */}
+          {/* Toggles */}
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-dialog-public" className="text-sm font-medium">Galerie Publique</Label>
-              <Switch
-                id="edit-dialog-public"
-                checked={editForm.isPublic ?? true}
-                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, isPublic: checked }))}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-dialog-comments" className="text-sm font-medium">Autoriser les commentaires</Label>
-              <Switch
-                id="edit-dialog-comments"
-                checked={editForm.allowComments ?? true}
-                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowComments: checked }))}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-dialog-favorites" className="text-sm font-medium">Autoriser les favoris</Label>
-              <Switch
-                id="edit-dialog-favorites"
-                checked={editForm.allowFavorites ?? true}
-                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, allowFavorites: checked }))}
-              />
-            </div>
+            {toggles.map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-[13px] text-gray-600">{label}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={editForm[key] ?? true}
+                  onClick={() => setEditForm(prev => ({ ...prev, [key]: !(prev[key] ?? true) }))}
+                  className={`
+                    w-9 h-5 rounded-full transition-colors duration-150 cursor-pointer relative
+                    ${(editForm[key] ?? true) ? "bg-orange-500" : "bg-gray-200"}
+                  `}
+                >
+                  <span
+                    className={`
+                      absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150
+                      ${(editForm[key] ?? true) ? "translate-x-4" : "translate-x-0.5"}
+                    `}
+                  />
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2 border-t">
-            <Button onClick={handleSave} disabled={isSaving} className="flex-1">
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-            </Button>
-            <Button variant="outline" onClick={onClose} disabled={isSaving}>
-              <X className="h-4 w-4 mr-2" />
+          <div className="flex gap-2 pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || !editForm.name?.trim()}
+              className={`
+                flex-1 h-10 rounded-lg text-[14px] font-medium flex items-center justify-center gap-2
+                transition-all duration-150 cursor-pointer
+                ${isSaving || !editForm.name?.trim()
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"
+                }
+              `}
+            >
+              {isSaving ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Enregistrer
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="h-10 px-4 rounded-lg text-[14px] text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Annuler
-            </Button>
+            </button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
