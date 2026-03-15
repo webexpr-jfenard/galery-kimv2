@@ -386,7 +386,7 @@ export function AdminPanel() {
                 </p>
               </div>
             ) : viewMode === "list" ? (
-              <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
                 {filteredGalleries.map((gallery) => (
                   <GalleryListItem
                     key={gallery.id}

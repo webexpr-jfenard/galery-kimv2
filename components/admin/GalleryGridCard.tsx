@@ -44,7 +44,7 @@ export function GalleryGridCard({
 
   return (
     <div
-      className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md hover:shadow-gray-100/80 transition-all duration-200 cursor-pointer"
+      className="group bg-white rounded-xl border border-gray-100 hover:shadow-md hover:shadow-gray-100/80 transition-all duration-200 cursor-pointer relative"
       onClick={() => onView(gallery.id)}
     >
       {/* Thumbnail */}
