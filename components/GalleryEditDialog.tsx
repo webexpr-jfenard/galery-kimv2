@@ -112,10 +112,11 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
               id="edit-dialog-bucket"
               type="text"
               value={editForm.bucketFolder || ''}
-              onChange={(e) => setEditForm(prev => ({ ...prev, bucketFolder: e.target.value }))}
-              placeholder="ex: mariage-jean-marie-2024"
-              className="w-full h-10 px-3.5 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
+              readOnly
+              disabled
+              className="w-full h-10 px-3.5 rounded-lg border border-gray-100 text-[14px] text-gray-400 bg-gray-50 cursor-not-allowed"
             />
+            <p className="text-[11px] text-gray-400 mt-1">Non modifiable après création</p>
           </div>
 
           {/* Password */}
