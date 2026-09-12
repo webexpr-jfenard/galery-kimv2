@@ -66,6 +66,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [isSavingTree, setIsSavingTree] = useState(false);
   const [showFolderReassignModal, setShowFolderReassignModal] = useState(false);
   const [targetSubfolder, setTargetSubfolder] = useState<string | undefined>();
+  const [newFolderName, setNewFolderName] = useState(''); // "Changer de dossier": create a folder on the fly
   const [isReassigning, setIsReassigning] = useState(false);
 
   useEffect(() => {
@@ -431,6 +432,18 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const handleReassignToFolder = async () => {
     if (selectedPhotos.size === 0) return;
 
+    // A typed name creates the folder (a folder exists as soon as a photo carries its name).
+    // Reuse an existing folder when the name only differs by case.
+    let target = targetSubfolder;
+    const typedName = newFolderName.trim();
+    if (typedName) {
+      if (/[\\:*?"<>|]/.test(typedName)) {
+        toast.error('Le nom du dossier ne peut pas contenir les caractères \\ : * ? " < > |');
+        return;
+      }
+      target = subfolders.find(name => name.toLowerCase() === typedName.toLowerCase()) || typedName;
+    }
+
     try {
       setIsReassigning(true);
       const photoIds = Array.from(selectedPhotos);
@@ -438,11 +451,11 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
       const result = await galleryService.reassignPhotosToSubfolder(
         galleryId,
         photoIds,
-        targetSubfolder
+        target
       );
 
       if (result.successful.length > 0) {
-        const targetName = targetSubfolder || 'la racine';
+        const targetName = target || 'la racine';
         toast.success(`${result.successful.length} photo(s) déplacée(s) vers ${targetName}`);
       }
 
@@ -454,6 +467,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
       setSelectedPhotos(new Set());
       setShowFolderReassignModal(false);
       setTargetSubfolder(undefined);
+      setNewFolderName('');
       await loadGalleryData();
 
     } catch (error) {
@@ -977,7 +991,10 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
               <Button
                 variant="outline"
                 className={`w-full justify-start ${targetSubfolder === undefined ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                onClick={() => setTargetSubfolder(undefined)}
+                onClick={() => {
+                  setTargetSubfolder(undefined);
+                  setNewFolderName('');
+                }}
               >
                 <Folder className="h-4 w-4 mr-2" />
                 Racine de la galerie
@@ -987,7 +1004,10 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   key={subfolder}
                   variant="outline"
                   className={`w-full justify-start ${targetSubfolder === subfolder ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                  onClick={() => setTargetSubfolder(subfolder)}
+                  onClick={() => {
+                    setTargetSubfolder(subfolder);
+                    setNewFolderName('');
+                  }}
                 >
                   <Folder className="h-4 w-4 mr-2" />
                   {subfolderParents[subfolder] ? `${subfolderParents[subfolder]} › ` : ''}{subfolder}
@@ -1000,6 +1020,33 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
               ))}
             </div>
 
+            {/* Create a folder on the fly */}
+            <div className="mb-6">
+              <label htmlFor="new-folder-name" className="block text-xs font-medium text-gray-600 mb-1">
+                Ou créer un nouveau dossier
+              </label>
+              <Input
+                id="new-folder-name"
+                value={newFolderName}
+                onChange={(e) => {
+                  setNewFolderName(e.target.value);
+                  setTargetSubfolder(e.target.value.trim() || undefined);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newFolderName.trim() && !isReassigning) {
+                    e.preventDefault();
+                    handleReassignToFolder();
+                  }
+                }}
+                placeholder="Nom du nouveau dossier"
+                maxLength={50}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Il sera créé à la racine de la galerie. Pour le placer dans un groupe, utilisez ensuite « Organiser les dossiers ».
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -1007,6 +1054,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 onClick={() => {
                   setShowFolderReassignModal(false);
                   setTargetSubfolder(undefined);
+                  setNewFolderName('');
                 }}
                 disabled={isReassigning}
               >
@@ -1025,7 +1073,9 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 ) : (
                   <>
                     <FolderInput className="h-4 w-4 mr-2" />
-                    Déplacer
+                    {newFolderName.trim() && !subfolders.some(name => name.toLowerCase() === newFolderName.trim().toLowerCase())
+                      ? 'Créer et déplacer'
+                      : 'Déplacer'}
                   </>
                 )}
               </Button>
