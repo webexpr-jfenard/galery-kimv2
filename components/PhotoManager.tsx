@@ -694,7 +694,8 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
+                {/* Scrollable: the modal header does not scroll, and a gallery can have dozens of folders */}
+                <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
                   {organizerSections.map((section, index) => (
                     <div key={section.name}>
                       {renderOrganizerRow(section, null, index)}
