@@ -45,7 +45,7 @@ export function GalleryGridCard({
   return (
     <div
       className="group bg-white rounded-xl border border-gray-100 hover:shadow-md hover:shadow-gray-100/80 transition-all duration-200 cursor-pointer relative"
-      onClick={() => onView(gallery.id)}
+      onClick={() => onEdit(gallery)}
     >
       {/* Thumbnail */}
       <div className="aspect-[16/10] bg-gray-50 relative overflow-hidden">

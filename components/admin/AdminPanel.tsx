@@ -441,8 +441,10 @@ export function AdminPanel() {
       <GalleryEditDialog
         gallery={editingGallery}
         isOpen={isEditDialogOpen}
-        onClose={() => { setIsEditDialogOpen(false); setEditingGallery(null); }}
+        onClose={() => { setIsEditDialogOpen(false); setTimeout(() => setEditingGallery(null), 320); }}
         onSave={handleSaveEdit}
+        onManagePhotos={(id) => { setIsEditDialogOpen(false); setManagingPhotosGallery(id); }}
+        onView={(id) => window.appRouter.navigateTo(`/gallery/${id}`)}
       />
 
       {managingPhotosGallery && (

@@ -44,7 +44,7 @@ export function GalleryListItem({
 
   return (
     <div className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50/80 transition-colors duration-150 group cursor-pointer rounded-lg"
-      onClick={() => onView(gallery.id)}
+      onClick={() => onEdit(gallery)}
     >
       {/* Thumbnail */}
       {gallery.featuredPhotoUrl ? (
