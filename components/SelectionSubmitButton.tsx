@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { selectionService } from "../services/selectionService";
+import type { SelectionResult } from "../services/selectionService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 
@@ -27,6 +28,9 @@ interface SelectionSubmitButtonProps {
   className?: string;
   variant?: "default" | "outline" | "secondary";
   size?: "sm" | "default" | "lg";
+  children?: React.ReactNode;
+  /** Number of photos the photographer asked for (warning only, never blocking) */
+  quota?: number;
 }
 
 export function SelectionSubmitButton({ 
@@ -34,7 +38,9 @@ export function SelectionSubmitButton({
   galleryName, 
   className = "",
   variant = "default",
-  size = "default"
+  size = "default",
+  children,
+  quota
 }: SelectionSubmitButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +57,7 @@ export function SelectionSubmitButton({
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [emailError, setEmailError] = useState('');
-  const [result, setResult] = useState<{ fileName?: string; downloadUrl?: string } | null>(null);
+  const [result, setResult] = useState<SelectionResult | null>(null);
 
   // Load selection count when opening dialog
   const handleOpenDialog = async () => {
@@ -61,7 +67,7 @@ export function SelectionSubmitButton({
       
       // Count personal and complete selections
       const personalFavorites = currentUserId 
-        ? favorites.filter(f => f.user_id === currentUserId)
+        ? favorites.filter(f => f.userId === currentUserId)
         : favorites;
       setSelectionCount(personalFavorites.length);
       setCompleteSelectionCount(favorites.length);
@@ -114,7 +120,11 @@ export function SelectionSubmitButton({
       if (result.success) {
         setResult(result);
         setStep('success');
-        toast.success('Sélection soumise avec succès !');
+        if (result.notified) {
+          toast.success('Sélection envoyée à votre photographe');
+        } else {
+          toast.warning("Sélection enregistrée, mais la notification n'est pas partie");
+        }
       } else {
         throw new Error(result.error || 'Échec de la soumission');
       }
@@ -145,9 +155,11 @@ export function SelectionSubmitButton({
   };
 
   const handleDownload = () => {
-    if (result?.downloadUrl) {
-      window.open(result.downloadUrl, '_blank');
-    }
+    if (!result?.blobUrl) return;
+    const link = document.createElement('a');
+    link.href = result.blobUrl;
+    link.download = result.fileName || 'selection.txt';
+    link.click();
   };
 
   return (
@@ -159,7 +171,7 @@ export function SelectionSubmitButton({
         className={`${className} font-medium`}
       >
         <Send className="h-4 w-4 mr-2" />
-        Soumettre
+        {children ?? 'Soumettre'}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -184,6 +196,17 @@ export function SelectionSubmitButton({
 
           {step === 'info' && (
             <div className="space-y-6">
+              {/* Quota hint: a warning, the visitor can still submit */}
+              {quota && selectionCount > quota && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 flex gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    Votre photographe attend {quota} photo{quota > 1 ? 's' : ''} et vous en avez sélectionné {selectionCount}.
+                    Vous pouvez envoyer quand même, ou retirer des photos avant.
+                  </span>
+                </div>
+              )}
+
               {/* Selection Type Choice */}
               {completeSelectionCount > selectionCount && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
@@ -337,23 +360,34 @@ export function SelectionSubmitButton({
 
           {step === 'success' && (
             <div className="space-y-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <h4 className="font-medium text-green-800">Sélection soumise avec succès</h4>
-                    <p className="text-sm text-green-600">Votre photographe recevra votre sélection.</p>
+              {result?.notified ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <h4 className="font-medium text-green-800">Sélection envoyée</h4>
+                      <p className="text-sm text-green-600">Votre photographe vient de recevoir votre sélection par e-mail.</p>
+                    </div>
                   </div>
                 </div>
-                {result?.fileName && (
-                  <div className="text-sm text-green-700">
-                    <strong>Fichier créé :</strong> {result.fileName}
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-amber-800">Sélection enregistrée, notification non envoyée</h4>
+                      <p className="text-sm text-amber-700">
+                        Vos favoris sont bien sauvegardés, mais l'e-mail vers votre photographe n'est pas parti
+                        {result?.notificationError ? ` (${result.notificationError})` : ''}.
+                        Téléchargez la copie ci-dessous et transmettez-la, ou réessayez plus tard.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="flex gap-3">
-                {result?.downloadUrl && (
+                {result?.blobUrl && (
                   <Button
                     variant="outline"
                     onClick={handleDownload}

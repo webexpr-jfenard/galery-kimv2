@@ -1577,34 +1577,34 @@ Généré avec Claude Code le ${currentDate}
               </div>
 
               {/* Saved Quotes */}
-              {history.slice(0, 2).map((quote) => {
+              {history.slice(0, 2).map((savedQuote) => {
                 // Calculate quote for saved data
-                const savedType = quote.data.type || 'corporate';
+                const savedType = savedQuote.data.type || 'corporate';
                 const previousCalcType = calculatorType;
 
                 // Temporarily set the calculator type to match the saved data
                 const tempQuote = (() => {
                   switch (savedType) {
                     case 'corporate':
-                      return calculateQuote(quote.data);
+                      return calculateQuote(savedQuote.data);
                     case 'wedding':
-                      return calculateQuote(quote.data);
+                      return calculateQuote(savedQuote.data);
                     case 'reportage':
-                      return calculateQuote(quote.data);
+                      return calculateQuote(savedQuote.data);
                     default:
-                      return calculateQuote(quote.data);
+                      return calculateQuote(savedQuote.data);
                   }
                 })();
 
                 return (
-                  <div key={quote.id} className={`${savedType === 'corporate' ? 'bg-blue-50 border-blue-200' : savedType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
+                  <div key={savedQuote.id} className={`${savedType === 'corporate' ? 'bg-blue-50 border-blue-200' : savedType === 'wedding' ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'} border rounded-lg p-4`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className={`font-semibold ${savedType === 'corporate' ? 'text-blue-900' : savedType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>{quote.name}</h3>
+                      <h3 className={`font-semibold ${savedType === 'corporate' ? 'text-blue-900' : savedType === 'wedding' ? 'text-rose-900' : 'text-emerald-900'}`}>{savedQuote.name}</h3>
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => loadFromHistory(quote)}
+                          onClick={() => loadFromHistory(savedQuote)}
                           className={`h-6 w-6 p-0 ${savedType === 'corporate' ? 'text-blue-600 hover:bg-blue-100' : savedType === 'wedding' ? 'text-rose-600 hover:bg-rose-100' : 'text-emerald-600 hover:bg-emerald-100'}`}
                           title="Charger ce devis"
                         >
@@ -1613,7 +1613,7 @@ Généré avec Claude Code le ${currentDate}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeFromHistory(quote.id)}
+                          onClick={() => removeFromHistory(savedQuote.id)}
                           className="h-6 w-6 p-0 text-gray-500 hover:text-destructive"
                         >
                           <X className="h-3 w-3" />
@@ -1665,7 +1665,7 @@ Généré avec Claude Code le ${currentDate}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => loadFromHistory(quote)}
+                        onClick={() => loadFromHistory(savedQuote)}
                         className={`w-full text-xs ${savedType === 'corporate' ? 'hover:bg-blue-50' : savedType === 'wedding' ? 'hover:bg-rose-50' : 'hover:bg-emerald-50'}`}
                       >
                         Charger cette configuration

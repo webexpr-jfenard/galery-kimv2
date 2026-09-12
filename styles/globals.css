@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --font-size: 14px;
   --background: 0 0% 100%;
@@ -28,6 +26,10 @@
   --switch-background: 240 6% 79%;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
   --ring: 0 0% 70%;
   --chart-1: 30 100% 50%;
   --chart-2: 217 91% 60%;
@@ -82,47 +84,6 @@
   --sidebar-ring: 0 0% 45%;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-input-background: var(--input-background);
-  --color-switch-background: var(--switch-background);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
 @layer base {
   * {
     border-color: hsl(var(--border));
@@ -145,60 +106,59 @@
 }
 
 /**
- * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ * Base typography. Applied to headings, paragraphs and form controls that carry
+ * no Tailwind text-* class and have no ancestor carrying one, so explicit
+ * utilities always win. Wrapped in :where() to keep specificity at zero.
  */
 @layer base {
-  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
-    h1 {
-      font-size: var(--text-2xl);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(h1:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h2 {
-      font-size: var(--text-xl);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(h2:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h3 {
-      font-size: var(--text-lg);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(h3:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    h4 {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(h4:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    p {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
+  :where(p:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
 
-    label {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(label:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    button {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  :where(button:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
 
-    input {
-      font-size: var(--text-base);
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
+  :where(input:not([class*=" text-"], [class^="text-"], :is([class*=" text-"], [class^="text-"]) *)) {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
   }
 }
-
 html {
   font-size: var(--font-size);
 }
@@ -738,18 +698,24 @@ html {
     background: rgba(255, 255, 255, 0.9);
   }
 
-  /* Responsive lightbox navigation */
+  /* Responsive lightbox navigation. One rule per @media: Tailwind derives
+     "!important" variants of layered rules from "!prev" found in JS sources,
+     and a multi-rule @media would then produce empty selectors. */
   @media (max-width: 768px) {
     .lightbox-nav {
       width: 40px;
       height: 40px;
       font-size: 18px;
     }
+  }
 
+  @media (max-width: 768px) {
     .lightbox-nav.prev {
       left: 10px;
     }
+  }
 
+  @media (max-width: 768px) {
     .lightbox-nav.next {
       right: 10px;
     }

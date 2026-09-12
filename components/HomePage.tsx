@@ -73,7 +73,7 @@ export function HomePage() {
                 placeholder="Entrez l'ID de galerie"
                 value={galleryId}
                 onChange={(e) => setGalleryId(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 className="text-center text-lg py-3 px-4"
                 autoFocus
               />

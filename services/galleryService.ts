@@ -1,5 +1,7 @@
 import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
+import { createThumbnail, thumbnailPathFor } from './imageService';
+import { normalizeInstructions, type Instructions } from './instructionsService';
 import type { StorageFile } from './supabaseService';
 
 // Folder hierarchy and display order, stored in galleries.folder_tree (JSONB).
@@ -17,7 +19,8 @@ export interface Gallery {
   createdAt: string;
   updatedAt: string;
   isPublic: boolean;
-  password?: string;
+  password?: string; // write-only: a new password to set (updateGallery/createGallery); never read back
+  hasPassword?: boolean; // maintained by the database (set_gallery_password)
   bucketFolder?: string; // Supabase bucket folder path
   bucketName?: string; // Supabase bucket name (default: 'photos')
   photoCount?: number;
@@ -28,6 +31,7 @@ export interface Gallery {
   featuredPhotoId?: string; // ID of the featured photo
   category?: string; // Client name or category for organization
   folderTree?: FolderNode[]; // Ordered subfolder hierarchy (see FolderNode)
+  instructions?: Instructions | null; // Selection instructions shown to visitors (null = none)
 }
 
 export interface Photo {
@@ -212,7 +216,21 @@ class GalleryService {
   }
 
   // Check if database tables exist and are accessible
-  private async checkDatabaseHealth(): Promise<{ tablesExist: boolean; functionsExist: boolean }> {
+  // The probe used to run three queries at every call (15 call sites): it now runs once per
+  // page load and the promise is shared.
+  private healthProbe: Promise<{ tablesExist: boolean; functionsExist: boolean }> | null = null;
+
+  private checkDatabaseHealth(): Promise<{ tablesExist: boolean; functionsExist: boolean }> {
+    if (!this.healthProbe) {
+      this.healthProbe = this.probeDatabaseHealth().then(result => {
+        if (!result.tablesExist) this.healthProbe = null; // retry later if the probe failed
+        return result;
+      });
+    }
+    return this.healthProbe;
+  }
+
+  private async probeDatabaseHealth(): Promise<{ tablesExist: boolean; functionsExist: boolean }> {
     if (!supabaseService.isReady()) {
       return { tablesExist: false, functionsExist: false };
     }
@@ -386,7 +404,7 @@ class GalleryService {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         isPublic: row.is_public,
-        password: row.password || undefined,
+        hasPassword: !!row.has_password,
         bucketFolder: row.bucket_folder || undefined,
         bucketName: row.bucket_name || this.DEFAULT_BUCKET,
         photoCount: row.photo_count || 0,
@@ -396,7 +414,8 @@ class GalleryService {
         featuredPhotoUrl: row.featured_photo_url || undefined,
         featuredPhotoId: row.featured_photo_id || undefined,
         category: row.category || undefined,
-        folderTree: row.folder_tree ? sanitizeFolderTree(row.folder_tree) : undefined
+        folderTree: row.folder_tree ? sanitizeFolderTree(row.folder_tree) : undefined,
+        instructions: normalizeInstructions(row.instructions)
       }));
 
       console.log(`✅ Loaded ${galleries.length} galleries from Supabase`);
@@ -423,9 +442,24 @@ class GalleryService {
     }
   }
 
+  // A page load reads the same gallery several times (page, folders, photos): cache it briefly.
+  private galleryCache = new Map<string, { gallery: Gallery | null; at: number }>();
+  private readonly GALLERY_CACHE_MS = 5000;
+
+  private invalidateGallery(id?: string): void {
+    if (id) this.galleryCache.delete(id); else this.galleryCache.clear();
+  }
+
   async getGallery(id: string): Promise<Gallery | null> {
+    const cached = this.galleryCache.get(id);
+    if (cached && Date.now() - cached.at < this.GALLERY_CACHE_MS) return cached.gallery;
+    const gallery = await this.fetchGallery(id);
+    this.galleryCache.set(id, { gallery, at: Date.now() });
+    return gallery;
+  }
+
+  private async fetchGallery(id: string): Promise<Gallery | null> {
     try {
-      console.log(`🔍 Looking for gallery: ${id}`);
       
       if (!supabaseService.isReady()) {
         console.log('⚠️  Supabase not ready, checking local storage');
@@ -483,7 +517,7 @@ class GalleryService {
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         isPublic: data.is_public,
-        password: data.password || undefined,
+        hasPassword: !!data.has_password,
         bucketFolder: data.bucket_folder || undefined,
         bucketName: data.bucket_name || this.DEFAULT_BUCKET,
         photoCount: data.photo_count || 0,
@@ -493,7 +527,8 @@ class GalleryService {
         featuredPhotoUrl: data.featured_photo_url || undefined,
         featuredPhotoId: data.featured_photo_id || undefined,
         category: data.category || undefined,
-        folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined
+        folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined,
+        instructions: normalizeInstructions(data.instructions)
       };
 
       console.log(`✅ Found gallery in Supabase: ${gallery.name}`);
@@ -522,45 +557,6 @@ class GalleryService {
   }
 
   // Force sync from Supabase - useful when a gallery is not found locally
-  async syncFromSupabase(): Promise<{ success: boolean; count: number; error?: string }> {
-    try {
-      if (!supabaseService.isReady()) {
-        return { success: false, count: 0, error: 'Supabase not configured' };
-      }
-
-      await this.ensureTableExists();
-      
-      const health = await this.checkDatabaseHealth();
-      if (!health.tablesExist) {
-        return { success: false, count: 0, error: 'Database tables not ready. Please run SQL setup.' };
-      }
-      
-      console.log('🔄 Syncing galleries from Supabase...');
-      
-      const { data, error } = await supabaseService.client
-        .from(this.GALLERIES_TABLE)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error syncing from Supabase:', error);
-        return { success: false, count: 0, error: error.message };
-      }
-
-      const supabaseGalleries = data || [];
-      console.log(`📦 Found ${supabaseGalleries.length} galleries in Supabase`);
-
-      // For now, we don't store galleries locally anymore since we fetch directly from Supabase
-      // But we could cache them for offline access if needed
-      
-      return { success: true, count: supabaseGalleries.length };
-      
-    } catch (error) {
-      console.error('❌ Sync error:', error);
-      return { success: false, count: 0, error: 'Sync failed' };
-    }
-  }
-
   async createGallery(options?: {
     name?: string;
     description?: string;
@@ -618,7 +614,7 @@ class GalleryService {
             created_at: newGallery.createdAt,
             updated_at: newGallery.updatedAt,
             is_public: newGallery.isPublic,
-            password: newGallery.password || null,
+            password: null, // hashed separately, see set_gallery_password
             bucket_folder: newGallery.bucketFolder,
             bucket_name: newGallery.bucketName,
             photo_count: newGallery.photoCount,
@@ -634,6 +630,15 @@ class GalleryService {
           console.error('Error creating gallery in Supabase:', error);
           throw new Error(`Failed to create gallery: ${error.message}`);
         }
+
+        // The password is hashed server-side (gallery_secrets), never stored in clear text
+        if (newGallery.password) {
+          const { error: pwdError } = await supabaseService.client
+            .rpc('set_gallery_password', { p_gallery_id: newGallery.id, p_password: newGallery.password });
+          if (pwdError) console.error('Error setting gallery password:', pwdError);
+          else newGallery.hasPassword = true;
+        }
+        newGallery.password = undefined;
 
         // Create folder in Supabase storage
         try {
@@ -693,7 +698,16 @@ class GalleryService {
         if (updates.name !== undefined) supabaseUpdates.name = updates.name;
         if (updates.description !== undefined) supabaseUpdates.description = updates.description || null;
         if (updates.isPublic !== undefined) supabaseUpdates.is_public = updates.isPublic;
-        if (updates.password !== undefined) supabaseUpdates.password = updates.password || null;
+        // The password goes through the hashed store (gallery_secrets), not the galleries row.
+        // Empty string removes the protection; undefined leaves it unchanged.
+        if (updates.password !== undefined) {
+          const { error: pwdError } = await supabaseService.client
+            .rpc('set_gallery_password', { p_gallery_id: id, p_password: updates.password || '' });
+          if (pwdError) {
+            console.error('Error updating gallery password:', pwdError);
+            return null;
+          }
+        }
         if (updates.bucketFolder !== undefined) supabaseUpdates.bucket_folder = updates.bucketFolder;
         if (updates.bucketName !== undefined) supabaseUpdates.bucket_name = updates.bucketName;
         if (updates.photoCount !== undefined) supabaseUpdates.photo_count = updates.photoCount;
@@ -707,7 +721,9 @@ class GalleryService {
           const tree = sanitizeFolderTree(updates.folderTree);
           supabaseUpdates.folder_tree = tree.length > 0 ? tree : null;
         }
+        if (updates.instructions !== undefined) supabaseUpdates.instructions = updates.instructions ? normalizeInstructions(updates.instructions) : null;
 
+        this.invalidateGallery(id);
         const { data, error } = await supabaseService.client
           .from(this.GALLERIES_TABLE)
           .update(supabaseUpdates)
@@ -730,7 +746,7 @@ class GalleryService {
           createdAt: data.created_at,
           updatedAt: data.updated_at,
           isPublic: data.is_public,
-          password: data.password || undefined,
+          hasPassword: !!data.has_password,
           bucketFolder: data.bucket_folder || undefined,
           bucketName: data.bucket_name || this.DEFAULT_BUCKET,
           photoCount: data.photo_count || 0,
@@ -740,7 +756,8 @@ class GalleryService {
           featuredPhotoUrl: data.featured_photo_url || undefined,
           featuredPhotoId: data.featured_photo_id || undefined,
           category: data.category || undefined,
-          folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined
+          folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined,
+        instructions: normalizeInstructions(data.instructions)
         };
       } else {
         // Fallback to local storage
@@ -769,47 +786,21 @@ class GalleryService {
       const gallery = await this.getGallery(id);
       if (!gallery) return false;
 
-      if (supabaseService.isReady()) {
-        const health = await this.checkDatabaseHealth();
-        if (health.tablesExist) {
-          // Delete from Supabase database first (cascade will handle photos)
-          const { error } = await supabaseService.client
-            .from(this.GALLERIES_TABLE)
-            .delete()
-            .eq('id', id);
-
-          if (error) {
-            console.error('Error deleting gallery from Supabase:', error);
-            return false;
-          }
-
-          console.log('✅ Gallery deleted from Supabase:', id);
-        }
-
-        // Delete photos from Supabase storage
-        if (gallery.bucketName && gallery.bucketFolder) {
-          try {
-            const files = await supabaseService.listFiles(gallery.bucketName, gallery.bucketFolder);
-            for (const file of files) {
-              const filePath = `${gallery.bucketFolder}/${file.name}`;
-              await supabaseService.deleteFile(gallery.bucketName, filePath);
-            }
-            console.log(`✅ Deleted all photos from ${gallery.bucketName}/${gallery.bucketFolder}`);
-          } catch (error) {
-            console.warn('⚠️ Could not delete Supabase photos:', error);
-          }
-        }
-      } else {
-        // Fallback to local storage
-        const galleries = await this.getLocalGalleries();
-        const filtered = galleries.filter(g => g.id !== id);
-        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(filtered));
-      }
-      
-      // Clean up local cache and auth sessions
+      // Storage first (needs the photo rows to know the paths), then the row (cascades to photos,
+      // favorites and comments).
       await this.deleteAllPhotos(id);
+
+      const { error } = await supabaseService.client
+        .from(this.GALLERIES_TABLE)
+        .delete()
+        .eq('id', id);
+      if (error) {
+        console.error('Error deleting gallery from Supabase:', error);
+        return false;
+      }
+
+      this.invalidateGallery(id);
       this.clearGalleryAuth(id);
-      
       return true;
     } catch (error) {
       console.error('Error deleting gallery:', error);
@@ -948,17 +939,17 @@ class GalleryService {
       const gallery = await this.getGallery(galleryId);
       if (!gallery) return false;
       
-      // If gallery has no password, allow access
-      if (!gallery.password) return true;
-      
-      // Check password
-      const isAuthenticated = gallery.password === password;
-      
-      if (isAuthenticated) {
-        // Store auth session
-        this.setGalleryAuth(galleryId);
+      if (!gallery.hasPassword) return true;
+
+      // Verified server-side against the bcrypt hash (gallery_secrets); the hash never leaves the database
+      const { data, error } = await supabaseService.client
+        .rpc('verify_gallery_password', { p_gallery_id: galleryId, p_password: password });
+      if (error) {
+        console.error('Error verifying gallery password:', error);
+        return false;
       }
-      
+      const isAuthenticated = data === true;
+      if (isAuthenticated) this.setGalleryAuth(galleryId);
       return isAuthenticated;
     } catch (error) {
       console.error('Error authenticating gallery:', error);
@@ -1059,26 +1050,31 @@ class GalleryService {
   private async fetchPhotosFromSupabaseDB(galleryId: string, subfolder?: string | string[]): Promise<Photo[]> {
     try {
       // Get data without sorting first (we'll sort in JavaScript for natural ordering)
-      let query = supabaseService.client
-        .from(this.PHOTOS_TABLE)
-        .select('*')
-        .eq('gallery_id', galleryId);
-
-      // Filter by subfolder(s) if specified
-      if (Array.isArray(subfolder)) {
-        query = query.in('subfolder', subfolder);
-      } else if (subfolder) {
-        query = query.eq('subfolder', subfolder);
+      // PostgREST caps a request at 1000 rows: page through the gallery.
+      const PAGE = 1000;
+      const rows: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        let query = supabaseService.client
+          .from(this.PHOTOS_TABLE)
+          .select('*')
+          .eq('gallery_id', galleryId)
+          .order('name', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (Array.isArray(subfolder)) {
+          query = query.in('subfolder', subfolder);
+        } else if (subfolder) {
+          query = query.eq('subfolder', subfolder);
+        }
+        const { data, error } = await query;
+        if (error) {
+          console.error('Error fetching photos from database:', error);
+          return [];
+        }
+        rows.push(...(data || []));
+        if (!data || data.length < PAGE) break;
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching photos from database:', error);
-        return [];
-      }
-
-      const photos: Photo[] = (data || []).map(row => ({
+      const photos: Photo[] = rows.map(row => ({
         id: row.id,
         galleryId: row.gallery_id,
         name: row.name,
@@ -1088,7 +1084,10 @@ class GalleryService {
         uploadedAt: row.created_at,
         size: row.file_size || 0,
         mimeType: row.file_type || 'image/jpeg',
-        bucketPath: `${galleryId}/${row.subfolder ? `${row.subfolder}/` : ''}${row.name}`,
+        bucketPath: row.bucket_path || undefined,
+        thumbnailUrl: row.thumbnail_url || undefined,
+        width: row.width || undefined,
+        height: row.height || undefined,
         subfolder: row.subfolder || undefined
       }));
 
@@ -1178,7 +1177,7 @@ class GalleryService {
       
       try {
         // Validate file type
-        if (!supabaseService.constructor.isValidImageFile(file)) {
+        if (!(supabaseService.constructor as typeof supabaseService.constructor & { isValidImageFile(f: File): boolean }).isValidImageFile(file)) {
           failed.push({ file, error: 'Invalid image file type' });
           continue;
         }
@@ -1205,6 +1204,21 @@ class GalleryService {
         if (uploadResult.success) {
           // Get public URL
           const publicUrl = supabaseService.getPublicUrl(gallery.bucketName, filePath);
+
+          // Thumbnail for grids (generated here, no image transformation on this plan)
+          let thumbnailUrl: string | undefined;
+          let width: number | undefined;
+          let height: number | undefined;
+          try {
+            const thumb = await createThumbnail(file);
+            width = thumb.originalWidth;
+            height = thumb.originalHeight;
+            const thumbPath = thumbnailPathFor(gallery.bucketFolder, filePath);
+            const thumbUpload = await supabaseService.uploadFile(gallery.bucketName, thumbPath, thumb.blob, { upsert: true, contentType: 'image/jpeg' });
+            if (thumbUpload.success) thumbnailUrl = supabaseService.getPublicUrl(gallery.bucketName, thumbPath) || undefined;
+          } catch (thumbError) {
+            console.warn('Thumbnail generation failed, the original will be used:', thumbError);
+          }
           
           if (publicUrl) {
             const photo: Photo = {
@@ -1218,6 +1232,9 @@ class GalleryService {
               size: file.size,
               mimeType: file.type,
               bucketPath: filePath,
+              thumbnailUrl,
+              width,
+              height,
               subfolder: subfolder
             };
 
@@ -1232,7 +1249,11 @@ class GalleryService {
                   description: null,
                   subfolder: subfolder || null,
                   file_size: file.size,
-                  file_type: file.type
+                  file_type: file.type,
+                  bucket_path: filePath,
+                  thumbnail_url: thumbnailUrl || null,
+                  width: width || null,
+                  height: height || null
                 };
 
                 const { data: insertedPhoto, error: insertError } = await supabaseService.client
@@ -1269,11 +1290,51 @@ class GalleryService {
       options?.onProgress?.(i + 1, files.length);
     }
 
-    // Update gallery photo count and clear cache
-    await this.updateGalleryPhotoCount(galleryId);
+    // photo_count is maintained by a database trigger
+    this.invalidateGallery(galleryId);
     localStorage.removeItem(`${this.PHOTOS_KEY}-${galleryId}`);
 
     return { successful, failed };
+  }
+
+  // Removes storage objects in batches; returns the number actually deleted.
+  private async removeStorageObjects(bucketName: string, paths: string[]): Promise<number> {
+    let removed = 0;
+    for (let i = 0; i < paths.length; i += 100) {
+      const batch = paths.slice(i, i + 100);
+      const { data, error } = await supabaseService.client.storage.from(bucketName).remove(batch);
+      if (error) {
+        console.error('Storage removal failed:', error.message);
+        continue;
+      }
+      removed += (data || []).length;
+    }
+    return removed;
+  }
+
+  // Lists every object under a folder, sub-folders included (storage list() is not recursive).
+  private async listStorageObjectsRecursive(bucketName: string, folder: string): Promise<string[]> {
+    const out: string[] = [];
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabaseService.client.storage.from(bucketName).list(folder, { limit: 1000, offset });
+      if (error || !data) break;
+      for (const entry of data) {
+        const path = `${folder}/${entry.name}`;
+        if (entry.id === null) out.push(...await this.listStorageObjectsRecursive(bucketName, path));
+        else out.push(path);
+      }
+      if (data.length < 1000) break;
+      offset += 1000;
+    }
+    return out;
+  }
+
+  private storagePathsOf(gallery: Gallery, photo: Pick<Photo, 'bucketPath' | 'thumbnailUrl'>): string[] {
+    if (!photo.bucketPath || !gallery.bucketFolder) return [];
+    const paths = [photo.bucketPath];
+    if (photo.thumbnailUrl) paths.push(thumbnailPathFor(gallery.bucketFolder, photo.bucketPath));
+    return paths;
   }
 
   async deletePhoto(galleryId: string, photoId: string): Promise<boolean> {
@@ -1285,71 +1346,27 @@ class GalleryService {
       const photo = photos.find(p => p.id === photoId);
       if (!photo) return false;
 
-      if (supabaseService.isReady()) {
-        const health = await this.checkDatabaseHealth();
-        let dbDeleteSuccess = true;
-        let storageDeleteSuccess = true;
-        
-        if (health.tablesExist) {
-          // Delete from Supabase database first
-          const { error: dbError } = await supabaseService.client
-            .from(this.PHOTOS_TABLE)
-            .delete()
-            .eq('id', photoId);
-
-          if (dbError) {
-            console.error('❌ Error deleting photo from database:', dbError);
-            dbDeleteSuccess = false;
-          } else {
-            console.log('✅ Photo deleted from database');
-          }
-        }
-
-        // Delete from Supabase storage
-        if (photo.bucketPath && gallery.bucketName) {
-          console.log(`🗑️ Photo deletion details:`);
-          console.log(`  - Photo ID: ${photo.id}`);
-          console.log(`  - Photo name: ${photo.name}`);
-          console.log(`  - Gallery bucket: "${gallery.bucketName}"`);
-          console.log(`  - Photo bucketPath: "${photo.bucketPath}"`);
-          console.log(`  - Full storage path: ${gallery.bucketName}/${photo.bucketPath}`);
-          
-          const deleteResult = await supabaseService.deleteFile(gallery.bucketName, photo.bucketPath);
-          if (!deleteResult.success) {
-            console.error('❌ Failed to delete file from storage:', deleteResult.error);
-            storageDeleteSuccess = false;
-          } else {
-            console.log('✅ Photo file deleted from storage');
-          }
-        } else {
-          console.warn('⚠️ Cannot delete from storage - missing info:');
-          console.warn(`  - bucketPath: "${photo.bucketPath}"`);
-          console.warn(`  - bucketName: "${gallery.bucketName}"`);
-          storageDeleteSuccess = false;
-        }
-        
-        // Log the overall result
-        if (!dbDeleteSuccess || !storageDeleteSuccess) {
-          console.warn(`⚠️ Photo deletion partially failed - DB: ${dbDeleteSuccess}, Storage: ${storageDeleteSuccess}`);
-          // Continue anyway to clean up local cache and related data
-        } else {
-          console.log('✅ Photo completely deleted from database and storage');
-        }
+      const { error: dbError } = await supabaseService.client
+        .from(this.PHOTOS_TABLE)
+        .delete()
+        .eq('id', photoId);
+      if (dbError) {
+        console.error('Error deleting photo from database:', dbError);
+        return false;
       }
 
-      // Clean up related favorites and comments
-      console.log('🧹 Cleaning up related favorites and comments...');
-      const cleanupResult = await favoritesService.clearPhotoData(galleryId, photoId);
-      if (cleanupResult) {
-        console.log('✅ Related data cleaned up successfully');
+      // Storage: original + thumbnail, from the real path stored at upload time
+      const paths = this.storagePathsOf(gallery, photo);
+      if (paths.length === 0) {
+        console.warn(`Photo ${photo.name}: no storage path recorded, file left in place`);
       } else {
-        console.warn('⚠️ Some related data may not have been cleaned up');
+        const removed = await this.removeStorageObjects(gallery.bucketName || this.DEFAULT_BUCKET, paths);
+        if (removed === 0) console.warn(`Photo ${photo.name}: storage file not found (${paths[0]})`);
       }
 
-      // Update gallery photo count and clear cache
-      await this.updateGalleryPhotoCount(galleryId);
+      await favoritesService.clearPhotoData(galleryId, photoId);
+      this.invalidateGallery(galleryId);
       localStorage.removeItem(`${this.PHOTOS_KEY}-${galleryId}`);
-
       return true;
     } catch (error) {
       console.error('Error deleting photo:', error);
@@ -1361,44 +1378,29 @@ class GalleryService {
     try {
       const gallery = await this.getGallery(galleryId);
       if (!gallery) return false;
+      const bucketName = gallery.bucketName || this.DEFAULT_BUCKET;
 
-      if (supabaseService.isReady()) {
-        const health = await this.checkDatabaseHealth();
-        if (health.tablesExist) {
-          // Delete all photos from database
-          const { error: dbError } = await supabaseService.client
-            .from(this.PHOTOS_TABLE)
-            .delete()
-            .eq('gallery_id', galleryId);
+      // Paths known from the table, then whatever is left in the folder (thumbs, .gitkeep, strays)
+      const photos = await this.getPhotos(galleryId);
+      const known = photos.flatMap(photo => this.storagePathsOf(gallery, photo));
 
-          if (dbError) {
-            console.error('Error deleting photos from database:', dbError);
-          }
-        }
-
-        // Delete from Supabase storage
-        if (gallery.bucketName && gallery.bucketFolder) {
-          try {
-            const files = await supabaseService.listFiles(gallery.bucketName, gallery.bucketFolder);
-            for (const file of files) {
-              const filePath = `${gallery.bucketFolder}/${file.name}`;
-              const deleteResult = await supabaseService.deleteFile(gallery.bucketName, filePath);
-              if (!deleteResult.success) {
-                console.warn('Could not delete file:', filePath, deleteResult.error);
-              }
-            }
-          } catch (error) {
-            console.warn('Could not list/delete files from storage:', error);
-          }
-        }
+      const { error: dbError } = await supabaseService.client
+        .from(this.PHOTOS_TABLE)
+        .delete()
+        .eq('gallery_id', galleryId);
+      if (dbError) {
+        console.error('Error deleting photos from database:', dbError);
+        return false;
       }
 
-      // Clear local cache
+      if (gallery.bucketFolder) {
+        await this.removeStorageObjects(bucketName, known);
+        const leftovers = await this.listStorageObjectsRecursive(bucketName, gallery.bucketFolder);
+        if (leftovers.length > 0) await this.removeStorageObjects(bucketName, leftovers);
+      }
+
+      this.invalidateGallery(galleryId);
       localStorage.removeItem(`${this.PHOTOS_KEY}-${galleryId}`);
-
-      // Update gallery photo count
-      await this.updateGallery(galleryId, { photoCount: 0 });
-
       return true;
     } catch (error) {
       console.error('Error deleting all photos:', error);
@@ -1528,13 +1530,42 @@ class GalleryService {
     return Math.random().toString(36).substring(2, 9);
   }
 
-  private async updateGalleryPhotoCount(galleryId: string): Promise<void> {
-    try {
-      const photos = await this.getPhotos(galleryId);
-      await this.updateGallery(galleryId, { photoCount: photos.length });
-    } catch (error) {
-      console.error('Error updating gallery photo count:', error);
+  // Generates the missing thumbnails of a gallery from the originals (admin, one-off after
+  // the 2026-09 audit for photos uploaded before thumbnails existed).
+  async backfillThumbnails(
+    galleryId: string,
+    onProgress?: (done: number, total: number, current?: string) => void
+  ): Promise<{ done: number; failed: string[] }> {
+    const gallery = await this.getGallery(galleryId);
+    if (!gallery || !gallery.bucketFolder) return { done: 0, failed: [] };
+    const bucketName = gallery.bucketName || this.DEFAULT_BUCKET;
+    const photos = (await this.getPhotos(galleryId)).filter(photo => !photo.thumbnailUrl && photo.bucketPath);
+    const failed: string[] = [];
+    let done = 0;
+    for (const photo of photos) {
+      onProgress?.(done, photos.length, photo.name);
+      try {
+        const response = await fetch(photo.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const thumb = await createThumbnail(await response.blob());
+        const thumbPath = thumbnailPathFor(gallery.bucketFolder, photo.bucketPath!);
+        const upload = await supabaseService.uploadFile(bucketName, thumbPath, thumb.blob, { upsert: true, contentType: 'image/jpeg' });
+        if (!upload.success) throw new Error(upload.error || 'upload failed');
+        const thumbnailUrl = supabaseService.getPublicUrl(bucketName, thumbPath);
+        const { error } = await supabaseService.client
+          .from(this.PHOTOS_TABLE)
+          .update({ thumbnail_url: thumbnailUrl, width: thumb.originalWidth, height: thumb.originalHeight })
+          .eq('id', photo.id);
+        if (error) throw error;
+        done++;
+      } catch (error) {
+        console.error(`Thumbnail failed for ${photo.name}:`, error);
+        failed.push(photo.name);
+      }
     }
+    onProgress?.(done, photos.length);
+    localStorage.removeItem(`${this.PHOTOS_KEY}-${galleryId}`);
+    return { done, failed };
   }
 
   // Check if Supabase is configured

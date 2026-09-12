@@ -4,10 +4,13 @@
   "devCommand": "npm run dev",
   "framework": "vite",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "functions": {
-    "api/send-gmail-final.js": {
+    "api/notify-selection.js": {
       "maxDuration": 10
     }
   }

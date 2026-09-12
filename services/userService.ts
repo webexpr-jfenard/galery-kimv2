@@ -1,173 +1,135 @@
 /**
- * Service de gestion des utilisateurs pour les favoris
- * Demande le nom au premier ajout en favori et le stocke en session
+ * Visitor identity for favorites and comments.
+ *
+ * A visitor is identified by a secret random token that never leaves this browser
+ * except as the `x-user-token` request header (injected by supabaseService). The
+ * database derives user_id = sha256(token) (see request_user_id() in Postgres), so a
+ * favorite or comment can only be written or removed by the browser holding the token.
+ * user_id itself is public and harmless: it cannot be reversed into the token.
  */
 
 export interface UserSession {
-  userId: string;
+  token: string;     // secret, never displayed nor stored server-side
+  userId: string;    // sha256(token) as hex, what the database stores in user_id
   userName: string;
   deviceId: string;
   createdAt: string;
 }
 
+const USER_SESSION_KEY = 'gallery-user-session';
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function randomToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+type Listener = (session: UserSession | null) => void;
+
 class UserService {
-  private readonly USER_SESSION_KEY = 'gallery-user-session';
   private currentSession: UserSession | null = null;
+  private listeners = new Set<Listener>();
 
   constructor() {
     this.loadSession();
   }
 
-  /**
-   * Charge la session utilisateur depuis localStorage
-   */
   private loadSession(): void {
     try {
-      const stored = localStorage.getItem(this.USER_SESSION_KEY);
-      if (stored) {
-        this.currentSession = JSON.parse(stored);
-        console.log('👤 Session utilisateur chargée:', this.currentSession?.userName);
+      const stored = localStorage.getItem(USER_SESSION_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      // Sessions created before the token scheme (2026-09) cannot prove ownership of
+      // anything: drop them, the visitor is simply asked for their first name again.
+      if (parsed && typeof parsed.token === 'string' && typeof parsed.userId === 'string') {
+        this.currentSession = parsed as UserSession;
+      } else {
+        localStorage.removeItem(USER_SESSION_KEY);
       }
-    } catch (error) {
-      console.error('Erreur lors du chargement de la session:', error);
+    } catch {
       this.currentSession = null;
     }
   }
 
-  /**
-   * Sauvegarde la session utilisateur
-   */
-  private saveSession(session: UserSession): void {
+  private saveSession(session: UserSession | null): void {
     try {
-      localStorage.setItem(this.USER_SESSION_KEY, JSON.stringify(session));
-      this.currentSession = session;
-      console.log('✅ Session utilisateur sauvegardée:', session.userName);
+      if (session) {
+        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session));
+      } else {
+        localStorage.removeItem(USER_SESSION_KEY);
+      }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde de la session:', error);
     }
+    this.currentSession = session;
+    this.listeners.forEach(listener => listener(session));
   }
 
-  /**
-   * Crée une nouvelle session utilisateur
-   */
-  public createSession(userName: string, deviceId: string): UserSession {
+  /** Creates the visitor identity (token + derived user id) and stores it in this browser. */
+  public async createSession(userName: string, deviceId: string): Promise<UserSession> {
+    const token = randomToken();
     const session: UserSession = {
-      userId: `user_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+      token,
+      userId: await sha256Hex(token),
       userName: userName.trim(),
       deviceId,
       createdAt: new Date().toISOString()
     };
-
     this.saveSession(session);
     return session;
   }
 
-  /**
-   * Récupère la session courante
-   */
   public getCurrentSession(): UserSession | null {
     return this.currentSession;
   }
 
-  /**
-   * Vérifie si un utilisateur est connecté
-   */
   public isUserLoggedIn(): boolean {
     return this.currentSession !== null;
   }
 
-  /**
-   * Récupère le nom de l'utilisateur courant
-   */
   public getCurrentUserName(): string | null {
     return this.currentSession?.userName || null;
   }
 
-  /**
-   * Récupère l'ID de l'utilisateur courant
-   */
   public getCurrentUserId(): string | null {
     return this.currentSession?.userId || null;
   }
 
-  /**
-   * Met à jour le nom d'utilisateur
-   */
+  /** Secret token sent as the x-user-token header; null when the visitor has no identity yet. */
+  public getToken(): string | null {
+    return this.currentSession?.token || null;
+  }
+
   public updateUserName(newName: string): boolean {
-    if (!this.currentSession) {
-      return false;
-    }
-
-    try {
-      this.currentSession.userName = newName.trim();
-      this.saveSession(this.currentSession);
-      return true;
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du nom:', error);
-      return false;
-    }
+    if (!this.currentSession) return false;
+    this.saveSession({ ...this.currentSession, userName: newName.trim() });
+    return true;
   }
 
-  /**
-   * Supprime la session utilisateur (déconnexion)
-   */
+  /** Forgets the identity in this browser ("ce n'est pas moi"). Existing favorites stay attached to the old id. */
   public clearSession(): void {
-    try {
-      localStorage.removeItem(this.USER_SESSION_KEY);
-      this.currentSession = null;
-      console.log('🚪 Session utilisateur supprimée');
-    } catch (error) {
-      console.error('Erreur lors de la suppression de la session:', error);
-    }
+    this.saveSession(null);
   }
 
-  /**
-   * Valide un nom d'utilisateur
-   */
+  public onChange(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
   public validateUserName(name: string): { valid: boolean; message?: string } {
-    if (!name || name.trim().length === 0) {
-      return { valid: false, message: 'Le nom ne peut pas être vide' };
-    }
-
-    if (name.trim().length < 2) {
-      return { valid: false, message: 'Le nom doit contenir au moins 2 caractères' };
-    }
-
-    if (name.trim().length > 50) {
-      return { valid: false, message: 'Le nom ne peut pas dépasser 50 caractères' };
-    }
-
-    // Vérifier les caractères autorisés (lettres, chiffres, espaces, tirets, apostrophes)
-    const validNamePattern = /^[a-zA-ZÀ-ÿ0-9\s\-']+$/;
-    if (!validNamePattern.test(name.trim())) {
+    const trimmed = (name || '').trim();
+    if (trimmed.length === 0) return { valid: false, message: 'Le nom ne peut pas être vide' };
+    if (trimmed.length < 2) return { valid: false, message: 'Le nom doit contenir au moins 2 caractères' };
+    if (trimmed.length > 50) return { valid: false, message: 'Le nom ne peut pas dépasser 50 caractères' };
+    if (!/^[a-zA-ZÀ-ÿ0-9\s\-']+$/.test(trimmed)) {
       return { valid: false, message: 'Le nom contient des caractères non autorisés' };
     }
-
     return { valid: true };
-  }
-
-  /**
-   * Récupère des statistiques sur l'utilisateur
-   */
-  public getUserStats(): {
-    isLoggedIn: boolean;
-    userName?: string;
-    sessionCreated?: string;
-    daysSinceCreation?: number;
-  } {
-    if (!this.currentSession) {
-      return { isLoggedIn: false };
-    }
-
-    const createdAt = new Date(this.currentSession.createdAt);
-    const daysSinceCreation = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-
-    return {
-      isLoggedIn: true,
-      userName: this.currentSession.userName,
-      sessionCreated: this.currentSession.createdAt,
-      daysSinceCreation
-    };
   }
 }
 

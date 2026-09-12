@@ -214,10 +214,6 @@ export function CreateGalleryDialog({
               <div className="space-y-3">
                 {[
                   {
-                    key: "isPublic" as const,
-                    label: "Galerie publique",
-                  },
-                  {
                     key: "allowComments" as const,
                     label: "Commentaires",
                   },

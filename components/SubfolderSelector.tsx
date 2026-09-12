@@ -17,6 +17,7 @@ import {
   Check
 } from "lucide-react";
 import { galleryService, SubfolderInfo } from "../services/galleryService";
+import { toast } from "sonner";
 
 interface SubfolderSelectorProps {
   galleryId: string;
@@ -64,13 +65,13 @@ export function SubfolderSelector({
 
     // Validate subfolder name (accents, apostrophes and slashes are fine; only path-breaking chars are refused)
     if (/[\\:*?"<>|]/.test(trimmedName)) {
-      alert('Le nom du dossier ne peut pas contenir les caractères \\ : * ? " < > |');
+      toast.error('Le nom du dossier ne peut pas contenir les caractères \\ : * ? " < > |');
       return;
     }
 
     // Check if subfolder already exists
     if (subfolders.some(sf => sf.name.toLowerCase() === trimmedName.toLowerCase())) {
-      alert('Ce sous-dossier existe déjà.');
+      toast.error('Ce sous-dossier existe déjà.');
       return;
     }
 

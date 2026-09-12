@@ -135,7 +135,7 @@ export function AuthDialog({
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 placeholder="Entrer le mot de passe..."
                 className="pr-10"
                 disabled={isLoading}

@@ -1,199 +1,135 @@
+/**
+ * Admin authentication, backed by Supabase Auth.
+ *
+ * An admin is a Supabase Auth user (e-mail + password, created by hand in the Supabase
+ * dashboard, signups disabled) whose id is listed in the `admin_users` table. Every
+ * write policy in the database and on the storage bucket checks that membership through
+ * is_admin_user(); nothing secret ships in the client bundle anymore.
+ */
+import type { Session } from '@supabase/supabase-js';
 import { supabaseService } from './supabaseService';
 
-interface AdminSession {
+export interface AdminSessionInfo {
   isAuthenticated: boolean;
-  timestamp: number;
-  expiresAt: number;
+  email?: string;
+  expiresAt?: number; // ms since epoch
 }
 
+type Listener = (isAuthenticated: boolean) => void;
+
+const AUTH_ERRORS: Record<string, string> = {
+  invalid_credentials: 'E-mail ou mot de passe incorrect.',
+  email_not_confirmed: "Cette adresse n'a pas encore été confirmée.",
+  over_request_rate_limit: 'Trop de tentatives, réessayez dans quelques minutes.',
+};
+
 class AuthService {
-  private readonly ADMIN_SESSION_KEY = 'admin-session';
-  private readonly CUSTOM_PASSWORD_KEY = 'admin-custom-password';
-  private readonly SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  private session: Session | null = null;
+  private isAdmin = false;
+  private recoveryPending = false;
+  private listeners = new Set<Listener>();
+  private readonly ready: Promise<void>;
 
-  // Rate limiting
-  private failedAttempts = 0;
-  private lockoutUntil: number | null = null;
-  private readonly MAX_ATTEMPTS = 5;
-  private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
-  private getAdminPassword(): string {
-    // Check for custom password first (set via changeAdminPassword)
-    const custom = localStorage.getItem(this.CUSTOM_PASSWORD_KEY);
-    if (custom) return custom;
-    // Then env var
-    const envPassword = (import.meta as any).env?.VITE_ADMIN_PASSWORD;
-    if (envPassword) return envPassword;
-    // Fallback
-    return 'admin123';
+  constructor() {
+    this.ready = this.init();
   }
 
-  private getAdminSecret(): string | null {
-    return (import.meta as any).env?.VITE_ADMIN_SECRET || null;
+  private get auth() {
+    return supabaseService.client.auth;
   }
 
-  private syncAdminMode(enabled: boolean): void {
-    const secret = this.getAdminSecret();
-    if (!secret) return;
-    if (enabled) {
-      supabaseService.enableAdminMode(secret);
-    } else {
-      supabaseService.disableAdminMode();
+  private async init(): Promise<void> {
+    try {
+      const { data } = await this.auth.getSession();
+      await this.applySession(data.session);
+      this.auth.onAuthStateChange((event: string, session: Session | null) => {
+        if (event === 'PASSWORD_RECOVERY') this.recoveryPending = true;
+        // supabase-js asks not to call the client synchronously from this callback
+        setTimeout(() => { void this.applySession(session); }, 0);
+      });
+    } catch (error) {
+      console.error('Auth init error:', error);
+      await this.applySession(null);
     }
   }
 
-  // Admin Authentication
-  authenticateAdmin(password: string): boolean {
-    try {
-      // Check lockout
-      if (this.lockoutUntil && Date.now() < this.lockoutUntil) {
-        const remaining = Math.ceil((this.lockoutUntil - Date.now()) / 60000);
-        console.warn(`Account locked. Try again in ${remaining} minutes.`);
-        return false;
-      }
+  private async applySession(session: Session | null): Promise<void> {
+    this.session = session;
+    this.isAdmin = session ? await this.isListedAdmin(session.user.id) : false;
+    this.listeners.forEach(listener => listener(this.isAdmin));
+  }
 
-      const isValid = password === this.getAdminPassword();
-
-      if (isValid) {
-        this.failedAttempts = 0;
-        this.lockoutUntil = null;
-        this.setAdminSession();
-        this.syncAdminMode(true);
-      } else {
-        this.failedAttempts++;
-        if (this.failedAttempts >= this.MAX_ATTEMPTS) {
-          this.lockoutUntil = Date.now() + this.LOCKOUT_DURATION;
-          this.failedAttempts = 0;
-        }
-      }
-
-      return isValid;
-    } catch (error) {
-      console.error('Error authenticating admin:', error);
+  private async isListedAdmin(userId: string): Promise<boolean> {
+    const { data, error } = await supabaseService.client
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      console.error('admin_users lookup failed:', error);
       return false;
     }
+    return !!data;
+  }
+
+  /** Resolves once the persisted session (if any) has been restored. */
+  whenReady(): Promise<void> {
+    return this.ready;
+  }
+
+  async signIn(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await this.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) {
+      return { ok: false, error: AUTH_ERRORS[error.code || ''] || error.message };
+    }
+    await this.applySession(data.session);
+    if (!this.isAdmin) {
+      await this.auth.signOut();
+      return { ok: false, error: "Ce compte n'est pas autorisé à administrer les galeries." };
+    }
+    return { ok: true };
+  }
+
+  async signOut(): Promise<void> {
+    await this.auth.signOut();
+    await this.applySession(null);
+  }
+
+  /** Sends the reset e-mail; the link comes back to the admin page in recovery mode. */
+  async resetPassword(email: string): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await this.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/#/admin`
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }
+
+  isPasswordRecoveryPending(): boolean {
+    return this.recoveryPending;
+  }
+
+  async updatePassword(newPassword: string): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await this.auth.updateUser({ password: newPassword });
+    if (error) return { ok: false, error: error.message };
+    this.recoveryPending = false;
+    return { ok: true };
   }
 
   isAdminAuthenticated(): boolean {
-    try {
-      const session = this.getAdminSession();
-      if (!session) return false;
-
-      // Check if session is expired
-      if (Date.now() > session.expiresAt) {
-        this.clearAdminSession();
-        this.syncAdminMode(false);
-        return false;
-      }
-
-      // Ensure Supabase admin mode is in sync
-      if (session.isAuthenticated && !supabaseService.isAdminMode()) {
-        this.syncAdminMode(true);
-      }
-
-      return session.isAuthenticated;
-    } catch (error) {
-      console.error('Error checking admin auth:', error);
-      return false;
-    }
+    return this.isAdmin;
   }
 
-  private setAdminSession(): void {
-    try {
-      const session: AdminSession = {
-        isAuthenticated: true,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + this.SESSION_DURATION
-      };
-      
-      localStorage.setItem(this.ADMIN_SESSION_KEY, JSON.stringify(session));
-    } catch (error) {
-      console.error('Error setting admin session:', error);
-    }
-  }
-
-  private getAdminSession(): AdminSession | null {
-    try {
-      const stored = localStorage.getItem(this.ADMIN_SESSION_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error('Error getting admin session:', error);
-      return null;
-    }
-  }
-
-  clearAdminSession(): void {
-    try {
-      localStorage.removeItem(this.ADMIN_SESSION_KEY);
-      this.syncAdminMode(false);
-    } catch (error) {
-      console.error('Error clearing admin session:', error);
-    }
-  }
-
-  getSessionInfo(): { isAuthenticated: boolean; expiresAt?: number; timeRemaining?: number } {
-    try {
-      const session = this.getAdminSession();
-      if (!session) {
-        return { isAuthenticated: false };
-      }
-
-      const timeRemaining = session.expiresAt - Date.now();
-      
-      return {
-        isAuthenticated: session.isAuthenticated && timeRemaining > 0,
-        expiresAt: session.expiresAt,
-        timeRemaining: Math.max(0, timeRemaining)
-      };
-    } catch (error) {
-      return { isAuthenticated: false };
-    }
-  }
-
-  extendSession(): boolean {
-    try {
-      if (!this.isAdminAuthenticated()) return false;
-      
-      this.setAdminSession(); // Refresh the session
-      return true;
-    } catch (error) {
-      console.error('Error extending session:', error);
-      return false;
-    }
-  }
-
-  // Password validation helper
-  static validatePassword(password: string): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    if (!password || password.length === 0) {
-      errors.push('Password is required');
-    }
-    
-    if (password.length < 4) {
-      errors.push('Password must be at least 4 characters long');
-    }
-    
+  getSessionInfo(): AdminSessionInfo {
     return {
-      isValid: errors.length === 0,
-      errors
+      isAuthenticated: this.isAdmin,
+      email: this.session?.user.email,
+      expiresAt: this.session?.expires_at ? this.session.expires_at * 1000 : undefined
     };
   }
 
-  // Change admin password (requires current password)
-  changeAdminPassword(currentPassword: string, newPassword: string): boolean {
-    try {
-      if (currentPassword !== this.getAdminPassword()) return false;
-      const validation = AuthService.validatePassword(newPassword);
-      if (!validation.isValid) return false;
-      localStorage.setItem(this.CUSTOM_PASSWORD_KEY, newPassword);
-      return true;
-    } catch (error) {
-      console.error('Error changing admin password:', error);
-      return false;
-    }
+  onChange(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 }
 
 export const authService = new AuthService();
-export type { AdminSession };

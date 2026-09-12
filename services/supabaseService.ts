@@ -1,8 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import { userService } from './userService';
 
 // Supabase configuration from environment variables
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+
+// Every request carries the visitor's secret token so that the database can verify who
+// owns a favorite or a comment (request_user_id() = sha256 of this header).
+const fetchWithVisitorToken: typeof fetch = (input, init: RequestInit = {}) => {
+  const token = userService.getToken();
+  if (!token) return fetch(input, init);
+  const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+  headers.set('x-user-token', token);
+  return fetch(input, { ...init, headers });
+};
 
 interface StorageFile {
   name: string;
@@ -24,7 +35,6 @@ interface StorageFile {
 class SupabaseService {
   public client: any; // Made public for galleryService access
   private isConfigured = true; // Always configured with hardcoded credentials
-  private _adminMode = false;
 
   constructor() {
     // Validate environment variables
@@ -34,30 +44,11 @@ class SupabaseService {
       throw new Error('Supabase credentials not configured');
     }
 
-    // Initialize with environment credentials
-    this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase initialized with environment credentials');
-  }
-
-  // Admin mode: sends x-admin-secret header for RLS write access on galleries/photos
-  enableAdminMode(secret: string): void {
-    if (this._adminMode) return;
-    this._adminMode = true;
+    // One client for everyone. Admin rights come from the Supabase Auth session
+    // (see authService); visitor identity from the x-user-token header.
     this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { 'x-admin-secret': secret } }
+      global: { fetch: fetchWithVisitorToken }
     });
-    console.log('🔐 Supabase admin mode enabled');
-  }
-
-  disableAdminMode(): void {
-    if (!this._adminMode) return;
-    this._adminMode = false;
-    this.client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('🔓 Supabase admin mode disabled');
-  }
-
-  isAdminMode(): boolean {
-    return this._adminMode;
   }
 
   // Check if service is ready (always true now)
@@ -232,8 +223,8 @@ class SupabaseService {
   async uploadFile(
     bucketName: string, 
     filePath: string, 
-    file: File,
-    options?: { upsert?: boolean; cacheControl?: string }
+    file: File | Blob,
+    options?: { upsert?: boolean; cacheControl?: string; contentType?: string }
   ): Promise<{ success: boolean; error?: string; path?: string }> {
     if (!this.isReady()) {
       return { success: false, error: 'Supabase not configured' };
@@ -246,7 +237,8 @@ class SupabaseService {
         .from(bucketName)
         .upload(filePath, file, {
           upsert: options?.upsert || false,
-          cacheControl: options?.cacheControl || '3600'
+          cacheControl: options?.cacheControl || '3600',
+          contentType: options?.contentType || (file instanceof File ? file.type : undefined)
         });
 
       if (error) {

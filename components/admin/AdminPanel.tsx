@@ -17,14 +17,15 @@ import { PhotoManager } from "../PhotoManager";
 import { GmailConfigDialog } from "../GmailConfigDialog";
 import { UploadZone } from "./UploadZone";
 import { SettingsPage } from "./SettingsPage";
+import { InstructionsPage } from "./InstructionsPage";
 import { QuoteCalculator } from "../QuoteCalculator";
 
 import { RefreshCw, FolderOpen } from "lucide-react";
 
 export function AdminPanel() {
-  // Auth
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [sessionInfo, setSessionInfo] = useState<{ timeRemaining?: number }>({});
+  // Auth (Supabase Auth session, see authService)
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAdminAuthenticated());
+  const [sessionInfo, setSessionInfo] = useState(authService.getSessionInfo());
 
   // Navigation
   const [currentPage, setCurrentPage] = useState("galleries");
@@ -65,51 +66,37 @@ export function AdminPanel() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Init
+  // Init + follow the auth session (restored session, expiry, sign-out in another tab)
   useEffect(() => {
-    const isAuth = authService.isAdminAuthenticated();
-    if (isAuth) {
-      setIsAuthenticated(true);
-      loadGalleries();
-      loadStats();
-      loadConnectionStatus();
+    let loaded = false;
+    const apply = (authenticated: boolean) => {
+      setIsAuthenticated(authenticated);
       setSessionInfo(authService.getSessionInfo());
-    }
+      if (authenticated && !loaded) {
+        loaded = true;
+        loadGalleries();
+        loadStats();
+        loadConnectionStatus();
+      }
+      if (!authenticated) {
+        loaded = false;
+        setGalleries([]);
+        setStats({ totalGalleries: 0, totalPhotos: 0, protectedGalleries: 0 });
+      }
+    };
+    apply(authService.isAdminAuthenticated());
+    return authService.onChange(apply);
   }, []);
 
-  // Session timer
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const timer = setInterval(() => {
-      const data = authService.getSessionInfo();
-      setSessionInfo(data);
-      if (!data.isAuthenticated) handleLogout();
-      if (data.timeRemaining && data.timeRemaining < 5 * 60 * 1000 && data.timeRemaining > 4 * 60 * 1000) {
-        toast.warning("Session expire dans 5 minutes");
-      }
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [isAuthenticated]);
-
   // Auth handlers
-  const handleAuthentication = async (password: string): Promise<boolean> => {
-    const isValid = authService.authenticateAdmin(password);
-    if (isValid) {
-      setIsAuthenticated(true);
-      loadGalleries();
-      loadStats();
-      loadConnectionStatus();
-      setSessionInfo(authService.getSessionInfo());
-      toast.success("Connecté avec succès");
-    }
-    return isValid;
+  const handleAuthentication = async (email: string, password: string) => {
+    const result = await authService.signIn(email, password);
+    if (result.ok) toast.success("Connecté avec succès");
+    return result;
   };
 
-  const handleLogout = () => {
-    authService.clearAdminSession();
-    setIsAuthenticated(false);
-    setGalleries([]);
-    setStats({ totalGalleries: 0, totalPhotos: 0, protectedGalleries: 0 });
+  const handleLogout = async () => {
+    await authService.signOut();
     toast.success("Déconnecté");
   };
 
@@ -136,7 +123,7 @@ export function AdminPanel() {
       for (const gallery of list || []) {
         const s = await galleryService.getGalleryStats(gallery.id);
         totalPhotos += s.photoCount;
-        if (gallery.password) protectedGalleries++;
+        if (gallery.hasPassword) protectedGalleries++;
       }
       setStats({ totalGalleries: list?.length || 0, totalPhotos, protectedGalleries });
     } catch (error) {
@@ -261,22 +248,15 @@ export function AdminPanel() {
     }
   };
 
-  // Sync
+  // Refresh everything from the database
   const handleSyncFromSupabase = async () => {
     try {
       setIsSyncing(true);
-      const result = await galleryService.syncFromSupabase();
-      if (result.success) {
-        toast.success(`${result.count} galeries synchronisées`);
-        await loadGalleries();
-        await loadStats();
-        await loadConnectionStatus();
-      } else {
-        toast.error(result.error || "Échec de la synchronisation");
-      }
+      await Promise.all([loadGalleries(), loadStats(), loadConnectionStatus()]);
+      toast.success("Données actualisées");
     } catch (error) {
-      console.error("Sync error:", error);
-      toast.error("Échec de la synchronisation");
+      console.error("Refresh error:", error);
+      toast.error("Échec de l'actualisation");
     } finally {
       setIsSyncing(false);
     }
@@ -321,6 +301,9 @@ export function AdminPanel() {
     switch (currentPage) {
       case "quotes":
         return <QuoteCalculator />;
+
+      case "instructions":
+        return <InstructionsPage />;
 
       case "settings":
         return (
@@ -442,7 +425,7 @@ export function AdminPanel() {
         currentPage={currentPage}
         onNavigate={setCurrentPage}
         onLogout={handleLogout}
-        sessionTimeRemaining={sessionInfo.timeRemaining}
+        sessionEmail={sessionInfo.email}
       >
         {renderPage()}
       </AdminLayout>

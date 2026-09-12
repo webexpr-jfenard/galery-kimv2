@@ -63,7 +63,7 @@ export function GalleryGridCard({
 
         {/* Badges overlay */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-          {gallery.password && (
+          {gallery.hasPassword && (
             <div className="w-6 h-6 rounded-md bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
               <Lock className="h-3 w-3 text-gray-500" />
             </div>

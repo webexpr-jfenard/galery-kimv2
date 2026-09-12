@@ -23,10 +23,12 @@ import {
   Save,
   FolderInput,
   FolderPlus,
-  FolderTree
+  FolderTree,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, buildFolderSections, folderTreeFromNames } from "../services/galleryService";
+import { photoSrc } from "../services/imageService";
 import type { Gallery, Photo, FolderNode, FolderSection } from "../services/galleryService";
 
 interface PhotoManagerProps {
@@ -64,6 +66,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [dragItem, setDragItem] = useState<{ parent: string | null; index: number } | null>(null);
   const [newGroupName, setNewGroupName] = useState('');
   const [isSavingTree, setIsSavingTree] = useState(false);
+  const [thumbProgress, setThumbProgress] = useState<{ done: number; total: number } | null>(null);
   const [showFolderReassignModal, setShowFolderReassignModal] = useState(false);
   const [targetSubfolder, setTargetSubfolder] = useState<string | undefined>();
   const [newFolderName, setNewFolderName] = useState(''); // "Changer de dossier": create a folder on the fly
@@ -478,6 +481,27 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     }
   };
 
+  // Photos uploaded before September 2026 have no thumbnail: generate them from the originals
+  const handleBackfillThumbnails = async () => {
+    try {
+      setThumbProgress({ done: 0, total: 0 });
+      const result = await galleryService.backfillThumbnails(galleryId, (done, total) => setThumbProgress({ done, total }));
+      if (result.failed.length > 0) {
+        toast.warning(`${result.done} vignette(s) générée(s), ${result.failed.length} en échec`);
+      } else if (result.done > 0) {
+        toast.success(`${result.done} vignette(s) générée(s)`);
+      } else {
+        toast.info('Toutes les photos ont déjà une vignette');
+      }
+      await loadGalleryData();
+    } catch (error) {
+      console.error('Thumbnail backfill error:', error);
+      toast.error('Génération des vignettes impossible');
+    } finally {
+      setThumbProgress(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -552,6 +576,20 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                     title="Organiser les dossiers (ordre et groupes)"
                   >
                     <Settings2 className="h-4 w-4" />
+                  </Button>
+                )}
+                {photos.some(photo => !photo.thumbnailUrl) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBackfillThumbnails}
+                    disabled={!!thumbProgress}
+                    title="Générer les vignettes manquantes (photos plus légères dans les galeries)"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span className="ml-1 text-xs">
+                      {thumbProgress ? `${thumbProgress.done}/${thumbProgress.total || '…'}` : 'Vignettes'}
+                    </span>
                   </Button>
                 )}
                 <Button
@@ -825,7 +863,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 {/* Photo */}
                 <div className="aspect-square relative overflow-hidden">
                   <img
-                    src={photo.url}
+                    src={photoSrc(photo, 'grid')}
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -890,7 +928,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 
                 <div className="w-16 h-16 rounded overflow-hidden shrink-0">
                   <img
-                    src={photo.url}
+                    src={photoSrc(photo, 'grid')}
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className="w-full h-full object-cover"
@@ -906,7 +944,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {new Date(photo.createdAt).toLocaleDateString()}
+                      {new Date(photo.uploadedAt).toLocaleDateString()}
                     </span>
                     {photo.subfolder && (
                       <Badge variant="outline" className="text-xs">

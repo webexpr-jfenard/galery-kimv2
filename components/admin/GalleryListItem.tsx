@@ -67,7 +67,7 @@ export function GalleryListItem({
           <span className="text-[14px] font-medium text-gray-900 truncate">
             {gallery.name}
           </span>
-          {gallery.password && (
+          {gallery.hasPassword && (
             <Lock className="h-3 w-3 text-gray-300 shrink-0" />
           )}
         </div>

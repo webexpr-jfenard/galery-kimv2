@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { buildFolderSections, flattenFolderSections } from "../services/galleryService";
+import { photoSrc } from "../services/imageService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import { authService } from "../services/authService";
@@ -207,6 +208,24 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     }
   };
 
+  // A visitor can only clear their own favorites (the database refuses anything else)
+  const clearMyFavorites = async () => {
+    if (!confirm('Retirer toutes les photos de votre sélection ?')) return;
+    try {
+      const success = await favoritesService.clearUserFavorites(galleryId);
+      if (success) {
+        const myId = userService.getCurrentUserId();
+        setFavorites(prev => prev.filter(f => f.userId !== myId));
+        toast.success('Votre sélection a été effacée');
+      } else {
+        toast.error("Échec de l'effacement de votre sélection");
+      }
+    } catch (error) {
+      console.error('Error clearing user favorites:', error);
+      toast.error("Échec de l'effacement de votre sélection");
+    }
+  };
+
   const addComment = async (photoId: string, comment: string) => {
     if (!comment.trim()) return;
 
@@ -242,7 +261,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     try {
       // Create user session
       const deviceId = await favoritesService.getDeviceId();
-      userService.createSession(userName, deviceId);
+      await userService.createSession(userName, deviceId);
       
       // Process pending action
       if (pendingAction) {
@@ -429,30 +448,48 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
               <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                 {favorites.length > 0 && (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearAllFavorites}
-                      className="text-destructive hover:text-destructive hidden sm:flex"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Tout effacer
-                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearAllFavorites}
+                          className="text-destructive hover:text-destructive hidden sm:flex"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Tout effacer
+                        </Button>
                     
-                    {/* Mobile trash button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearAllFavorites}
-                      className="text-destructive hover:text-destructive sm:hidden"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                        {/* Mobile trash button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearAllFavorites}
+                          className="text-destructive hover:text-destructive sm:hidden"
+                          aria-label="Tout effacer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {!isAdmin && userService.isUserLoggedIn() && favorites.some(f => f.userId === userService.getCurrentUserId()) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearMyFavorites}
+                        className="text-destructive hover:text-destructive"
+                        aria-label="Effacer ma sélection"
+                      >
+                        <Trash2 className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Effacer ma sélection</span>
+                      </Button>
+                    )}
                     
                     {/* Submit Selection Button */}
                     <SelectionSubmitButton 
                       galleryId={galleryId}
                       galleryName={gallery.name}
+                      quota={gallery.instructions?.quota?.max}
                       variant="default"
                       size="sm"
                     />
@@ -644,7 +681,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                                 onClick={() => openLightbox(overallIndex)}
                               >
                                 <img
-                                  src={photo.url}
+                                  src={photoSrc(photo, 'grid')}
                                   alt={getPhotoDisplayName(photo)}
                                   className="w-full h-full object-cover"
                                 />
@@ -725,7 +762,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                               onClick={() => openLightbox(index)}
                             >
                               <img
-                                src={photo.url}
+                                src={photoSrc(photo, 'grid')}
                                 alt={getPhotoDisplayName(photo)}
                                 className="w-full h-full object-cover"
                               />
@@ -828,7 +865,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                               {/* Photo */}
                               <div className="photo-container" onClick={() => openLightbox(overallIndex)}>
                                 <img
-                                  src={photo.url}
+                                  src={photoSrc(photo, 'grid')}
                                   alt={getPhotoDisplayName(photo)}
                                   loading="lazy"
                                   className="photo-image"
@@ -939,7 +976,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                         {/* Photo */}
                         <div className="photo-container" onClick={() => openLightbox(index)}>
                           <img
-                            src={photo.url}
+                            src={photoSrc(photo, 'grid')}
                             alt={getPhotoDisplayName(photo)}
                             loading="lazy"
                             className="photo-image"

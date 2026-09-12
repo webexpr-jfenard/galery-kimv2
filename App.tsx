@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { HomePage } from "./components/HomePage";
 import { PhotoGallery } from "./components/PhotoGallery";
 import { FavoritesPage } from "./components/FavoritesPage";
-import { AdminPanel } from "./components/admin";
-import { QuoteCalculator } from "./components/QuoteCalculator";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+
+// Admin screens are only loaded when an admin route is opened (they weigh half the bundle)
+const AdminPanel = React.lazy(() => import("./components/admin").then(m => ({ default: m.AdminPanel })));
+const QuoteCalculator = React.lazy(() => import("./components/QuoteCalculator").then(m => ({ default: m.QuoteCalculator })));
 import { Toaster } from "./components/ui/sonner";
 import { authService } from "./services/authService";
 
@@ -129,7 +131,7 @@ function LoadingSpinner() {
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="w-10 h-10 border-3 border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Chargement…</p>
       </div>
     </div>
   );
@@ -156,8 +158,11 @@ export default function App() {
         window.location.hash = initialRoute;
       }
       
-      // Short loading delay for smooth UX
-      const timer = setTimeout(() => setIsLoading(false), 300);
+      // Render once the admin session (if any) has been restored, so admin routes
+      // don't flash the login screen for an already signed-in admin.
+      let cancelled = false;
+      authService.whenReady().finally(() => { if (!cancelled) setIsLoading(false); });
+      const timer = setTimeout(() => { cancelled = true; setIsLoading(false); }, 4000); // safety net
 
       // Handle URL changes - FOCUS ON HASH CHANGES
       const handleRouteChange = (event?: Event) => {
@@ -213,7 +218,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-destructive mb-4">Application Error</h1>
+          <h1 className="text-2xl font-semibold text-destructive mb-4">Erreur de l'application</h1>
           <p className="text-muted-foreground mb-6">{error}</p>
           <button 
             onClick={() => {
@@ -223,13 +228,13 @@ export default function App() {
             }} 
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 mr-4"
           >
-            Go Home
+            Retour à l'accueil
           </button>
           <button 
             onClick={() => window.location.reload()} 
             className="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/90"
           >
-            Reload Page
+            Recharger la page
           </button>
         </div>
       </div>
@@ -254,17 +259,19 @@ export default function App() {
     <ErrorBoundary>
       <div className="min-h-screen bg-background">
         {/* Route-based component rendering */}
-        {galleryId ? (
-          <PhotoGallery galleryId={galleryId} />
-        ) : favoritesGalleryId ? (
-          <FavoritesPage galleryId={favoritesGalleryId} />
-        ) : isQuoteCalculator ? (
-          authService.isAdminAuthenticated() ? <QuoteCalculator /> : <AdminPanel />
-        ) : isAdmin ? (
-          <AdminPanel />
-        ) : (
-          <HomePage />
-        )}
+        <Suspense fallback={<LoadingSpinner />}>
+          {galleryId ? (
+            <PhotoGallery galleryId={galleryId} />
+          ) : favoritesGalleryId ? (
+            <FavoritesPage galleryId={favoritesGalleryId} />
+          ) : isQuoteCalculator ? (
+            authService.isAdminAuthenticated() ? <QuoteCalculator /> : <AdminPanel />
+          ) : isAdmin ? (
+            <AdminPanel />
+          ) : (
+            <HomePage />
+          )}
+        </Suspense>
         
         {/* Global toast notifications */}
         <Toaster />

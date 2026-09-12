@@ -1,9 +1,19 @@
-import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
 import { galleryService } from './galleryService';
 import { userService } from './userService';
-import { GmailService, type GmailConfig, type PhotoSelection } from './gmailService';
-import type { FavoritePhoto, Comment } from './favoritesService';
+import { gmailService } from './gmailService';
+
+export interface SelectionResult {
+  success: boolean;
+  /** true when the photographer's e-mail notification was accepted by the server */
+  notified?: boolean;
+  notificationError?: string;
+  messageId?: string;
+  fileName?: string;
+  /** Local object URL of the selection file, for the visitor's own download */
+  blobUrl?: string;
+  error?: string;
+}
 
 interface SelectionExport {
   galleryId: string;
@@ -30,8 +40,6 @@ interface SelectionExport {
 }
 
 class SelectionService {
-  private readonly SELECTIONS_BUCKET = 'photos'; // Bucket pour les sélections exportées
-
   // Generate selection summary text
   private generateSelectionText(exportData: SelectionExport): string {
     const lines: string[] = [];
@@ -112,59 +120,6 @@ class SelectionService {
     return lines.join('\n');
   }
 
-  // Upload selection file to Supabase
-  private async uploadSelection(fileName: string, textContent: string): Promise<{ success: boolean; downloadUrl?: string; fileName: string; isTemporary?: boolean }> {
-    try {
-      const supabaseClient = supabaseService.client;
-      if (!supabaseClient) {
-        throw new Error('Supabase client not available');
-      }
-
-      // Try to upload to Supabase storage
-      const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
-      const file = new File([blob], fileName, { type: 'text/plain' });
-
-      // Use selections folder in the main bucket to avoid RLS issues
-      const filePath = `selections/${fileName}`;
-      
-      const { data, error } = await supabaseClient.storage
-        .from(this.SELECTIONS_BUCKET)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) {
-        console.warn('Supabase upload failed, using blob URL fallback:', error);
-        // For emails, we need a persistent URL, not a blob URL
-        // Return error so caller knows the download link won't work in email
-        throw new Error(`Failed to upload to Supabase: ${error.message}`);
-      }
-
-      // Get public URL
-      const { data: publicUrlData } = supabaseClient.storage
-        .from(this.SELECTIONS_BUCKET)
-        .getPublicUrl(filePath);
-
-      const finalUrl = publicUrlData.publicUrl;
-      console.log('✅ Upload successful, public URL:', finalUrl);
-
-      return {
-        success: true,
-        downloadUrl: finalUrl,
-        fileName
-      };
-
-    } catch (error) {
-      console.error('Upload error:', error);
-      
-      // Fallback to blob URL
-      const blob = new Blob([textContent], { type: 'text/plain; charset=utf-8' });
-      const downloadUrl = URL.createObjectURL(blob);
-      return { success: true, fileName, downloadUrl, isTemporary: true };
-    }
-  }
-
   // Main export function
   async exportSelection(
     galleryId: string,
@@ -172,7 +127,7 @@ class SelectionService {
     clientEmail?: string,
     clientPhone?: string,
     isCompleteSelection: boolean = false
-  ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+  ): Promise<SelectionResult> {
     try {
       console.log('Starting selection export for gallery:', galleryId);
 
@@ -288,7 +243,7 @@ class SelectionService {
         galleryName: galleryName,
         exportDate: new Date().toLocaleString('fr-FR'),
         selectedPhotos,
-        totalSelected: filteredFavorites.length,
+        totalSelected: uniquePhotos.length,
         clientInfo: (clientName || clientEmail || clientPhone) ? {
           name: clientName,
           email: clientEmail,
@@ -304,68 +259,36 @@ class SelectionService {
       // Generate text content
       const textContent = this.generateSelectionText(exportData);
       
-      // Create filename
-      const timestamp = new Date().toISOString().split('T')[0];
+      // File name unique per selection (type, gallery, instant)
       const selectionType = isCompleteSelection ? 'complete' : 'personal';
-      const fileName = `selection-${selectionType}-${galleryId}-${timestamp}.txt`;
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const fileName = `selection-${selectionType}-${galleryId}-${stamp}.txt`;
 
-      // Upload file
-      const uploadResult = await this.uploadSelection(fileName, textContent);
-      
-      if (!uploadResult.success) {
-        throw new Error('Failed to create selection file');
-      }
+      // Local copy for the visitor (download button). The file itself travels as an
+      // e-mail attachment: nothing is written to the public bucket anymore.
+      const blobUrl = URL.createObjectURL(new Blob([textContent], { type: 'text/plain; charset=utf-8' }));
 
-      if (!uploadResult.downloadUrl) {
-        throw new Error('No download URL available for selection file');
-      }
-
-      console.log('Selection file created:', uploadResult.fileName);
-      console.log('Download URL:', uploadResult.downloadUrl);
-
-      // Send Gmail notification
-      const gmailConfig = this.getGmailConfig();
-      if (gmailConfig && gmailConfig.enableNotifications) {
-        console.log('Sending Gmail notification with download URL:', uploadResult.downloadUrl);
-        
-        const gmailService = new GmailService(gmailConfig);
-        
-        // Convert selectedPhotos to PhotoSelection format for Gmail
-        const photoSelections: PhotoSelection[] = selectedPhotos.map(photo => ({
-          photoId: photo.photoId,
-          photoName: photo.photoName,
-          originalName: photo.originalName,
-          url: photo.url,
-          comments: photo.comments
-        }));
-        
-        const emailResult = await gmailService.sendSelectionNotification(
-          galleryId,
-          galleryName,
-          clientName || '',
-          photoSelections,
-          uploadResult.downloadUrl!,
-          isCompleteSelection
-        );
-
-        if (emailResult.success) {
-          console.log('Gmail notification sent successfully');
-          return {
-            success: true,
-            downloadUrl: uploadResult.downloadUrl,
-            fileName: uploadResult.fileName,
-            messageId: emailResult.messageId
-          };
-        } else {
-          console.warn('Gmail notification failed:', emailResult.error);
-          // Continue with success even if email fails
-        }
+      const emailResult = await gmailService.notifySelection({
+        galleryId,
+        galleryName,
+        userName: clientName || userService.getCurrentUserName() || 'Visiteur',
+        userEmail: clientEmail || undefined,
+        selectionType,
+        photoCount: uniquePhotos.length,
+        fileName,
+        textContent
+      });
+      if (!emailResult.success) {
+        console.warn('Selection notification failed:', emailResult.error);
       }
 
       return {
         success: true,
-        downloadUrl: uploadResult.downloadUrl,
-        fileName: uploadResult.fileName
+        notified: emailResult.success,
+        notificationError: emailResult.success ? undefined : emailResult.error,
+        messageId: emailResult.messageId,
+        fileName,
+        blobUrl
       };
 
     } catch (error) {
@@ -375,25 +298,6 @@ class SelectionService {
         error: error instanceof Error ? error.message : 'Erreur lors de l\'export de la sélection'
       };
     }
-  }
-
-  // Get Gmail configuration from localStorage
-  private getGmailConfig(): GmailConfig | null {
-    try {
-      const saved = localStorage.getItem('gmail-config');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('Failed to load Gmail config:', error);
-    }
-
-    // Return default configuration if nothing saved
-    return {
-      enableNotifications: true,
-      photographerEmail: 'redlerkim@gmail.com',
-      photographerName: 'Kim Redler'
-    };
   }
 
   // Clear all selections for a gallery
@@ -464,18 +368,18 @@ class SelectionService {
     clientEmail?: string,
     clientPhone?: string,
     isCompleteSelection: boolean = false
-  ): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+  ): Promise<SelectionResult> {
     // Just call the main export function
     return this.exportSelection(galleryId, clientName, clientEmail, clientPhone, isCompleteSelection);
   }
 
   // Submit selection without client info (alias for backward compatibility)
-  async submitSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+  async submitSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<SelectionResult> {
     return this.exportSelection(galleryId, undefined, undefined, undefined, isCompleteSelection);
   }
 
   // Quick export without client info (alias for backward compatibility)
-  async quickExportSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<{ success: boolean; downloadUrl?: string; fileName?: string; error?: string; messageId?: string }> {
+  async quickExportSelection(galleryId: string, galleryName: string, isCompleteSelection: boolean = false): Promise<SelectionResult> {
     return this.exportSelection(galleryId, undefined, undefined, undefined, isCompleteSelection);
   }
 }

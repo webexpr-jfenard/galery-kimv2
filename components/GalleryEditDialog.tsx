@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { CategorySelector } from "./CategorySelector";
-import { Edit, Key, Folder, Eye, EyeOff, Save, X, RefreshCw } from "lucide-react";
+import { Edit, Key, Folder, Eye, EyeOff, Save, X, RefreshCw, ListChecks } from "lucide-react";
 import type { Gallery } from "../services/galleryService";
+import { instructionsService, emptyInstructions, type InstructionTemplate, type Instructions } from "../services/instructionsService";
+import { InstructionsEditor } from "./admin/InstructionsEditor";
+import { InstructionsCard } from "./InstructionsPanel";
 
 interface GalleryEditDialogProps {
   gallery: Gallery | null;
@@ -13,7 +16,10 @@ interface GalleryEditDialogProps {
 export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryEditDialogProps) {
   const [editForm, setEditForm] = useState<Partial<Gallery>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [removePassword, setRemovePassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [templates, setTemplates] = useState<InstructionTemplate[]>([]);
+  const [showInstructionsPreview, setShowInstructionsPreview] = useState(false);
 
   useEffect(() => {
     if (gallery) {
@@ -22,13 +28,17 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
         description: gallery.description || '',
         bucketFolder: gallery.bucketFolder || '',
         bucketName: gallery.bucketName || 'photos',
-        password: gallery.password || '',
+        password: '', // never read back: the stored password is a hash
         isPublic: gallery.isPublic,
         allowComments: gallery.allowComments,
         allowFavorites: gallery.allowFavorites,
-        category: gallery.category || ''
+        category: gallery.category || '',
+        instructions: gallery.instructions ?? null
       });
       setShowPassword(false);
+      setRemovePassword(false);
+      setShowInstructionsPreview(false);
+      instructionsService.listTemplates().then(setTemplates).catch(() => setTemplates([]));
     }
   }, [gallery]);
 
@@ -36,7 +46,11 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
     if (!gallery) return;
     setIsSaving(true);
     try {
-      await onSave(gallery.id, editForm);
+      // '' removes the protection, undefined keeps the current password, a value replaces it
+      await onSave(gallery.id, {
+        ...editForm,
+        password: removePassword ? '' : (editForm.password || undefined)
+      });
       onClose();
     } finally {
       setIsSaving(false);
@@ -50,7 +64,6 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
   if (!gallery || !isOpen) return null;
 
   const toggles = [
-    { key: "isPublic" as const, label: "Galerie publique" },
     { key: "allowComments" as const, label: "Autoriser les commentaires" },
     { key: "allowFavorites" as const, label: "Autoriser les favoris" },
   ];
@@ -126,13 +139,25 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
               className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700 mb-1.5"
             >
               <Key className="h-3 w-3" />
-              Mot de passe (laisser vide pour supprimer la protection)
+              {gallery?.hasPassword ? 'Nouveau mot de passe (laisser vide pour conserver l’actuel)' : 'Mot de passe (optionnel)'}
             </label>
+            {gallery?.hasPassword && (
+              <label className="flex items-center gap-2 text-[13px] text-gray-600 mb-2">
+                <input
+                  type="checkbox"
+                  checked={removePassword}
+                  onChange={(e) => setRemovePassword(e.target.checked)}
+                  className="rounded"
+                />
+                Retirer la protection par mot de passe
+              </label>
+            )}
             <div className="relative">
               <input
                 id="edit-dialog-password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Nouveau mot de passe..."
+                placeholder={gallery?.hasPassword ? '••••••••' : 'Mot de passe...'}
+                disabled={removePassword}
                 value={editForm.password || ''}
                 onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
                 className="w-full h-10 px-3.5 pr-10 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors"
@@ -198,6 +223,60 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
                 </button>
               </div>
             ))}
+          </div>
+
+          {/* Selection instructions */}
+          <div className="border border-gray-200 rounded-xl p-3 space-y-3">
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700">
+                <ListChecks className="h-3.5 w-3.5" />
+                Consignes de sélection affichées aux visiteurs
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!!editForm.instructions}
+                onClick={() => setEditForm(prev => ({
+                  ...prev,
+                  instructions: prev.instructions ? null : (templates[0] ? structuredClone(templates[0].content) : emptyInstructions())
+                }))}
+                className={editForm.instructions ? "w-9 h-5 rounded-full bg-orange-500 relative cursor-pointer transition-colors duration-150" : "w-9 h-5 rounded-full bg-gray-200 relative cursor-pointer transition-colors duration-150"}
+              >
+                <span className={editForm.instructions ? "absolute top-0.5 left-4 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150" : "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-150"} />
+              </button>
+            </label>
+
+            {editForm.instructions && (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-[12px] text-gray-500" htmlFor="edit-dialog-template">Repartir d'un modèle :</label>
+                  <select
+                    id="edit-dialog-template"
+                    className="h-8 px-2 rounded-lg border border-gray-200 text-[13px] bg-white"
+                    value=""
+                    onChange={(e) => {
+                      const template = templates.find(t => t.id === e.target.value);
+                      if (template) setEditForm(prev => ({ ...prev, instructions: structuredClone(template.content) }));
+                    }}
+                  >
+                    <option value="">Choisir…</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  <button type="button" onClick={() => setShowInstructionsPreview(v => !v)} className="ml-auto text-[12px] text-gray-500 hover:text-gray-900 inline-flex items-center gap-1">
+                    {showInstructionsPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />} Aperçu
+                  </button>
+                </div>
+                {showInstructionsPreview ? (
+                  <InstructionsCard instructions={editForm.instructions as Instructions} compact />
+                ) : (
+                  <InstructionsEditor
+                    value={editForm.instructions as Instructions}
+                    onChange={(next) => setEditForm(prev => ({ ...prev, instructions: next }))}
+                  />
+                )}
+                <p className="text-[11px] text-gray-400">Ces textes sont propres à cette galerie. Les modèles se gèrent dans la page Consignes.</p>
+              </>
+            )}
           </div>
 
           {/* Actions */}

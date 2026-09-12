@@ -3,6 +3,7 @@ import {
   Image,
   Calculator,
   Settings,
+  ListChecks,
   LogOut,
   ChevronLeft,
   Menu,
@@ -13,12 +14,13 @@ interface AdminLayoutProps {
   currentPage: string;
   onNavigate: (page: string) => void;
   onLogout: () => void;
-  sessionTimeRemaining?: number;
+  sessionEmail?: string;
 }
 
 const NAV_ITEMS = [
   { id: "galleries", label: "Galeries", icon: Image },
   { id: "quotes", label: "Devis", icon: Calculator },
+  { id: "instructions", label: "Consignes", icon: ListChecks },
   { id: "settings", label: "Réglages", icon: Settings },
 ];
 
@@ -33,7 +35,7 @@ export function AdminLayout({
   currentPage,
   onNavigate,
   onLogout,
-  sessionTimeRemaining,
+  sessionEmail,
 }: AdminLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -122,9 +124,9 @@ export function AdminLayout({
 
         {/* Bottom section */}
         <div className="p-3 border-t border-gray-50 space-y-2">
-          {!sidebarCollapsed && sessionTimeRemaining != null && (
-            <div className="px-3 py-2 text-[11px] text-gray-400">
-              Session · {formatTimeRemaining(sessionTimeRemaining)}
+          {!sidebarCollapsed && sessionEmail && (
+            <div className="px-3 py-2 text-[11px] text-gray-400 truncate" title={sessionEmail}>
+              Connecté · {sessionEmail}
             </div>
           )}
           <button

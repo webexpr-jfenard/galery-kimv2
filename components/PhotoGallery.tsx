@@ -17,6 +17,7 @@ import {
   Folder,
   FolderOpen,
   FolderTree,
+  Info,
   CornerDownRight,
   Grid,
   Grid3X3,
@@ -27,6 +28,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, SubfolderInfo, flattenFolderSections, buildFolderSections, findFolderSection, folderFilterNames } from "../services/galleryService";
+import { photoSrc } from "../services/imageService";
+import { InstructionsPanel } from "./InstructionsPanel";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import type { Gallery, Photo, FolderSection } from "../services/galleryService";
@@ -46,6 +49,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   // Subfolders and filtering
   const [subfolders, setSubfolders] = useState<SubfolderInfo[]>([]);
   const [folderSections, setFolderSections] = useState<FolderSection[]>([]); // hierarchy (groups + subfolders)
+  const [showInstructions, setShowInstructions] = useState(false); // selection instructions panel
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | undefined>(undefined);
   const [showSubfolderFilter, setShowSubfolderFilter] = useState(false);
   
@@ -170,29 +174,6 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       // Load gallery info
       let galleryData = await galleryService.getGallery(galleryId);
       
-      // If gallery not found and Supabase is configured, try to sync
-      if (!galleryData && galleryService.isSupabaseConfigured()) {
-        console.log('📡 Gallery not found locally, trying to sync from Supabase...');
-        toast.loading('Synchronisation des galeries depuis le cloud...', { id: 'sync-toast' });
-        
-        try {
-          const syncResult = await galleryService.syncFromSupabase();
-          if (syncResult.success) {
-            console.log(`✅ Sync successful, found ${syncResult.count} galleries`);
-            toast.success(`${syncResult.count} galeries synchronisées`, { id: 'sync-toast' });
-            
-            // Try to load gallery again after sync
-            galleryData = await galleryService.getGallery(galleryId);
-          } else {
-            console.warn(`⚠️ Sync failed: ${syncResult.error}`);
-            toast.error(`Échec de la synchronisation: ${syncResult.error}`, { id: 'sync-toast' });
-          }
-        } catch (syncError) {
-          console.error('❌ Sync error:', syncError);
-          toast.error('Erreur lors de la synchronisation', { id: 'sync-toast' });
-        }
-      }
-      
       if (!galleryData) {
         console.error(`❌ Gallery ${galleryId} not found after all attempts`);
         toast.error(`Galerie "${galleryId}" non trouvée`);
@@ -202,13 +183,18 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       console.log(`✅ Gallery loaded: ${galleryData.name}`);
 
       // Check if authentication is needed
-      if (galleryData.password && !galleryService.isGalleryAuthenticated(galleryId)) {
+      if (galleryData.hasPassword && !galleryService.isGalleryAuthenticated(galleryId)) {
         console.log('🔐 Gallery requires authentication');
         setNeedsAuth(true);
         return;
       }
 
       setGallery(galleryData);
+
+      // Selection instructions: opened once per gallery and per browser, then via the header button
+      if (galleryData.instructions && !localStorage.getItem(`gallery-${galleryId}-instructions-seen`)) {
+        setShowInstructions(true);
+      }
 
       // Load folder hierarchy (subfolders + groups, in display order)
       console.log('📁 Loading subfolders...');
@@ -300,12 +286,17 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       const isUserSelected = userSelection.has(photoId);
       
       if (isUserSelected) {
-        // User can only remove their own favorites
-        await favoritesService.removeFromFavorites(galleryId, photoId);
-        
-        // Reload all data to get fresh state (like in FavoritesPage)
-        await loadGalleryData();
-        
+        // Optimistic: update the three local sets, the database call runs behind
+        const myId = userService.getCurrentUserId();
+        const stillSelectedByOthers = favoritesList.some(f => f.photoId === photoId && f.userId !== myId);
+        setUserSelection(prev => { const next = new Set(prev); next.delete(photoId); return next; });
+        if (!stillSelectedByOthers) setSelection(prev => { const next = new Set(prev); next.delete(photoId); return next; });
+        setFavoritesList(prev => prev.filter(f => !(f.photoId === photoId && f.userId === myId)));
+        const removed = await favoritesService.removeFromFavorites(galleryId, photoId);
+        if (!removed) {
+          await loadGalleryData();
+          throw new Error('remove failed');
+        }
         toast.success('Retiré de votre sélection');
       } else {
         // Check if user has a session, if not show dialog
@@ -315,14 +306,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           return;
         }
 
-        console.log('🔄 Before adding favorite - favoritesList length:', favoritesList.length);
-        await favoritesService.addToFavorites(galleryId, photoId);
-        
-        console.log('🔄 After adding favorite, before reload - favoritesList length:', favoritesList.length);
-        // Reload all data to get fresh state (like in FavoritesPage)
-        await loadGalleryData();
-        
-        console.log('🔄 After reload - favoritesList length:', favoritesList.length);
+        const newFavorite = await favoritesService.addToFavorites(galleryId, photoId);
+        setUserSelection(prev => new Set([...prev, photoId]));
+        setSelection(prev => new Set([...prev, photoId]));
+        setFavoritesList(prev => [...prev.filter(f => f.id !== newFavorite.id), newFavorite]);
         toast.success(`Ajouté à votre sélection`);
       }
       
@@ -337,7 +324,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     try {
       // Create user session
       const deviceId = await favoritesService.getDeviceId();
-      userService.createSession(userName, deviceId);
+      await userService.createSession(userName, deviceId);
       
       // Process pending favorite action
       if (pendingFavoriteAction) {
@@ -477,6 +464,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   const getPhotoDisplayName = (photo: Photo) => {
     return photo.originalName || photo.name;
   };
+
+  const closeInstructions = () => {
+    setShowInstructions(false);
+    try { localStorage.setItem(`gallery-${galleryId}-instructions-seen`, '1'); } catch { /* private mode */ }
+  };
+  const selectionQuota = gallery?.instructions?.quota?.max;
 
   // Handle subfolder filter change
   const handleSubfolderFilterChange = (subfolder: string | undefined) => {
@@ -640,6 +633,19 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 Comparer
               </Button>
 
+              {gallery.instructions && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInstructions(true)}
+                  className="flex items-center"
+                  aria-label="Voir les consignes de sélection"
+                >
+                  <Info className="h-4 w-4 mr-2" />
+                  Consignes
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -647,12 +653,15 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 className="flex items-center"
               >
                 <Heart className="h-4 w-4 mr-2" />
-                Ma sélection ({selection.size})
+                {selectionQuota
+                  ? `Ma sélection (${userSelection.size} / ${selectionQuota})`
+                  : `Ma sélection (${selection.size})`}
               </Button>
 
               <SelectionSubmitButton
                 galleryId={galleryId}
                 galleryName={gallery.name}
+                quota={selectionQuota}
                 variant="default"
                 size="sm"
               />
@@ -956,6 +965,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               variant="default"
               size="sm"
               className="shrink-0"
+              quota={selectionQuota}
               children="Soumettre"
             />
           </div>
@@ -1117,7 +1127,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                             style={{ cursor: isComparisonMode ? 'pointer' : 'zoom-in' }}
                           >
                             <img
-                              src={photo.url}
+                              src={photoSrc(photo, 'grid')}
                               alt={getPhotoDisplayName(photo)}
                               loading="lazy"
                               className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
@@ -1271,7 +1281,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                   style={{ cursor: isComparisonMode ? 'pointer' : 'zoom-in' }}
                 >
                   <img
-                    src={photo.url}
+                    src={photoSrc(photo, 'grid')}
                     alt={getPhotoDisplayName(photo)}
                     loading="lazy"
                     className={viewMode === 'masonry' ? 'photo-image' : 'classic-grid-image'}
@@ -1411,6 +1421,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       </div>
 
       {/* Lightbox */}
+      {gallery?.instructions && (
+        <InstructionsPanel instructions={gallery.instructions} open={showInstructions} onClose={closeInstructions} />
+      )}
+
       <Lightbox
         photos={filteredPhotos}
         currentIndex={lightboxIndex}
