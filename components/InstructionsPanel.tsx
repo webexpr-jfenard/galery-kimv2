@@ -24,15 +24,15 @@ interface CardProps {
 export function InstructionsCard({ instructions, compact = false }: CardProps) {
   const q = instructions.quota;
   return (
-    <div className={`bg-[#F5F0E7] text-[#1F2A44] rounded-2xl border border-[#E6DCC8] ${compact ? "p-5" : "p-6 sm:p-8"}`}>
+    <div className={`bg-[#FBF9F5] text-[#1F2A44] rounded-2xl border border-[#EDE7DA] ${compact ? "p-5" : "p-6 sm:p-8"}`}>
       <h2 className={`text-center font-serif ${compact ? "text-xl" : "text-2xl sm:text-[28px]"} leading-tight tracking-tight`}>
         {applyQuota(instructions.title, q)}
       </h2>
       <div className="w-10 h-0.5 bg-[#B8965A] mx-auto mt-3 mb-5" aria-hidden="true" />
 
       {instructions.intro && (
-        <div className="flex gap-3 bg-[#EFE6D6] rounded-xl p-4 mb-5">
-          <div className="w-10 h-10 rounded-full bg-white border border-[#E6DCC8] flex items-center justify-center shrink-0">
+        <div className="flex gap-3 bg-[#F3EEE4] rounded-xl p-4 mb-5">
+          <div className="w-10 h-10 rounded-full bg-white border border-[#EDE7DA] shadow-sm flex items-center justify-center shrink-0">
             <Camera className="h-5 w-5 text-[#A2823F]" />
           </div>
           <div className="text-[14px] leading-relaxed">
@@ -49,7 +49,7 @@ export function InstructionsCard({ instructions, compact = false }: CardProps) {
           const Icon = ICONS[step.icon] || Info;
           return (
             <li key={index} className="flex gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-[#E6DCC8] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-white border border-[#EDE7DA] shadow-sm flex items-center justify-center shrink-0">
                 <Icon className="h-5 w-5 text-[#1F2A44]" />
               </div>
               <div className="text-[14px] leading-relaxed min-w-0">
@@ -67,7 +67,7 @@ export function InstructionsCard({ instructions, compact = false }: CardProps) {
       </ol>
 
       {instructions.help && (
-        <div className="flex gap-3 border border-dashed border-[#C9B58A] rounded-xl p-4 mt-5">
+        <div className="flex gap-3 border border-dashed border-[#D3C09A] rounded-xl p-4 mt-5">
           <div className="w-10 h-10 rounded-full bg-[#B8965A] flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
@@ -123,7 +123,7 @@ export function InstructionsPanel({ instructions, open, onClose }: PanelProps) {
           <X className="h-4 w-4" />
         </button>
         <InstructionsCard instructions={instructions} />
-        <div className="bg-[#F5F0E7] border-t border-[#E6DCC8] rounded-b-2xl -mt-4 pt-6 pb-6 px-6 flex justify-center">
+        <div className="bg-[#FBF9F5] border-t border-[#EDE7DA] rounded-b-2xl -mt-4 pt-6 pb-6 px-6 flex justify-center">
           <button
             type="button"
             onClick={onClose}
