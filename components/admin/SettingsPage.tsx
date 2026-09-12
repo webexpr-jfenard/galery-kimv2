@@ -30,7 +30,7 @@ export function SettingsPage({
   onOpenEmailConfig,
 }: SettingsPageProps) {
   return (
-    <div className="space-y-6 max-w-[640px]">
+    <div className="space-y-6 max-w-[960px]">
       <div>
         <h2 className="text-[18px] font-semibold text-gray-900 tracking-tight">
           Réglages

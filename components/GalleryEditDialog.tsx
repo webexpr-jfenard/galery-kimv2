@@ -77,7 +77,7 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave }: GalleryE
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-[560px] mx-4 bg-white rounded-2xl shadow-xl shadow-gray-200/50 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-[820px] mx-4 bg-white rounded-2xl shadow-xl shadow-gray-200/50 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 pb-0">
           <h2 className="text-[16px] font-semibold text-gray-900 flex items-center gap-2">

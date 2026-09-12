@@ -57,7 +57,7 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
         {value.intro && (
           <>
             <input className={input} placeholder="Titre de l'encart" value={value.intro.title} onChange={(e) => set({ intro: { ...value.intro!, title: e.target.value } })} />
-            <textarea className={textarea} rows={3} placeholder="Texte" value={value.intro.text} onChange={(e) => set({ intro: { ...value.intro!, text: e.target.value } })} />
+            <textarea className={textarea} rows={4} placeholder="Texte" value={value.intro.text} onChange={(e) => set({ intro: { ...value.intro!, text: e.target.value } })} />
           </>
         )}
       </Block>
@@ -81,7 +81,7 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
             <div className="flex items-center gap-2">
               <span className="text-[12px] font-semibold text-gray-500 w-6">{index + 1}.</span>
               <select
-                className={input + " max-w-[170px]"}
+                className={input + " max-w-[190px] shrink-0"}
                 value={step.icon}
                 onChange={(e) => setStep(index, { icon: e.target.value as InstructionIcon })}
                 aria-label="Icône de l'étape"
@@ -95,7 +95,7 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
               <button type="button" onClick={() => moveStep(index, 1)} disabled={index === value.steps.length - 1} className="p-1.5 text-gray-400 hover:text-gray-900 disabled:opacity-30" aria-label="Descendre"><ArrowDown className="h-4 w-4" /></button>
               <button type="button" onClick={() => set({ steps: value.steps.filter((_, i) => i !== index) })} className="p-1.5 text-gray-400 hover:text-red-600" aria-label="Supprimer l'étape"><Trash2 className="h-4 w-4" /></button>
             </div>
-            <textarea className={textarea} rows={2} placeholder="Texte de l'étape" value={step.text} onChange={(e) => setStep(index, { text: e.target.value })} />
+            <textarea className={textarea} rows={3} placeholder="Texte de l'étape" value={step.text} onChange={(e) => setStep(index, { text: e.target.value })} />
             <input className={input} placeholder="Phrase mise en avant (optionnel)" value={step.highlight || ""} onChange={(e) => setStep(index, { highlight: e.target.value || undefined })} />
           </div>
         ))}

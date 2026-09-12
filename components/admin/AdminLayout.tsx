@@ -167,7 +167,7 @@ export function AdminLayout({
           </div>
         </div>
 
-        <div className="p-6 lg:p-8 max-w-[1200px]">{children}</div>
+        <div className="p-6 lg:p-8">{children}</div>
       </main>
     </div>
   );

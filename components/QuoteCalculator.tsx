@@ -750,7 +750,7 @@ Généré avec Claude Code le ${currentDate}
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="px-4 py-8">
         {/* Unit Rates Section */}
         <Card className="mb-8">
           <CardHeader>

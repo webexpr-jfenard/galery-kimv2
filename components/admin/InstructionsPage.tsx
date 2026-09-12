@@ -107,7 +107,7 @@ export function InstructionsPage() {
       {isLoading ? (
         <div className="text-[14px] text-gray-400 flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Chargement…</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6">
           <aside className="space-y-1">
             {templates.map(template => (
               <button
@@ -129,7 +129,7 @@ export function InstructionsPage() {
           </aside>
 
           {selected && draft ? (
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,480px)] gap-8 items-start">
               <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <input
