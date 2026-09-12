@@ -22,7 +22,7 @@ interface LightboxProps {
   comments?: Comment[]; // Add comments prop
   onToggleFavorite: (photoId: string) => void;
   onAddComment: (photoId: string, comment: string) => Promise<void>;
-  galleryId?: string; // Add galleryId to get custom order
+  sectionOrder?: string[]; // Section names in display order (gallery folder tree)
   allPhotos?: Photo[]; // All photos to calculate correct position
 }
 
@@ -37,7 +37,7 @@ export function Lightbox({
   comments = [], // Default to empty array
   onToggleFavorite,
   onAddComment,
-  galleryId,
+  sectionOrder,
   allPhotos
 }: LightboxProps) {
   const [comment, setComment] = useState('');
@@ -47,9 +47,9 @@ export function Lightbox({
 
   const currentPhoto = currentIndex !== null ? photos[currentIndex] : null;
 
-  // Calculate position with custom subfolder order
+  // Calculate position following the gallery's section order (folder tree)
   const getOrderedPosition = () => {
-    if (!currentPhoto || !galleryId || !allPhotos) {
+    if (!currentPhoto || !sectionOrder || sectionOrder.length === 0 || !allPhotos) {
       return {
         position: currentIndex !== null ? currentIndex + 1 : 0,
         total: photos.length
@@ -57,17 +57,6 @@ export function Lightbox({
     }
 
     try {
-      // Get custom order from localStorage
-      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
-      if (!savedOrder) {
-        return {
-          position: currentIndex !== null ? currentIndex + 1 : 0,
-          total: photos.length
-        };
-      }
-
-      const parsedOrder = JSON.parse(savedOrder);
-      
       // Group all photos by subfolder
       const photoGroups: Record<string, Photo[]> = {};
       allPhotos.forEach(photo => {
@@ -78,30 +67,20 @@ export function Lightbox({
         photoGroups[folder].push(photo);
       });
 
-      // Create ordered list of all photos following custom subfolder order
+      // Photos in section order, then sections unknown to the order (alphabetically)
       const orderedPhotos: Photo[] = [];
-      const unorderedSubfolders: string[] = [];
-
-      // First, add photos from subfolders in saved order
-      parsedOrder.forEach((folderName: string) => {
+      sectionOrder.forEach((folderName) => {
         if (photoGroups[folderName]) {
           orderedPhotos.push(...photoGroups[folderName]);
         }
       });
+      Object.keys(photoGroups)
+        .filter(folderName => !sectionOrder.includes(folderName))
+        .sort()
+        .forEach(folderName => {
+          orderedPhotos.push(...photoGroups[folderName]);
+        });
 
-      // Then add photos from subfolders not in saved order
-      Object.keys(photoGroups).forEach(folderName => {
-        if (!parsedOrder.includes(folderName)) {
-          unorderedSubfolders.push(folderName);
-        }
-      });
-
-      // Sort unordered subfolders alphabetically and add their photos
-      unorderedSubfolders.sort().forEach(folderName => {
-        orderedPhotos.push(...photoGroups[folderName]);
-      });
-
-      // Find position of current photo in the ordered list
       const position = orderedPhotos.findIndex(p => p.id === currentPhoto.id) + 1;
 
       return {

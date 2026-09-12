@@ -21,16 +21,29 @@ import {
   GripVertical,
   Settings2,
   Save,
-  FolderInput
+  FolderInput,
+  FolderPlus,
+  FolderTree
 } from "lucide-react";
 import { toast } from "sonner";
-import { galleryService } from "../services/galleryService";
-import type { Gallery, Photo } from "../services/galleryService";
+import { galleryService, buildFolderSections, folderTreeFromNames } from "../services/galleryService";
+import type { Gallery, Photo, FolderNode, FolderSection } from "../services/galleryService";
 
 interface PhotoManagerProps {
   galleryId: string;
   onClose: () => void;
 }
+
+// Folder order saved per browser before galleries.folder_tree existed (pre-2026-09)
+const LEGACY_ORDER_KEY = (galleryId: string) => `gallery-${galleryId}-subfolder-order`;
+const readLegacyOrder = (galleryId: string): string[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LEGACY_ORDER_KEY(galleryId)) || 'null');
+    return Array.isArray(parsed) ? parsed.filter((name): name is string => typeof name === 'string') : [];
+  } catch {
+    return [];
+  }
+};
 
 export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [gallery, setGallery] = useState<Gallery | null>(null);
@@ -45,7 +58,12 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
   const [subfolders, setSubfolders] = useState<string[]>([]);
   const [showFolderOrganizer, setShowFolderOrganizer] = useState(false);
   const [orderedSubfolders, setOrderedSubfolders] = useState<string[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [subfolderParents, setSubfolderParents] = useState<Record<string, string | undefined>>({});
+  const [subfolderCounts, setSubfolderCounts] = useState<Record<string, number>>({});
+  const [folderTree, setFolderTree] = useState<FolderNode[]>([]); // working copy, persisted with "Sauvegarder"
+  const [dragItem, setDragItem] = useState<{ parent: string | null; index: number } | null>(null);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [isSavingTree, setIsSavingTree] = useState(false);
   const [showFolderReassignModal, setShowFolderReassignModal] = useState(false);
   const [targetSubfolder, setTargetSubfolder] = useState<string | undefined>();
   const [isReassigning, setIsReassigning] = useState(false);
@@ -97,23 +115,23 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
       const photoList = await galleryService.getPhotos(galleryId, selectedSubfolder);
       setPhotos(photoList);
       
-      // Load subfolders for filtering
+      // Load subfolders (already in display order, annotated with their group)
       const subfolderList = await galleryService.getGallerySubfolders(galleryId);
       const subfolderNames = subfolderList.map(sf => sf.name);
       setSubfolders(subfolderNames);
-      
-      // Load custom order from localStorage or use alphabetical
-      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
-      if (savedOrder) {
-        const parsedOrder = JSON.parse(savedOrder);
-        // Validate that all subfolders are in the saved order and add missing ones
-        const validOrder = parsedOrder.filter((name: string) => subfolderNames.includes(name));
-        const missingSubfolders = subfolderNames.filter(name => !validOrder.includes(name));
-        setOrderedSubfolders([...validOrder, ...missingSubfolders]);
-      } else {
-        // Default to alphabetical order
-        setOrderedSubfolders([...subfolderNames].sort());
+      setOrderedSubfolders(subfolderNames);
+      setSubfolderParents(Object.fromEntries(subfolderList.map(sf => [sf.name, sf.parent])));
+      setSubfolderCounts(Object.fromEntries(subfolderList.map(sf => [sf.name, sf.photoCount])));
+
+      // Working copy of the folder tree. Galleries organized before the tree existed only
+      // have a per-browser order in localStorage: seed the tree from it so a single
+      // "Sauvegarder" shares that order with everyone.
+      let tree = galleryData.folderTree || [];
+      if (tree.length === 0) {
+        const legacyOrder = readLegacyOrder(galleryId);
+        if (legacyOrder.length > 0) tree = folderTreeFromNames(legacyOrder);
       }
+      setFolderTree(tree);
 
       console.log(`✅ Loaded ${photoList.length} photos for gallery ${galleryData.name}`);
       
@@ -260,38 +278,154 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     return gallery?.featuredPhotoId === photo.id;
   };
 
-  // Drag and drop handlers for subfolder ordering
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+  // ---- Folder organizer (order + groups), working copy = folderTree ----
+  const organizerSections: FolderSection[] = buildFolderSections(
+    subfolders.map(name => ({ name, photoCount: subfolderCounts[name] || 0 })),
+    folderTree,
+    { keepEmptyGroups: true }
+  );
+  const groupNames = organizerSections.filter(section => section.isGroup).map(section => section.name);
+
+  const treeFromSections = (sections: FolderSection[]): FolderNode[] =>
+    sections.map(section => section.isGroup
+      ? { name: section.name, children: section.children.map(child => child.name) }
+      : { name: section.name });
+
+  const cloneSections = () => organizerSections.map(section => ({ ...section, children: [...section.children] }));
+
+  const reorderSections = (parent: string | null, from: number, to: number) => {
+    const sections = cloneSections();
+    const list = parent === null ? sections : sections.find(section => section.name === parent)?.children;
+    if (!list) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to, 0, moved);
+    setFolderTree(treeFromSections(sections));
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleOrganizerDragOver = (e: React.DragEvent, parent: string | null, index: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-
-    const newOrder = [...orderedSubfolders];
-    const draggedItem = newOrder[draggedIndex];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(index, 0, draggedItem);
-
-    setOrderedSubfolders(newOrder);
-    setDraggedIndex(index);
+    if (!dragItem || dragItem.parent !== parent || dragItem.index === index) return;
+    reorderSections(parent, dragItem.index, index);
+    setDragItem({ parent, index });
   };
 
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
+  // Attach a subfolder to a group (or back to the root)
+  const setFolderParent = (name: string, parent: string | null) => {
+    const sections = cloneSections()
+      .filter(section => section.name !== name)
+      .map(section => ({ ...section, children: section.children.filter(child => child.name !== name) }));
+    const count = subfolderCounts[name] || 0;
+    const leaf: FolderSection = { name, photoCount: count, ownPhotoCount: count, isGroup: false, children: [] };
+    if (parent === null) {
+      sections.push(leaf);
+    } else {
+      const group = sections.find(section => section.name === parent);
+      if (!group) return;
+      group.children.push({ ...leaf, parent });
+    }
+    setFolderTree(treeFromSections(sections));
   };
 
-  const saveSubfolderOrder = () => {
-    localStorage.setItem(`gallery-${galleryId}-subfolder-order`, JSON.stringify(orderedSubfolders));
-    toast.success('Ordre des dossiers sauvegardé');
-    setShowFolderOrganizer(false);
+  const createGroup = () => {
+    const name = newGroupName.trim();
+    if (!name) return;
+    const lower = name.toLowerCase();
+    const taken = organizerSections.some(section =>
+      section.name.toLowerCase() === lower || section.children.some(child => child.name.toLowerCase() === lower)
+    );
+    if (taken) {
+      toast.error('Un dossier ou un groupe porte déjà ce nom');
+      return;
+    }
+    setFolderTree([...treeFromSections(organizerSections), { name, children: [] }]);
+    setNewGroupName('');
   };
 
-  const resetSubfolderOrder = () => {
-    setOrderedSubfolders([...subfolders].sort());
-    localStorage.removeItem(`gallery-${galleryId}-subfolder-order`);
-    toast.success('Ordre alphabétique rétabli');
+  // Dissolve a group: its subfolders go back to the root (in place); its own photos stay in a plain folder
+  const removeGroup = (name: string) => {
+    const sections: FolderSection[] = [];
+    organizerSections.forEach(section => {
+      if (section.name !== name) {
+        sections.push(section);
+        return;
+      }
+      if (subfolderCounts[name]) sections.push({ ...section, isGroup: false, children: [] });
+      section.children.forEach(child => sections.push({ ...child, parent: undefined }));
+    });
+    setFolderTree(treeFromSections(sections));
+  };
+
+  const persistFolderTree = async (tree: FolderNode[], successMessage: string) => {
+    try {
+      setIsSavingTree(true);
+      const updated = await galleryService.updateGallery(galleryId, { folderTree: tree });
+      if (!updated) {
+        toast.error("Impossible d'enregistrer l'organisation des dossiers");
+        return;
+      }
+      localStorage.removeItem(LEGACY_ORDER_KEY(galleryId));
+      toast.success(successMessage);
+      setShowFolderOrganizer(false);
+      await loadGalleryData();
+    } catch (error) {
+      console.error('Error saving folder tree:', error);
+      toast.error("Impossible d'enregistrer l'organisation des dossiers");
+    } finally {
+      setIsSavingTree(false);
+    }
+  };
+
+  const saveFolderTree = () =>
+    persistFolderTree(treeFromSections(organizerSections), 'Organisation des dossiers enregistrée pour tous les visiteurs');
+
+  const resetFolderTree = () =>
+    persistFolderTree([], 'Ordre alphabétique rétabli');
+
+  const renderOrganizerRow = (section: FolderSection, parent: string | null, index: number) => {
+    const isDragging = dragItem?.parent === parent && dragItem?.index === index;
+    return (
+      <div
+        key={section.name}
+        draggable
+        onDragStart={() => setDragItem({ parent, index })}
+        onDragOver={(e) => handleOrganizerDragOver(e, parent, index)}
+        onDragEnd={() => setDragItem(null)}
+        className={`flex items-center gap-2 p-3 border rounded-lg bg-white cursor-move hover:shadow-sm transition-all ${
+          isDragging ? 'opacity-50' : ''
+        } ${selectedSubfolder === section.name ? 'border-gray-900' : 'border-gray-200'}`}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+        {section.isGroup
+          ? <FolderTree className="h-4 w-4 text-gray-900 shrink-0" />
+          : <Folder className="h-4 w-4 text-muted-foreground shrink-0" />}
+        <span className="text-sm font-medium truncate flex-1">{section.name}</span>
+        <Badge variant="secondary" className="text-xs">{section.photoCount}</Badge>
+        {section.isGroup ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-gray-500 hover:text-gray-900"
+            onClick={() => removeGroup(section.name)}
+            title="Dissoudre le groupe : ses dossiers reviennent à la racine"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Dissoudre
+          </Button>
+        ) : groupNames.length > 0 && (
+          <select
+            value={parent || ''}
+            onChange={(e) => setFolderParent(section.name, e.target.value || null)}
+            className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700"
+            title="Rattacher ce dossier à un groupe"
+          >
+            <option value="">Dans : racine</option>
+            {groupNames.map(group => (
+              <option key={group} value={group}>Dans : {group}</option>
+            ))}
+          </select>
+        )}
+      </div>
+    );
   };
 
   const handleReassignToFolder = async () => {
@@ -401,7 +535,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowFolderOrganizer(!showFolderOrganizer)}
-                    title="Organiser l'ordre des dossiers"
+                    title="Organiser les dossiers (ordre et groupes)"
                   >
                     <Settings2 className="h-4 w-4" />
                   </Button>
@@ -503,56 +637,77 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
             {/* Folder Organizer Panel */}
             {showFolderOrganizer && subfolders.length > 1 && (
               <div className="border border-gray-100 rounded-xl p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <h3 className="text-sm font-semibold flex items-center gap-2">
                     <Settings2 className="h-4 w-4" />
-                    Organiser l'ordre des dossiers
+                    Organiser les dossiers
                   </h3>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={resetSubfolderOrder}
+                      onClick={resetFolderTree}
+                      disabled={isSavingTree}
                     >
                       Ordre alphabétique
                     </Button>
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={saveSubfolderOrder}
+                      onClick={saveFolderTree}
+                      disabled={isSavingTree}
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      Sauvegarder
+                      {isSavingTree ? 'Enregistrement…' : 'Sauvegarder'}
                     </Button>
                   </div>
                 </div>
-                
+
                 <div className="text-xs text-muted-foreground mb-3">
-                  Glissez-déposez les dossiers pour changer leur ordre d'affichage
+                  Glissez-déposez pour changer l'ordre d'affichage. Créez un groupe (ex. « Salles ») puis rattachez-y des dossiers
+                  avec le menu « Dans ». L'organisation est enregistrée pour tous les visiteurs de la galerie.
                 </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {orderedSubfolders.map((subfolder, index) => (
-                    <div
-                      key={subfolder}
-                      draggable
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-move hover:shadow-md transition-all ${
-                        draggedIndex === index ? 'opacity-50 transform rotate-1' : ''
-                      } ${
-                        selectedSubfolder === subfolder 
-                          ? 'bg-primary/10 border-primary' 
-                          : 'bg-background hover:bg-muted/50'
-                      }`}
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground" />
-                      <Folder className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium truncate flex-1">{subfolder}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {subfolders.filter(name => name === subfolder).length}
-                      </Badge>
+
+                {/* New group */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        createGroup();
+                      }
+                    }}
+                    placeholder="Nom du nouveau groupe (ex. Salles)"
+                    className="max-w-xs text-sm"
+                    maxLength={50}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={createGroup}
+                    disabled={!newGroupName.trim()}
+                  >
+                    <FolderPlus className="h-4 w-4 mr-1" />
+                    Créer un groupe
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {organizerSections.map((section, index) => (
+                    <div key={section.name}>
+                      {renderOrganizerRow(section, null, index)}
+                      {section.isGroup && (
+                        <div className="ml-8 mt-2 space-y-2">
+                          {section.children.length === 0 && (
+                            <div className="text-xs text-muted-foreground italic px-3 py-2 border border-dashed border-gray-200 rounded-lg">
+                              Groupe vide : rattachez des dossiers avec le menu « Dans ».
+                            </div>
+                          )}
+                          {section.children.map((child, childIndex) => renderOrganizerRow(child, section.name, childIndex))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -834,7 +989,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   onClick={() => setTargetSubfolder(subfolder)}
                 >
                   <Folder className="h-4 w-4 mr-2" />
-                  {subfolder}
+                  {subfolderParents[subfolder] ? `${subfolderParents[subfolder]} › ` : ''}{subfolder}
                   {selectedSubfolder === subfolder && (
                     <Badge variant="secondary" className="ml-auto">
                       Dossier actuel

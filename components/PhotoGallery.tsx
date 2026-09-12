@@ -16,6 +16,8 @@ import {
   Filter,
   Folder,
   FolderOpen,
+  FolderTree,
+  CornerDownRight,
   Grid,
   Grid3X3,
   Tag,
@@ -24,10 +26,10 @@ import {
   GitCompare
 } from "lucide-react";
 import { toast } from "sonner";
-import { galleryService, SubfolderInfo } from "../services/galleryService";
+import { galleryService, SubfolderInfo, flattenFolderSections, buildFolderSections, findFolderSection, folderFilterNames } from "../services/galleryService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
-import type { Gallery, Photo } from "../services/galleryService";
+import type { Gallery, Photo, FolderSection } from "../services/galleryService";
 import type { FavoritePhoto, Comment } from "../services/favoritesService";
 
 interface PhotoGalleryProps {
@@ -43,6 +45,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   
   // Subfolders and filtering
   const [subfolders, setSubfolders] = useState<SubfolderInfo[]>([]);
+  const [folderSections, setFolderSections] = useState<FolderSection[]>([]); // hierarchy (groups + subfolders)
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | undefined>(undefined);
   const [showSubfolderFilter, setShowSubfolderFilter] = useState(false);
   
@@ -119,42 +122,12 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     return groups;
   };
 
-  // Get custom ordered section names
+  // Sections in display order (gallery folder tree), depth-first. Group headers are included
+  // even when the group holds no photo of its own; unknown sections go last, in natural order.
   const getOrderedSections = (sectionNames: string[]) => {
-    try {
-      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
-      if (savedOrder) {
-        const parsedOrder = JSON.parse(savedOrder);
-        
-        // Create ordered list based on saved order
-        const orderedSections: string[] = [];
-        const unorderedSections: string[] = [];
-        
-        // First, add sections in the saved order
-        parsedOrder.forEach((name: string) => {
-          if (sectionNames.includes(name)) {
-            orderedSections.push(name);
-          }
-        });
-        
-        // Then add any new sections that weren't in the saved order
-        sectionNames.forEach(sectionName => {
-          if (!parsedOrder.includes(sectionName)) {
-            unorderedSections.push(sectionName);
-          }
-        });
-        
-        // Sort the unordered ones alphabetically and append them
-        unorderedSections.sort();
-        
-        return [...orderedSections, ...unorderedSections];
-      }
-    } catch (error) {
-      console.error('Error getting custom section order:', error);
-    }
-    
-    // Fallback to alphabetical order
-    return sectionNames.sort();
+    return flattenFolderSections(
+      buildFolderSections(sectionNames.map(name => ({ name, photoCount: 0 })), gallery?.folderTree)
+    );
   };
 
   // Load gallery data
@@ -237,9 +210,13 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
       setGallery(galleryData);
 
-      // Load subfolders
+      // Load folder hierarchy (subfolders + groups, in display order)
       console.log('📁 Loading subfolders...');
-      const subfolderList = await galleryService.getGallerySubfolders(galleryId);
+      const sections = await galleryService.getGalleryFolderSections(galleryId);
+      const subfolderList: SubfolderInfo[] = flattenFolderSections(sections)
+        .filter(entry => entry.photoCount > 0)
+        .map(entry => ({ name: entry.name, photoCount: entry.photoCount, lastUpdated: '', parent: entry.parent }));
+      setFolderSections(sections);
       setSubfolders(subfolderList);
       console.log(`✅ Loaded ${subfolderList.length} subfolders`);
 
@@ -248,9 +225,11 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         setShowSubfolderFilter(true);
       }
 
-      // Load photos (filtered by subfolder if selected)
+      // Load photos (filtered by subfolder if selected; a group includes its children)
       console.log('📸 Loading photos...');
-      const photoList = await galleryService.getPhotos(galleryId, selectedSubfolder);
+      const selectedSection = selectedSubfolder ? findFolderSection(sections, selectedSubfolder) : undefined;
+      const photoFilter = selectedSection ? folderFilterNames(selectedSection) : selectedSubfolder;
+      const photoList = await galleryService.getPhotos(galleryId, photoFilter);
       console.log(`✅ Loaded ${photoList.length} photos`);
       setPhotos(photoList);
 
@@ -474,12 +453,25 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     setLightboxIndex(newIndex);
   }, [lightboxIndex]);
 
-  // Filter photos based on search
-  const filteredPhotos = photos.filter(photo =>
-    photo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    photo.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Sectioned view when showing everything or a whole group; flat view for a single subfolder
+  const selectedSection = selectedSubfolder ? findFolderSection(folderSections, selectedSubfolder) : undefined;
+  const showGroupedView = !selectedSubfolder || !!selectedSection?.isGroup;
+  const sectionOrder = flattenFolderSections(folderSections).map(entry => entry.name);
+  const sectionRank = new Map(sectionOrder.map((name, index) => [name, index]));
+
+  // Filter photos based on search, then follow the displayed section order so that the
+  // lightbox prev/next navigation matches what the visitor sees (sort is stable: name order
+  // is preserved inside each section; sections unknown to the tree go last).
+  const filteredPhotos = photos
+    .filter(photo =>
+      photo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      photo.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      photo.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) =>
+      (sectionRank.get(a.subfolder || 'Photos principales') ?? Number.MAX_SAFE_INTEGER) -
+      (sectionRank.get(b.subfolder || 'Photos principales') ?? Number.MAX_SAFE_INTEGER)
+    );
 
   // Get display name for photo (prioritize original name)
   const getPhotoDisplayName = (photo: Photo) => {
@@ -759,21 +751,43 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       Toutes
                     </Button>
 
-                    {subfolders.map((subfolder) => (
-                      <Button
-                        key={subfolder.name}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSubfolderFilterChange(subfolder.name)}
-                        className={`shrink-0 ${selectedSubfolder === subfolder.name ? 'bg-primary text-primary-foreground' : ''}`}
-                      >
-                        <Folder className="h-4 w-4 mr-1" />
-                        <span className="max-w-[120px] truncate">{subfolder.name}</span>
-                        <Badge variant="secondary" className="ml-1 text-xs">
-                          {subfolder.photoCount}
-                        </Badge>
-                      </Button>
-                    ))}
+                    {folderSections.filter(section => section.photoCount > 0).map((section) => {
+                      const isGroupActive = section.isGroup && (
+                        selectedSubfolder === section.name || section.children.some(child => child.name === selectedSubfolder)
+                      );
+                      return (
+                        <React.Fragment key={section.name}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSubfolderFilterChange(section.name)}
+                            className={`shrink-0 ${selectedSubfolder === section.name ? 'bg-primary text-primary-foreground' : ''}`}
+                          >
+                            {section.isGroup ? <FolderTree className="h-4 w-4 mr-1" /> : <Folder className="h-4 w-4 mr-1" />}
+                            <span className="max-w-[120px] truncate">{section.name}</span>
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {section.photoCount}
+                            </Badge>
+                          </Button>
+                          {/* Children of the active group, shown inline right after it */}
+                          {isGroupActive && section.children.map((child) => (
+                            <Button
+                              key={child.name}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSubfolderFilterChange(child.name)}
+                              className={`shrink-0 border-dashed ${selectedSubfolder === child.name ? 'bg-primary text-primary-foreground' : ''}`}
+                            >
+                              <CornerDownRight className="h-3 w-3 mr-1 opacity-60" />
+                              <span className="max-w-[120px] truncate">{child.name}</span>
+                              <Badge variant="secondary" className="ml-1 text-xs">
+                                {child.photoCount}
+                              </Badge>
+                            </Button>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
 
                   {/* Scroll indicator */}
@@ -995,19 +1009,21 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       {filteredPhotos.length}
                     </Badge>
                   </button>
-                  {subfolders.map((subfolder) => (
+                  {flattenFolderSections(folderSections).filter(entry => entry.photoCount > 0).map((entry) => (
                     <button
-                      key={subfolder.name}
+                      key={entry.name}
                       onClick={() => {
-                        handleSubfolderFilterChange(subfolder.name);
+                        handleSubfolderFilterChange(entry.name);
                         setShowSubfolderDropdown(false);
                       }}
-                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${selectedSubfolder === subfolder.name ? 'bg-primary/10 text-primary' : ''}`}
+                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-center ${entry.depth > 0 ? 'pl-8' : ''} ${selectedSubfolder === entry.name ? 'bg-primary/10 text-primary' : ''}`}
                     >
-                      <Folder className="h-4 w-4 mr-2" />
-                      <span className="truncate">{subfolder.name}</span>
+                      {entry.depth > 0
+                        ? <CornerDownRight className="h-3 w-3 mr-2 opacity-60" />
+                        : entry.isGroup ? <FolderTree className="h-4 w-4 mr-2" /> : <Folder className="h-4 w-4 mr-2" />}
+                      <span className="truncate">{entry.name}</span>
                       <Badge variant="secondary" className="ml-auto text-xs">
-                        {subfolder.photoCount}
+                        {entry.photoCount}
                       </Badge>
                     </button>
                   ))}
@@ -1042,26 +1058,43 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               </div>
             )}
           </div>
-        ) : !selectedSubfolder ? (
-          // Grouped view when showing all photos
+        ) : showGroupedView ? (
+          // Grouped view when showing all photos or a whole group
           <>
             {(() => {
               const photoGroups = groupPhotosBySubfolder(filteredPhotos);
               const sortedSections = getOrderedSections(Object.keys(photoGroups));
-              
-              return sortedSections.map((sectionName) => (
-                <div key={sectionName} className="mb-8">
+
+              return sortedSections.map((entry) => {
+                const sectionName = entry.name;
+                const sectionPhotos = photoGroups[sectionName] || [];
+                const isSubSection = entry.depth > 0;
+
+                // Group header only (the group holds no photo of its own)
+                if (entry.isGroup && !isSubSection && sectionPhotos.length === 0) {
+                  return (
+                    <div key={sectionName} className="mt-2 mb-4 flex items-center gap-2">
+                      <FolderTree className="h-5 w-5 text-gray-400" />
+                      <h2 className="text-2xl font-semibold text-gray-900">{sectionName}</h2>
+                    </div>
+                  );
+                }
+                if (sectionPhotos.length === 0) return null;
+
+                return (
+                <div key={sectionName} className={isSubSection ? 'mb-8 pl-4 border-l-2 border-gray-100' : 'mb-8'}>
                   {/* Section Header */}
                   <div className="flex items-center gap-3 mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">{sectionName}</h2>
+                    {entry.isGroup && <FolderTree className="h-5 w-5 text-gray-400" />}
+                    <h2 className={`${isSubSection ? 'text-lg' : 'text-xl'} font-semibold text-gray-800`}>{sectionName}</h2>
                     <Badge variant="secondary" className="text-sm">
-                      {photoGroups[sectionName].length} photos
+                      {sectionPhotos.length} photos
                     </Badge>
                   </div>
 
                   {/* Section Photos */}
                   <div className={viewMode === 'masonry' ? 'masonry-grid' : 'classic-grid'}>
-                    {photoGroups[sectionName].map((photo) => {
+                    {sectionPhotos.map((photo) => {
                       const originalIndex = filteredPhotos.findIndex(p => p.id === photo.id);
                       return (
                         <div 
@@ -1210,7 +1243,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                     })}
                   </div>
                 </div>
-              ));
+                );
+              });
             })()}
           </>
         ) : (
@@ -1388,7 +1422,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
         comments={comments} // Pass all comments for lightbox display
         onToggleFavorite={toggleSelection}
         onAddComment={submitComment}
-        galleryId={galleryId} // Add galleryId for custom order
+        sectionOrder={sectionOrder} // Section order (folder tree) for the position counter
         allPhotos={photos} // All photos for correct position calculation
       />
 

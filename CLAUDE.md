@@ -16,7 +16,7 @@ Application de galerie photo professionnelle pour la photographe Kim Redler. Per
 - **Project ID**: `ugfkyfmthbwqoeauyqlz`
 - **URL**: `https://ugfkyfmthbwqoeauyqlz.supabase.co`
 - **MCP Server**: `supabase-galery-kim` (configuré dans `.mcp.json`)
-- **Tables**: `galleries`, `favorites`, `comments`
+- **Tables**: `galleries`, `photos`, `favorites`, `comments`
 - **Storage bucket**: `photos` (galeries + sélections exportées)
 - **Schema SQL**: `SUPABASE_TABLE_SETUP.sql`
 - **Migrations**: `supabase/migrations/`
@@ -106,3 +106,4 @@ GMAIL_API_SECRET=...             # Token Bearer pour protéger l'API
 - Pas de tests automatisés (pas de framework de test configuré)
 - Auth admin côté client uniquement (localStorage)
 - Favoris identifiés par `userId` (pas `deviceId`)
+- Sous-dossiers : `photos.subfolder` reste plat (nom de feuille). La hiérarchie (2 niveaux, groupes) et l'ordre d'affichage sont dans `galleries.folder_tree` (JSONB, `[{name, children?}]`), partagés entre tous les visiteurs. Helpers purs dans `galleryService.ts` (`buildFolderSections`, `flattenFolderSections`)

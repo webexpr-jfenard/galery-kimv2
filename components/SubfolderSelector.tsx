@@ -62,9 +62,9 @@ export function SubfolderSelector({
       return;
     }
 
-    // Validate subfolder name
-    if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmedName)) {
-      alert('Le nom du dossier ne peut contenir que des lettres, chiffres, espaces, tirets et underscores.');
+    // Validate subfolder name (accents, apostrophes and slashes are fine; only path-breaking chars are refused)
+    if (/[\\:*?"<>|]/.test(trimmedName)) {
+      alert('Le nom du dossier ne peut pas contenir les caractères \\ : * ? " < > |');
       return;
     }
 
@@ -140,7 +140,7 @@ export function SubfolderSelector({
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-2">
                         <Folder className="h-4 w-4 text-blue-500" />
-                        <span>{subfolder.name}</span>
+                        <span>{subfolder.parent ? `${subfolder.parent} › ` : ''}{subfolder.name}</span>
                       </div>
                       <Badge variant="secondary" className="ml-2">
                         {subfolder.photoCount}

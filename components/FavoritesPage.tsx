@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
+import { buildFolderSections, flattenFolderSections } from "../services/galleryService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import { authService } from "../services/authService";
@@ -345,12 +346,22 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     return groups;
   }, {} as Record<string, Photo[]>);
 
-  const folderNames = Object.keys(groupedPhotos).sort((a, b) => {
-    // Put 'Racine' first, then alphabetical
-    if (a === 'Racine') return -1;
-    if (b === 'Racine') return 1;
-    return a.localeCompare(b);
-  });
+  // 'Racine' first, then the same order and grouping as the gallery (folder tree)
+  const orderedSections = flattenFolderSections(
+    buildFolderSections(
+      Object.keys(groupedPhotos)
+        .filter(name => name !== 'Racine')
+        .map(name => ({ name, photoCount: groupedPhotos[name].length })),
+      gallery?.folderTree
+    )
+  ).filter(entry => groupedPhotos[entry.name]);
+  const folderNames = [
+    ...(groupedPhotos['Racine'] ? ['Racine'] : []),
+    ...orderedSections.map(entry => entry.name)
+  ];
+  const folderParents: Record<string, string | undefined> = Object.fromEntries(
+    orderedSections.map(entry => [entry.name, entry.parent])
+  );
 
   if (isLoading) {
     return (
@@ -606,7 +617,12 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       {/* Folder header */}
                       <div className="flex items-center gap-2 p-4 border-b">
                         <Folder className="h-5 w-5 text-green-600" />
-                        <h3 className="text-lg font-semibold">{folderName}</h3>
+                        <h3 className="text-lg font-semibold">
+                          {folderParents[folderName] && (
+                            <span className="text-muted-foreground font-normal">{folderParents[folderName]} › </span>
+                          )}
+                          {folderName}
+                        </h3>
                         <Badge variant="secondary">
                           {groupedPhotos[folderName].length}
                         </Badge>
@@ -784,7 +800,12 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                       {/* Folder header */}
                       <div className="flex items-center gap-2 mb-4">
                         <Folder className="h-5 w-5 text-green-600" />
-                        <h3 className="text-lg font-semibold">{folderName}</h3>
+                        <h3 className="text-lg font-semibold">
+                          {folderParents[folderName] && (
+                            <span className="text-muted-foreground font-normal">{folderParents[folderName]} › </span>
+                          )}
+                          {folderName}
+                        </h3>
                         <Badge variant="secondary">
                           {groupedPhotos[folderName].length}
                         </Badge>

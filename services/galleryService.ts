@@ -2,6 +2,14 @@ import { supabaseService } from './supabaseService';
 import { favoritesService } from './favoritesService';
 import type { StorageFile } from './supabaseService';
 
+// Folder hierarchy and display order, stored in galleries.folder_tree (JSONB).
+// Photo subfolders stay flat in photos.subfolder; a node with `children` is a group
+// (it may also hold photos of its own). Two levels max.
+export interface FolderNode {
+  name: string;
+  children?: string[];
+}
+
 export interface Gallery {
   id: string;
   name: string;
@@ -19,6 +27,7 @@ export interface Gallery {
   featuredPhotoUrl?: string; // URL of the featured photo for gallery preview
   featuredPhotoId?: string; // ID of the featured photo
   category?: string; // Client name or category for organization
+  folderTree?: FolderNode[]; // Ordered subfolder hierarchy (see FolderNode)
 }
 
 export interface Photo {
@@ -44,6 +53,126 @@ export interface SubfolderInfo {
   name: string;
   photoCount: number;
   lastUpdated: string;
+  parent?: string; // Group this subfolder belongs to, if any
+}
+
+// A resolved node of the folder tree, with photo counts.
+export interface FolderSection {
+  name: string;
+  photoCount: number; // own photos + children photos
+  ownPhotoCount: number;
+  parent?: string;
+  isGroup: boolean;
+  children: FolderSection[];
+}
+
+// Depth-first, display-ordered view of FolderSection[]
+export interface FolderDisplayEntry {
+  name: string;
+  depth: number;
+  isGroup: boolean;
+  parent?: string;
+  photoCount: number;
+}
+
+const naturalCompare = (a: string, b: string): number =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+// Normalize whatever is stored in folder_tree: drop duplicates, empty names, non-strings.
+export function sanitizeFolderTree(tree: unknown): FolderNode[] {
+  if (!Array.isArray(tree)) return [];
+  const seen = new Set<string>();
+  const result: FolderNode[] = [];
+  for (const raw of tree) {
+    const name = typeof raw === 'string' ? raw : (raw && typeof raw.name === 'string' ? raw.name : '');
+    if (!name.trim() || seen.has(name)) continue;
+    seen.add(name);
+    const node: FolderNode = { name };
+    if (raw && Array.isArray(raw.children)) {
+      node.children = raw.children.filter((c: unknown): c is string => {
+        if (typeof c !== 'string' || !c.trim() || seen.has(c)) return false;
+        seen.add(c);
+        return true;
+      });
+    }
+    result.push(node);
+  }
+  return result;
+}
+
+// Combine the real subfolders (from photos) with the stored tree.
+// Tree order wins; subfolders missing from the tree are appended at root in natural order.
+// Empty groups are dropped unless keepEmptyGroups is set (the admin organizer needs them).
+export function buildFolderSections(
+  subfolders: Array<{ name: string; photoCount: number }>,
+  tree?: FolderNode[] | null,
+  options?: { keepEmptyGroups?: boolean }
+): FolderSection[] {
+  const counts = new Map(subfolders.map(s => [s.name, s.photoCount]));
+  const placed = new Set<string>();
+  const sections: FolderSection[] = [];
+
+  for (const node of sanitizeFolderTree(tree)) {
+    const isGroup = Array.isArray(node.children);
+    if (!isGroup && !counts.has(node.name)) continue; // stale leaf (folder emptied)
+
+    const children: FolderSection[] = [];
+    for (const childName of node.children || []) {
+      if (!counts.has(childName)) continue; // stale child
+      placed.add(childName);
+      const count = counts.get(childName)!;
+      children.push({ name: childName, photoCount: count, ownPhotoCount: count, parent: node.name, isGroup: false, children: [] });
+    }
+
+    const own = counts.get(node.name) || 0;
+    if (isGroup && own === 0 && children.length === 0 && !options?.keepEmptyGroups) continue;
+
+    placed.add(node.name);
+    sections.push({
+      name: node.name,
+      photoCount: own + children.reduce((sum, c) => sum + c.photoCount, 0),
+      ownPhotoCount: own,
+      isGroup,
+      children
+    });
+  }
+
+  subfolders
+    .filter(s => !placed.has(s.name))
+    .sort((a, b) => naturalCompare(a.name, b.name))
+    .forEach(s => sections.push({ name: s.name, photoCount: s.photoCount, ownPhotoCount: s.photoCount, isGroup: false, children: [] }));
+
+  return sections;
+}
+
+export function flattenFolderSections(sections: FolderSection[]): FolderDisplayEntry[] {
+  const out: FolderDisplayEntry[] = [];
+  for (const s of sections) {
+    out.push({ name: s.name, depth: 0, isGroup: s.isGroup, photoCount: s.photoCount });
+    for (const c of s.children) {
+      out.push({ name: c.name, depth: 1, isGroup: false, parent: s.name, photoCount: c.photoCount });
+    }
+  }
+  return out;
+}
+
+export function findFolderSection(sections: FolderSection[], name: string): FolderSection | undefined {
+  for (const s of sections) {
+    if (s.name === name) return s;
+    const child = s.children.find(c => c.name === name);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+// Subfolder names to query when a section is selected as filter (a group includes its children)
+export function folderFilterNames(section: FolderSection): string[] {
+  return section.isGroup ? [section.name, ...section.children.map(c => c.name)] : [section.name];
+}
+
+// Build a flat tree from a plain ordered list of names (legacy localStorage format)
+export function folderTreeFromNames(names: string[]): FolderNode[] {
+  return sanitizeFolderTree(names.map(name => ({ name })));
 }
 
 class GalleryService {
@@ -64,43 +193,22 @@ class GalleryService {
     });
   };
 
-  // Apply custom subfolder ordering
-  private applyCustomSubfolderOrder(galleryId: string, subfolders: SubfolderInfo[]): SubfolderInfo[] {
+  // Order real subfolders according to the gallery's folder tree (groups without photos are dropped)
+  private applyFolderTree(subfolders: SubfolderInfo[], tree?: FolderNode[] | null): SubfolderInfo[] {
+    const byName = new Map(subfolders.map(s => [s.name, s]));
+    return flattenFolderSections(buildFolderSections(subfolders, tree))
+      .filter(entry => byName.has(entry.name))
+      .map(entry => ({ ...byName.get(entry.name)!, parent: entry.parent }));
+  }
+
+  private async loadFolderTree(galleryId: string): Promise<FolderNode[]> {
     try {
-      const savedOrder = localStorage.getItem(`gallery-${galleryId}-subfolder-order`);
-      if (savedOrder) {
-        const parsedOrder = JSON.parse(savedOrder);
-        
-        // Sort subfolders according to saved order
-        const orderedSubfolders: SubfolderInfo[] = [];
-        const unorderedSubfolders: SubfolderInfo[] = [];
-        
-        // First, add subfolders in the saved order
-        parsedOrder.forEach((name: string) => {
-          const subfolder = subfolders.find(sf => sf.name === name);
-          if (subfolder) {
-            orderedSubfolders.push(subfolder);
-          }
-        });
-        
-        // Then add any new subfolders that weren't in the saved order
-        subfolders.forEach(subfolder => {
-          if (!parsedOrder.includes(subfolder.name)) {
-            unorderedSubfolders.push(subfolder);
-          }
-        });
-        
-        // Sort the unordered ones alphabetically and append them
-        unorderedSubfolders.sort((a, b) => this.naturalSort(a.name, b.name));
-        
-        return [...orderedSubfolders, ...unorderedSubfolders];
-      }
+      const gallery = await this.getGallery(galleryId);
+      return gallery?.folderTree || [];
     } catch (error) {
-      console.error('Error applying custom subfolder order:', error);
+      console.error('Error loading folder tree:', error);
+      return [];
     }
-    
-    // Fallback to alphabetical order
-    return subfolders.sort((a, b) => this.naturalSort(a.name, b.name));
   }
 
   // Check if database tables exist and are accessible
@@ -287,7 +395,8 @@ class GalleryService {
         allowFavorites: row.allow_favorites !== false,
         featuredPhotoUrl: row.featured_photo_url || undefined,
         featuredPhotoId: row.featured_photo_id || undefined,
-        category: row.category || undefined
+        category: row.category || undefined,
+        folderTree: row.folder_tree ? sanitizeFolderTree(row.folder_tree) : undefined
       }));
 
       console.log(`✅ Loaded ${galleries.length} galleries from Supabase`);
@@ -383,7 +492,8 @@ class GalleryService {
         allowFavorites: data.allow_favorites !== false,
         featuredPhotoUrl: data.featured_photo_url || undefined,
         featuredPhotoId: data.featured_photo_id || undefined,
-        category: data.category || undefined
+        category: data.category || undefined,
+        folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined
       };
 
       console.log(`✅ Found gallery in Supabase: ${gallery.name}`);
@@ -593,6 +703,10 @@ class GalleryService {
         if (updates.featuredPhotoUrl !== undefined) supabaseUpdates.featured_photo_url = updates.featuredPhotoUrl || null;
         if (updates.featuredPhotoId !== undefined) supabaseUpdates.featured_photo_id = updates.featuredPhotoId || null;
         if (updates.category !== undefined) supabaseUpdates.category = updates.category || null;
+        if (updates.folderTree !== undefined) {
+          const tree = sanitizeFolderTree(updates.folderTree);
+          supabaseUpdates.folder_tree = tree.length > 0 ? tree : null;
+        }
 
         const { data, error } = await supabaseService.client
           .from(this.GALLERIES_TABLE)
@@ -625,7 +739,8 @@ class GalleryService {
           allowFavorites: data.allow_favorites !== false,
           featuredPhotoUrl: data.featured_photo_url || undefined,
           featuredPhotoId: data.featured_photo_id || undefined,
-          category: data.category || undefined
+          category: data.category || undefined,
+          folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined
         };
       } else {
         // Fallback to local storage
@@ -702,8 +817,26 @@ class GalleryService {
     }
   }
 
-  // NEW: Subfolder Management with better error handling and custom ordering
+  // Subfolders of a gallery, ordered and annotated (parent) according to the folder tree
   async getGallerySubfolders(galleryId: string): Promise<SubfolderInfo[]> {
+    const [subfolders, tree] = await Promise.all([
+      this.loadSubfolderInfos(galleryId),
+      this.loadFolderTree(galleryId)
+    ]);
+    return this.applyFolderTree(subfolders, tree);
+  }
+
+  // Full folder hierarchy (groups included, even empty) with aggregated photo counts
+  async getGalleryFolderSections(galleryId: string, options?: { keepEmptyGroups?: boolean }): Promise<FolderSection[]> {
+    const [subfolders, tree] = await Promise.all([
+      this.loadSubfolderInfos(galleryId),
+      this.loadFolderTree(galleryId)
+    ]);
+    return buildFolderSections(subfolders, tree, options);
+  }
+
+  // Raw subfolder list with counts (unordered)
+  private async loadSubfolderInfos(galleryId: string): Promise<SubfolderInfo[]> {
     try {
       if (!supabaseService.isReady()) {
         // Local fallback - scan photos in local storage
@@ -728,8 +861,7 @@ class GalleryService {
           }
         });
         
-        const subfolderData = Array.from(subfolderMap.values());
-        return this.applyCustomSubfolderOrder(galleryId, subfolderData);
+        return Array.from(subfolderMap.values());
       }
 
       const health = await this.checkDatabaseHealth();
@@ -755,8 +887,7 @@ class GalleryService {
         lastUpdated: new Date().toISOString() // Fallback date
       }));
 
-      // Apply custom ordering if available
-      return this.applyCustomSubfolderOrder(galleryId, subfolderData);
+      return subfolderData;
       
     } catch (error) {
       console.error('Error getting gallery subfolders:', error);
@@ -803,7 +934,7 @@ class GalleryService {
         lastUpdated: new Date().toISOString()
       }));
 
-      return this.applyCustomSubfolderOrder(galleryId, subfolderData);
+      return subfolderData;
 
     } catch (error) {
       console.error('Error in subfolder fallback:', error);
@@ -876,7 +1007,8 @@ class GalleryService {
   }
 
   // Photo Management with Supabase Integration
-  async getPhotos(galleryId: string, subfolder?: string): Promise<Photo[]> {
+  // `subfolder` may be a single name or a list of names (e.g. a group and its children)
+  async getPhotos(galleryId: string, subfolder?: string | string[]): Promise<Photo[]> {
     try {
       const gallery = await this.getGallery(galleryId);
       if (!gallery) {
@@ -902,9 +1034,10 @@ class GalleryService {
         const photos = JSON.parse(stored);
         let filteredPhotos = Array.isArray(photos) ? photos : [];
         
-        // Filter by subfolder if specified
+        // Filter by subfolder(s) if specified
         if (subfolder) {
-          filteredPhotos = filteredPhotos.filter((photo: Photo) => photo.subfolder === subfolder);
+          const wanted = Array.isArray(subfolder) ? subfolder : [subfolder];
+          filteredPhotos = filteredPhotos.filter((photo: Photo) => !!photo.subfolder && wanted.includes(photo.subfolder));
         }
         
         // Sort naturally by name (handles numbers correctly)
@@ -923,7 +1056,7 @@ class GalleryService {
   }
 
   // NEW: Fetch photos from Supabase database (with subfolder support)
-  private async fetchPhotosFromSupabaseDB(galleryId: string, subfolder?: string): Promise<Photo[]> {
+  private async fetchPhotosFromSupabaseDB(galleryId: string, subfolder?: string | string[]): Promise<Photo[]> {
     try {
       // Get data without sorting first (we'll sort in JavaScript for natural ordering)
       let query = supabaseService.client
@@ -931,8 +1064,10 @@ class GalleryService {
         .select('*')
         .eq('gallery_id', galleryId);
 
-      // Filter by subfolder if specified
-      if (subfolder) {
+      // Filter by subfolder(s) if specified
+      if (Array.isArray(subfolder)) {
+        query = query.in('subfolder', subfolder);
+      } else if (subfolder) {
         query = query.eq('subfolder', subfolder);
       }
 

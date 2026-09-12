@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS galleries (
   allow_favorites BOOLEAN DEFAULT TRUE,
   category TEXT,
   featured_photo_url TEXT,
-  featured_photo_id TEXT
+  featured_photo_id TEXT,
+  folder_tree JSONB -- ordered subfolder hierarchy: [{name, children?: string[]}]
 );
 
 -- 2. Create the favorites table for photo selections
