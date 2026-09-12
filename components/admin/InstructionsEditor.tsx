@@ -25,29 +25,32 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
   };
 
   return (
-    <div className="space-y-5 font-['DM_Sans',sans-serif]">
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-3">
-        <div>
-          <label className={label} htmlFor="instr-title">Titre</label>
-          <input id="instr-title" className={input} value={value.title} onChange={(e) => set({ title: e.target.value })} />
+    <div className="space-y-4 font-['DM_Sans',sans-serif]">
+      <section className="border border-gray-200 rounded-xl p-4 space-y-3">
+        <h4 className="text-[13px] font-semibold text-gray-800">Titre et nombre de photos</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_200px] gap-3">
+          <div>
+            <label className={label} htmlFor="instr-title">Titre du panneau</label>
+            <input id="instr-title" className={input} value={value.title} onChange={(e) => set({ title: e.target.value })} />
+          </div>
+          <div>
+            <label className={label} htmlFor="instr-quota">Photos à choisir</label>
+            <input
+              id="instr-quota"
+              type="number"
+              min={1}
+              className={input}
+              placeholder="Pas de limite"
+              value={value.quota?.max ?? ""}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                set({ quota: Number.isInteger(n) && n > 0 ? { max: n } : null });
+              }}
+            />
+          </div>
         </div>
-        <div>
-          <label className={label} htmlFor="instr-quota">Photos à choisir</label>
-          <input
-            id="instr-quota"
-            type="number"
-            min={1}
-            className={input}
-            placeholder="Pas de limite"
-            value={value.quota?.max ?? ""}
-            onChange={(e) => {
-              const n = parseInt(e.target.value, 10);
-              set({ quota: Number.isInteger(n) && n > 0 ? { max: n } : null });
-            }}
-          />
-          <p className="text-[11px] text-gray-400 mt-1">Avertissement seulement, jamais bloquant. Utilisez {"{quota}"} dans les textes.</p>
-        </div>
-      </div>
+        <p className="text-[11px] text-gray-400">Le nombre attendu n'est qu'un avertissement pour le visiteur, jamais un blocage. Écrivez {"{quota}"} dans un texte pour l'y insérer.</p>
+      </section>
 
       <Block
         title="Encart « À savoir »"
@@ -62,9 +65,9 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
         )}
       </Block>
 
-      <div className="space-y-3">
+      <section className="border border-gray-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-semibold text-gray-800">Étapes</span>
+          <h4 className="text-[13px] font-semibold text-gray-800">Étapes <span className="font-normal text-gray-400">({value.steps.length})</span></h4>
           <button
             type="button"
             onClick={() => set({ steps: [...value.steps, { icon: "info", title: "", text: "" }] })}
@@ -77,7 +80,7 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
           <p className="text-[12px] text-gray-400 italic">Aucune étape. Ajoutez-en au moins une.</p>
         )}
         {value.steps.map((step, index) => (
-          <div key={index} className="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+          <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-[12px] font-semibold text-gray-500 w-6">{index + 1}.</span>
               <select
@@ -99,7 +102,7 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
             <input className={input} placeholder="Phrase mise en avant (optionnel)" value={step.highlight || ""} onChange={(e) => setStep(index, { highlight: e.target.value || undefined })} />
           </div>
         ))}
-      </div>
+      </section>
 
       <Block
         title="Bloc « Besoin d'aide »"
@@ -119,15 +122,15 @@ export function InstructionsEditor({ value, onChange }: InstructionsEditorProps)
 
 function Block({ title, enabled, onToggle, children }: { title: string; enabled: boolean; onToggle: (on: boolean) => void; children: React.ReactNode }) {
   return (
-    <div className="border border-gray-200 rounded-xl p-3 space-y-2">
+    <section className="border border-gray-200 rounded-xl p-4 space-y-2">
       <label className="flex items-center justify-between cursor-pointer">
-        <span className="text-[13px] font-semibold text-gray-800">{title}</span>
+        <h4 className="text-[13px] font-semibold text-gray-800">{title}</h4>
         <span className="flex items-center gap-2 text-[12px] text-gray-500">
           {enabled ? "Affiché" : "Masqué"}
           <input type="checkbox" className="rounded" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
         </span>
       </label>
       {children}
-    </div>
+    </section>
   );
 }

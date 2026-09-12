@@ -221,28 +221,11 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Catégorie</label>
-                  <CategorySelector
-                    value={editForm.category || undefined}
-                    onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-dialog-bucket" className={`${labelClass} flex items-center gap-1.5`}>
-                    <Folder className="h-3 w-3" /> Dossier de stockage
-                  </label>
-                  <input
-                    id="edit-dialog-bucket"
-                    type="text"
-                    value={editForm.bucketFolder || ''}
-                    readOnly
-                    disabled
-                    className="w-full h-10 px-3.5 rounded-lg border border-gray-100 text-[14px] text-gray-400 bg-gray-50 cursor-not-allowed"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">Fixé à la création</p>
-                </div>
+              <div>
+                <CategorySelector
+                  value={editForm.category || undefined}
+                  onChange={(category) => setEditForm(prev => ({ ...prev, category: category || '' }))}
+                />
               </div>
 
               <div>
@@ -257,7 +240,9 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
                 />
               </div>
 
-              <div className="border border-gray-200 rounded-xl px-4 py-1 divide-y divide-gray-100">
+              <section className="border border-gray-200 rounded-xl px-4 py-2">
+                <h4 className="text-[13px] font-semibold text-gray-800 pt-1">Ce que les visiteurs peuvent faire</h4>
+                <div className="divide-y divide-gray-100">
                 <Toggle
                   checked={editForm.allowFavorites ?? true}
                   onChange={(v) => setEditForm(prev => ({ ...prev, allowFavorites: v }))}
@@ -270,7 +255,13 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
                   label="Commentaires"
                   description="Les visiteurs peuvent commenter chaque photo"
                 />
-              </div>
+                </div>
+              </section>
+
+              <p className="text-[12px] text-gray-400 flex items-center gap-1.5">
+                <Folder className="h-3 w-3" />
+                Dossier de stockage : <span className="font-mono">{editForm.bucketFolder}</span> (fixé à la création)
+              </p>
             </div>
           )}
 
@@ -348,7 +339,7 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
 
               {editForm.instructions && (
                 <>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                     <label className="text-[12px] text-gray-500" htmlFor="edit-dialog-template">Repartir d'un modèle :</label>
                     <select
                       id="edit-dialog-template"
