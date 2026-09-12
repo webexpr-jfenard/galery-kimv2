@@ -49,17 +49,17 @@ const router = {
         // For home page, clear hash
         window.location.hash = '';
         // Update page title
-        document.title = 'Galerie Photo';
+        document.title = 'Galerie Kim';
       } else {
         // For other routes, always use hash routing (SPA-friendly)
         window.location.hash = path;
         // Update page title based on route
         if (path.startsWith('/gallery/')) {
-          document.title = `Galerie ${path.split('/')[2]} - Galerie Photo`;
+          document.title = `Galerie ${path.split('/')[2]} - Galerie Kim`;
         } else if (path.startsWith('/favorites/')) {
-          document.title = `Sélection ${path.split('/')[2]} - Galerie Photo`;
+          document.title = `Sélection ${path.split('/')[2]} - Galerie Kim`;
         } else if (path === '/admin') {
-          document.title = 'Administration - Galerie Photo';
+          document.title = 'Administration - Galerie Kim';
         }
       }
       
@@ -90,7 +90,7 @@ const router = {
     try {
       console.log('🏠 Going home...');
       window.location.hash = '';
-      document.title = 'Galerie Photo';
+      document.title = 'Galerie Kim';
       // Force hash change event
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     } catch (error) {

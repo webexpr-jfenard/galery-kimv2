@@ -133,3 +133,18 @@ Vérification : `npm run typecheck` sans erreur, `npm run build` sans avertissem
 - Vérifier la connexion admin de Kim et Jeremy en production.
 - Migration `security_finalize` : politiques sans `is_admin()`, suppression de la fonction et de `app_config`.
 - Contrôle : advisors sécurité, `curl` sans jeton sur l'endpoint e-mail (403), tentative de DELETE favoris avec la clé anon (0 ligne), bundle sans secret.
+
+---
+
+## Statut (12 septembre 2026, soir)
+
+**Fait (commit local, pas encore déployé)** : T1 (migrations `security_foundation`, `data_model_audit_2026_09`, `admin_policies_transition`, `storage_policies_admin`), T2 (711 objets purgés, 262 Mo), T3, T4, T5, T6 (code ; politiques dans `supabase/migrations/visitor_identity_policies.sql`), T7, T8, T9 (sauf virtualisation), T10, T11, T12, T13, T14 (aria-labels, favicon, métadonnées, libellé racine).
+
+**Vérifié en local** : galerie Viparis sans erreur console, panneau de consignes sur la galerie test, cycle favori (prénom → cœur → retrait) avec `user_id` = SHA-256 du jeton, écran de connexion admin. Build : bundle client 163 kB (au lieu de 732 kB), typecheck à zéro erreur.
+
+**Reste, dans l'ordre**
+1. Jeremy : créer les comptes admin (Supabase → Authentication → Users → Add user, auto-confirm), désactiver les inscriptions, définir `NOTIFY_TO` sur Vercel.
+2. Claude : `insert into admin_users`, appliquer `visitor_identity_policies.sql`, pousser `main` (déploiement Vercel), vérifier la connexion admin en production, appliquer `security_finalize.sql`, contrôles finaux (endpoint e-mail 400 sans envoi, DELETE anon = 0 ligne, bundle sans secret).
+3. Jeremy : supprimer `VITE_ADMIN_SECRET`, `VITE_ADMIN_PASSWORD`, `VITE_GMAIL_API_SECRET`, `GMAIL_API_SECRET` sur Vercel ; appliquer la mise à jour Postgres.
+4. Admin : bouton « Vignettes » dans Gérer les photos de la galerie Viparis (génère les 308 vignettes manquantes depuis le navigateur).
+5. Plus tard : virtualisation de la grille, mosaïque en `grid` (nécessite un calcul JS), montée de version Vite/React.

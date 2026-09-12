@@ -357,7 +357,7 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
 
   // Group photos by subfolder for better organization
   const groupedPhotos = filteredFavoritePhotos.reduce((groups, photo) => {
-    const folder = photo.subfolder || 'Racine';
+    const folder = photo.subfolder || 'Photos principales';
     if (!groups[folder]) {
       groups[folder] = [];
     }
@@ -365,17 +365,17 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
     return groups;
   }, {} as Record<string, Photo[]>);
 
-  // 'Racine' first, then the same order and grouping as the gallery (folder tree)
+  // 'Photos principales' first, then the same order and grouping as the gallery (folder tree)
   const orderedSections = flattenFolderSections(
     buildFolderSections(
       Object.keys(groupedPhotos)
-        .filter(name => name !== 'Racine')
+        .filter(name => name !== 'Photos principales')
         .map(name => ({ name, photoCount: groupedPhotos[name].length })),
       gallery?.folderTree
     )
   ).filter(entry => groupedPhotos[entry.name]);
   const folderNames = [
-    ...(groupedPhotos['Racine'] ? ['Racine'] : []),
+    ...(groupedPhotos['Photos principales'] ? ['Photos principales'] : []),
     ...orderedSections.map(entry => entry.name)
   ];
   const folderParents: Record<string, string | undefined> = Object.fromEntries(

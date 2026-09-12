@@ -231,6 +231,7 @@ export function Lightbox({
         className="lightbox-close" 
         onClick={onClose}
         title="Fermer (Échap)"
+        aria-label="Fermer"
       >
         <X />
       </button>
@@ -253,6 +254,7 @@ export function Lightbox({
         onClick={() => onNavigate('prev')}
         disabled={currentIndex === 0}
         title="Photo précédente (←)"
+        aria-label="Photo précédente"
       >
         <ChevronLeft />
       </button>
@@ -262,6 +264,7 @@ export function Lightbox({
         onClick={() => onNavigate('next')}
         disabled={currentIndex === photos.length - 1}
         title="Photo suivante (→)"
+        aria-label="Photo suivante"
       >
         <ChevronRight />
       </button>
@@ -286,6 +289,7 @@ export function Lightbox({
             <button
               onClick={() => setShowComments(false)}
               className="text-gray-400 hover:text-gray-600"
+              aria-label="Fermer les commentaires"
             >
               <X className="h-4 w-4" />
             </button>

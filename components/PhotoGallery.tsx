@@ -50,6 +50,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   const [subfolders, setSubfolders] = useState<SubfolderInfo[]>([]);
   const [folderSections, setFolderSections] = useState<FolderSection[]>([]); // hierarchy (groups + subfolders)
   const [showInstructions, setShowInstructions] = useState(false); // selection instructions panel
+  const [visitorName, setVisitorName] = useState<string | null>(userService.getCurrentUserName());
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | undefined>(undefined);
   const [showSubfolderFilter, setShowSubfolderFilter] = useState(false);
   
@@ -132,6 +133,15 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     return flattenFolderSections(
       buildFolderSections(sectionNames.map(name => ({ name, photoCount: 0 })), gallery?.folderTree)
     );
+  };
+
+  // Follow the visitor identity (name shown in the header, "ce n'est pas moi")
+  useEffect(() => userService.onChange(session => setVisitorName(session?.userName || null)), []);
+
+  const forgetVisitor = () => {
+    userService.clearSession();
+    setUserSelection(new Set());
+    toast.info('Vous indiquerez votre prénom au prochain favori');
   };
 
   // Load gallery data
@@ -617,6 +627,22 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       </Badge>
                     </>
                   )}
+                  {visitorName && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        Bonjour {visitorName}
+                        <button
+                          type="button"
+                          onClick={forgetVisitor}
+                          className="ml-1 underline underline-offset-2 hover:text-foreground"
+                          aria-label="Ce n'est pas moi, changer de prénom"
+                        >
+                          (ce n'est pas moi)
+                        </button>
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -677,6 +703,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 size="sm"
                 onClick={() => setShowDesktopSearch(true)}
                 title="Rechercher des photos"
+                aria-label="Rechercher des photos"
               >
                 <Search className="h-4 w-4" />
               </Button>
@@ -706,6 +733,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 onClick={() => handleViewModeChange('masonry')}
                 className="px-2 py-1 h-auto"
                 title="Vue mosaïque"
+                aria-label="Vue mosaïque"
               >
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
@@ -719,6 +747,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 onClick={() => handleViewModeChange('grid')}
                 className="px-2 py-1 h-auto"
                 title="Vue grille classique"
+                aria-label="Vue grille classique"
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
@@ -871,6 +900,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               size="sm"
               onClick={() => window.appRouter.navigateTo('/')}
               className="shrink-0"
+              aria-label="Retour à l'accueil"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -899,6 +929,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               size="sm"
               onClick={toggleComparisonMode}
               className="shrink-0"
+              aria-label="Mode comparaison"
             >
               <GitCompare className="h-4 w-4" />
             </Button>
@@ -909,6 +940,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               size="sm"
               onClick={() => setShowMobileSearch(!showMobileSearch)}
               className="shrink-0"
+              aria-label="Rechercher des photos"
             >
               <Search className="h-4 w-4" />
             </Button>
@@ -919,6 +951,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               size="sm"
               onClick={() => window.appRouter.navigateTo(`/favorites/${galleryId}`)}
               className="shrink-0"
+              aria-label={`Ma sélection (${selection.size})`}
             >
               <Heart className="h-4 w-4 mr-1" />
               {selection.size}
@@ -931,6 +964,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 size="sm"
                 onClick={() => handleViewModeChange('masonry')}
                 className="px-1.5 py-1 h-auto"
+                aria-label="Vue mosaïque"
               >
                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10 1H17C18.1046 1 19 1.89543 19 3V6M10 1H3C1.89543 1 1 1.89543 1 3V14M10 1V6M10 19H3C1.89543 19 1 18.1046 1 17V14M10 19H17C18.1046 19 19 18.1046 19 17V6M10 19V14M1 14H10M10 14V6M10 6H19" 
@@ -943,6 +977,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 size="sm"
                 onClick={() => handleViewModeChange('grid')}
                 className="px-1.5 py-1 h-auto"
+                aria-label="Vue grille classique"
               >
                 <Grid3X3 className="h-3 w-3" />
               </Button>
@@ -954,6 +989,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               size="sm"
               onClick={() => setShowPhotoNames(!showPhotoNames)}
               className="shrink-0"
+              aria-label="Afficher les noms des photos"
             >
               <Tag className="h-4 w-4" />
             </Button>
@@ -1165,6 +1201,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                   className="w-full h-full flex items-center justify-center"
                                   onClick={(e) => toggleSelection(photo.id, e)}
                                   title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
+                                  aria-label={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
                                 >
                                   <Heart 
                                     className={`h-5 w-5 transition-all ${
@@ -1191,6 +1228,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                   className="w-full h-full flex items-center justify-center"
                                   onClick={(e) => toggleSelection(photo.id, e)}
                                   title="Cliquez pour vous identifier et ajouter aux favoris"
+                                  aria-label="Cliquez pour vous identifier et ajouter aux favoris"
                                 >
                                   <Heart className={`h-5 w-5 transition-all ${
                                     selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
@@ -1234,6 +1272,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                                 />
                                 <button
                                   className="quick-comment-submit"
+                                  aria-label="Envoyer le commentaire"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
@@ -1320,6 +1359,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
                         title={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
+                        aria-label={userSelection.has(photo.id) ? 'Retirer de votre sélection' : 'Ajouter à votre sélection'}
                       >
                         <Heart 
                           className={`h-5 w-5 transition-all ${
@@ -1348,6 +1388,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                         className="w-full h-full flex items-center justify-center"
                         onClick={(e) => toggleSelection(photo.id, e)}
                         title="Cliquez pour vous identifier et ajouter aux favoris"
+                        aria-label="Cliquez pour vous identifier et ajouter aux favoris"
                       >
                         <Heart className={`h-5 w-5 transition-all ${
                           selection.has(photo.id) ? 'fill-current text-white' : 'text-gray-600'
@@ -1400,6 +1441,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                       />
                       <button
                         className="quick-comment-submit"
+                        aria-label="Envoyer le commentaire"
                         onClick={(e) => {
                           e.stopPropagation();
                           const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
