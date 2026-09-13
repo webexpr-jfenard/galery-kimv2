@@ -18,6 +18,9 @@ import {
   FolderOpen,
   FolderTree,
   Info,
+  Mail,
+  Phone,
+  Instagram,
   CornerDownRight,
   Grid,
   Grid3X3,
@@ -31,6 +34,7 @@ import { galleryService, SubfolderInfo, flattenFolderSections, buildFolderSectio
 import { photoSrc } from "../services/imageService";
 import { InstructionsPanel } from "./InstructionsPanel";
 import { accentStyle, normalizeHex } from "../services/colorUtils";
+import { PHOTOGRAPHER } from "../services/siteConfig";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import type { Gallery, Photo, FolderSection } from "../services/galleryService";
@@ -641,7 +645,8 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
               </span>
             )}
           </div>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="min-w-0">
             {gallery.category && (
               <div className="text-[11px] md:text-xs uppercase tracking-[0.14em] text-white/70 mb-1">{gallery.category}</div>
             )}
@@ -661,6 +666,24 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Photographer contact */}
+          <address className="not-italic shrink-0 flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-[13px] text-white/80">
+            <span className="w-full md:w-auto text-[11px] uppercase tracking-[0.14em] text-white/60 md:mb-0.5">{PHOTOGRAPHER.name}</span>
+            <a href={`mailto:${PHOTOGRAPHER.email}`} className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+              <Mail className="h-3.5 w-3.5" />
+              {PHOTOGRAPHER.email}
+            </a>
+            <a href={PHOTOGRAPHER.phoneHref} className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+              <Phone className="h-3.5 w-3.5" />
+              {PHOTOGRAPHER.phone}
+            </a>
+            <a href={PHOTOGRAPHER.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+              <Instagram className="h-3.5 w-3.5" />
+              {PHOTOGRAPHER.instagramHandle}
+            </a>
+          </address>
           </div>
         </div>
       </div>
