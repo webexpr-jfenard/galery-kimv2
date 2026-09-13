@@ -35,6 +35,7 @@ import { photoSrc } from "../services/imageService";
 import { InstructionsPanel } from "./InstructionsPanel";
 import { accentStyle, normalizeHex } from "../services/colorUtils";
 import { PHOTOGRAPHER as DEFAULT_PHOTOGRAPHER } from "../services/siteConfig";
+import { ContactQr } from "./ContactQr";
 import { siteSettingsService, withLinks, type PhotographerLinks } from "../services/siteSettingsService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
@@ -679,7 +680,10 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
           {/* Photographer contact */}
           <address className="not-italic shrink-0 flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-[13px] text-white/80">
-            <span className="w-full md:w-auto text-[11px] uppercase tracking-[0.14em] text-white/60 md:mb-0.5">{photographer.name}</span>
+            <div className="w-full md:w-auto flex items-center gap-3 md:flex-col md:items-end md:gap-1.5 md:mb-0.5">
+              <ContactQr photographer={photographer} color={accent} />
+              <span className="text-[11px] uppercase tracking-[0.14em] text-white/60">{photographer.name}</span>
+            </div>
             <a href={`mailto:${photographer.email}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="h-3.5 w-3.5" />
               {photographer.email}
