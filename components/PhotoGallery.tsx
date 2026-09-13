@@ -671,11 +671,11 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
           {/* Photographer contact */}
           <address className="not-italic shrink-0 flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-[13px] text-white/80">
             <span className="w-full md:w-auto text-[11px] uppercase tracking-[0.14em] text-white/60 md:mb-0.5">{PHOTOGRAPHER.name}</span>
-            <a href={`mailto:${PHOTOGRAPHER.email}`} className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href={`mailto:${PHOTOGRAPHER.email}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="h-3.5 w-3.5" />
               {PHOTOGRAPHER.email}
             </a>
-            <a href={PHOTOGRAPHER.phoneHref} className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href={PHOTOGRAPHER.phoneHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Phone className="h-3.5 w-3.5" />
               {PHOTOGRAPHER.phone}
             </a>
