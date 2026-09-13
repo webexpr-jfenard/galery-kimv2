@@ -107,7 +107,7 @@ export function AdminLayout({
                   ${sidebarCollapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5"}
                   ${
                     isActive
-                      ? "bg-gray-900 text-white"
+                      ? "bg-[#1F2A44] text-white"
                       : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                   }
                 `}

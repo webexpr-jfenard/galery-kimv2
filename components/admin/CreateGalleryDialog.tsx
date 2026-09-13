@@ -253,7 +253,7 @@ export function CreateGalleryDialog({
                 ${
                   isCreating || !form.name.trim()
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"
+                    : "bg-[#1F2A44] text-white hover:bg-[#2B3A5C] active:scale-[0.98]"
                 }
               `}
             >

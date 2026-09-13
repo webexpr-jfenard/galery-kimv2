@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { CategorySelector } from "./CategorySelector";
 import {
   Key, Folder, Eye, EyeOff, Save, X, RefreshCw, ListChecks, Link2, Copy, Lock, Unlock,
-  SlidersHorizontal, ExternalLink, Images
+  SlidersHorizontal, ExternalLink, Images, Palette, PanelTop
 } from "lucide-react";
 import type { Gallery } from "../services/galleryService";
 import { instructionsService, emptyInstructions, type InstructionTemplate, type Instructions } from "../services/instructionsService";
@@ -103,6 +103,7 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
         allowComments: gallery.allowComments,
         allowFavorites: gallery.allowFavorites,
         category: gallery.category || '',
+        accentColor: gallery.accentColor || '',
         instructions: gallery.instructions ?? null
       });
       setTab("general");
@@ -192,7 +193,7 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
                 type="button"
                 onClick={() => setTab(id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium border-b-2 transition-colors ${
-                  tab === id ? "border-gray-900 text-gray-900" : "border-transparent text-gray-400 hover:text-gray-700"
+                  tab === id ? "border-[#1F2A44] text-gray-900" : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -239,6 +240,65 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
                   className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 text-[14px] text-gray-900 placeholder:text-gray-300 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors resize-y"
                 />
               </div>
+
+              <section className="border border-gray-200 rounded-xl p-4 space-y-3">
+                <h4 className="text-[13px] font-semibold text-gray-800 flex items-center gap-1.5"><Palette className="h-3.5 w-3.5" /> Apparence</h4>
+                <div className="flex items-start gap-3">
+                  <div className="w-24 h-14 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shrink-0 flex items-center justify-center">
+                    {gallery.coverPhotoUrl
+                      ? <img src={gallery.coverPhotoUrl} alt="" className="w-full h-full object-cover" />
+                      : <PanelTop className="h-5 w-5 text-gray-300" />}
+                  </div>
+                  <div className="text-[13px] text-gray-600">
+                    <div className="font-medium text-gray-800">Bannière</div>
+                    {gallery.coverPhotoUrl
+                      ? <p>Affichée en tête de la galerie, derrière le titre.</p>
+                      : <p>Aucune : l'en-tête utilise la couleur d'accent.</p>}
+                    {onManagePhotos && (
+                      <button type="button" onClick={() => onManagePhotos(gallery.id)} className="text-[12px] underline underline-offset-2 text-gray-500 hover:text-gray-900 mt-0.5">
+                        Choisir une photo dans « Gérer les photos »
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="edit-dialog-accent">Couleur d'accent (boutons et en-tête)</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { hex: '', label: 'Bleu marine (défaut)', swatch: '#1F2A44' },
+                      { hex: '#7A1F2B', label: 'Bordeaux', swatch: '#7A1F2B' },
+                      { hex: '#1F5F4A', label: 'Vert sapin', swatch: '#1F5F4A' },
+                      { hex: '#B8965A', label: 'Doré', swatch: '#B8965A' },
+                      { hex: '#3B3B3B', label: 'Anthracite', swatch: '#3B3B3B' },
+                    ].map(preset => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        title={preset.label}
+                        aria-label={preset.label}
+                        onClick={() => setEditForm(prev => ({ ...prev, accentColor: preset.hex }))}
+                        className={`w-8 h-8 rounded-full border-2 transition-transform ${
+                          (editForm.accentColor || '') === preset.hex ? 'border-gray-900 scale-110' : 'border-white shadow'
+                        }`}
+                        style={{ backgroundColor: preset.swatch }}
+                      />
+                    ))}
+                    <label className="inline-flex items-center gap-2 text-[12px] text-gray-500 ml-1 cursor-pointer">
+                      <input
+                        id="edit-dialog-accent"
+                        type="color"
+                        value={editForm.accentColor || '#1F2A44'}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, accentColor: e.target.value }))}
+                        className="w-8 h-8 p-0 border border-gray-200 rounded-md cursor-pointer bg-white"
+                      />
+                      Personnalisée
+                    </label>
+                    {editForm.accentColor && (
+                      <span className="text-[12px] text-gray-400 font-mono">{editForm.accentColor}</span>
+                    )}
+                  </div>
+                </div>
+              </section>
 
               <section className="border border-gray-200 rounded-xl px-4 py-2">
                 <h4 className="text-[13px] font-semibold text-gray-800 pt-1">Ce que les visiteurs peuvent faire</h4>
@@ -381,7 +441,7 @@ export function GalleryEditDialog({ gallery, isOpen, onClose, onSave, onManagePh
             className={`h-10 px-5 rounded-lg text-[14px] font-medium flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer ${
               isSaving || !editForm.name?.trim()
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"
+                : "bg-[#1F2A44] text-white hover:bg-[#2B3A5C] active:scale-[0.98]"
             }`}
           >
             {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" /> Enregistrer</>}

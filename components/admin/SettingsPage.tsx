@@ -115,7 +115,7 @@ export function SettingsPage({
                 h-9 px-4 rounded-lg text-[13px] font-medium flex items-center gap-2 transition-all cursor-pointer
                 ${isSyncing
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"
+                  : "bg-[#1F2A44] text-white hover:bg-[#2B3A5C] active:scale-[0.98]"
                 }
               `}
             >

@@ -24,7 +24,8 @@ import {
   FolderInput,
   FolderPlus,
   FolderTree,
-  Sparkles
+  Sparkles,
+  PanelTop
 } from "lucide-react";
 import { toast } from "sonner";
 import { galleryService, buildFolderSections, folderTreeFromNames } from "../services/galleryService";
@@ -251,6 +252,28 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
     }
   };
 
+  const handleSetCoverPhoto = async (photo: Photo) => {
+    const success = await galleryService.setCoverPhoto(galleryId, photo.id);
+    if (success) {
+      toast.success(`"${photo.originalName || photo.name}" définie comme bannière`);
+      await loadGalleryData();
+    } else {
+      toast.error('Échec de la définition de la bannière');
+    }
+  };
+
+  const handleRemoveCoverPhoto = async () => {
+    const success = await galleryService.removeCoverPhoto(galleryId);
+    if (success) {
+      toast.success('Bannière retirée');
+      await loadGalleryData();
+    } else {
+      toast.error('Échec du retrait de la bannière');
+    }
+  };
+
+  const isCoverPhoto = (photo: Photo) => gallery?.coverPhotoId === photo.id;
+
   const handleRemoveFeaturedPhoto = async () => {
     try {
       const success = await galleryService.removeFeaturedPhoto(galleryId);
@@ -396,7 +419,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
         onDragEnd={() => setDragItem(null)}
         className={`flex items-center gap-2 p-3 border rounded-lg bg-white cursor-move hover:shadow-sm transition-all ${
           isDragging ? 'opacity-50' : ''
-        } ${selectedSubfolder === section.name ? 'border-gray-900' : 'border-gray-200'}`}
+        } ${selectedSubfolder === section.name ? 'border-[#1F2A44]' : 'border-gray-200'}`}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
         {section.isGroup
@@ -646,6 +669,30 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
               </div>
             )}
 
+            {gallery?.coverPhotoUrl && (
+              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="w-20 h-12 rounded-lg overflow-hidden border-2 border-blue-300 shrink-0">
+                  <img src={gallery.coverPhotoUrl} alt="Bannière" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <PanelTop className="h-4 w-4 text-blue-700" />
+                    <span className="text-sm font-medium text-blue-900">Bannière définie</span>
+                  </div>
+                  <p className="text-xs text-blue-700 truncate">Cette photo s'affiche en tête de la galerie, derrière le titre</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRemoveCoverPhoto}
+                  className="shrink-0 border-blue-300 text-blue-800 hover:bg-blue-100"
+                  aria-label="Retirer la bannière"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             {/* Filters and search */}
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search */}
@@ -666,7 +713,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedSubfolder(undefined)}
-                    className={`shrink-0 ${!selectedSubfolder ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                    className={`shrink-0 ${!selectedSubfolder ? 'bg-[#1F2A44] text-white border-[#1F2A44]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                   >
                     Tous les dossiers
                   </Button>
@@ -676,7 +723,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedSubfolder(subfolder)}
-                      className={`shrink-0 ${selectedSubfolder === subfolder ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                      className={`shrink-0 ${selectedSubfolder === subfolder ? 'bg-[#1F2A44] text-white border-[#1F2A44]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                     >
                       <Folder className="h-4 w-4 mr-1" />
                       <span className="max-w-[100px] truncate">{subfolder}</span>
@@ -850,13 +897,21 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                   />
                 </div>
 
-                {/* Featured badge */}
-                {isFeaturedPhoto(photo) && (
-                  <div className="absolute top-2 right-2 z-10">
-                    <Badge className="bg-orange-600 text-white text-xs px-2 py-1">
-                      <Star className="h-3 w-3 mr-1 fill-current" />
-                      Principale
-                    </Badge>
+                {/* Featured / banner badges */}
+                {(isFeaturedPhoto(photo) || isCoverPhoto(photo)) && (
+                  <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+                    {isFeaturedPhoto(photo) && (
+                      <Badge className="bg-orange-600 text-white text-xs px-2 py-1">
+                        <Star className="h-3 w-3 mr-1 fill-current" />
+                        Principale
+                      </Badge>
+                    )}
+                    {isCoverPhoto(photo) && (
+                      <Badge className="bg-blue-700 text-white text-xs px-2 py-1">
+                        <PanelTop className="h-3 w-3 mr-1" />
+                        Bannière
+                      </Badge>
+                    )}
                   </div>
                 )}
 
@@ -883,9 +938,20 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                       variant="secondary"
                       onClick={() => handleSetFeaturedPhoto(photo)}
                       className={isFeaturedPhoto(photo) ? 'bg-orange-600 text-white' : ''}
-                      title={isFeaturedPhoto(photo) ? 'Featured photo' : 'Set as featured'}
+                      title={isFeaturedPhoto(photo) ? 'Photo principale (liste des galeries)' : 'Définir comme photo principale'}
+                      aria-label="Définir comme photo principale"
                     >
                       <Star className={`h-4 w-4 ${isFeaturedPhoto(photo) ? 'fill-current' : ''}`} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleSetCoverPhoto(photo)}
+                      className={isCoverPhoto(photo) ? 'bg-blue-700 text-white' : ''}
+                      title={isCoverPhoto(photo) ? 'Bannière de la galerie' : 'Définir comme bannière'}
+                      aria-label="Définir comme bannière"
+                    >
+                      <PanelTop className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -1028,7 +1094,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
             <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
               <Button
                 variant="outline"
-                className={`w-full justify-start ${targetSubfolder === undefined ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                className={`w-full justify-start ${targetSubfolder === undefined ? 'bg-[#1F2A44] text-white border-[#1F2A44]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 onClick={() => {
                   setTargetSubfolder(undefined);
                   setNewFolderName('');
@@ -1041,7 +1107,7 @@ export function PhotoManager({ galleryId, onClose }: PhotoManagerProps) {
                 <Button
                   key={subfolder}
                   variant="outline"
-                  className={`w-full justify-start ${targetSubfolder === subfolder ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  className={`w-full justify-start ${targetSubfolder === subfolder ? 'bg-[#1F2A44] text-white border-[#1F2A44]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                   onClick={() => {
                     setTargetSubfolder(subfolder);
                     setNewFolderName('');

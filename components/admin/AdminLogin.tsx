@@ -19,7 +19,7 @@ const inputClass = (hasError: boolean) => `
 const buttonClass = (disabled: boolean) => `
   w-full h-11 mt-4 rounded-lg font-medium text-[14px] flex items-center justify-center gap-2
   transition-all duration-150 cursor-pointer
-  ${disabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"}
+  ${disabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1F2A44] text-white hover:bg-[#2B3A5C] active:scale-[0.98]"}
 `;
 
 export function AdminLogin({ onAuthenticate }: AdminLoginProps) {

@@ -10,7 +10,7 @@
   --card-foreground: 0 0% 13%;
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 13%;
-  --primary: 240 86% 5%;
+  --primary: 222 37% 19%; /* bleu marine #1F2A44, surchargé par galerie via accent_color */
   --primary-foreground: 0 0% 100%;
   --secondary: 240 5% 96%;
   --secondary-foreground: 240 86% 5%;

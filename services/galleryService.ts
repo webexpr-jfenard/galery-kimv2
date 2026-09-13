@@ -29,6 +29,9 @@ export interface Gallery {
   allowFavorites?: boolean;
   featuredPhotoUrl?: string; // URL of the featured photo for gallery preview
   featuredPhotoId?: string; // ID of the featured photo
+  coverPhotoUrl?: string; // Banner shown in the gallery header
+  coverPhotoId?: string;
+  accentColor?: string; // Optional hex color for buttons/highlights (fallback: navy)
   category?: string; // Client name or category for organization
   folderTree?: FolderNode[]; // Ordered subfolder hierarchy (see FolderNode)
   instructions?: Instructions | null; // Selection instructions shown to visitors (null = none)
@@ -413,6 +416,9 @@ class GalleryService {
         allowFavorites: row.allow_favorites !== false,
         featuredPhotoUrl: row.featured_photo_url || undefined,
         featuredPhotoId: row.featured_photo_id || undefined,
+        coverPhotoUrl: row.cover_photo_url || undefined,
+        coverPhotoId: row.cover_photo_id || undefined,
+        accentColor: row.accent_color || undefined,
         category: row.category || undefined,
         folderTree: row.folder_tree ? sanitizeFolderTree(row.folder_tree) : undefined,
         instructions: normalizeInstructions(row.instructions)
@@ -526,6 +532,9 @@ class GalleryService {
         allowFavorites: data.allow_favorites !== false,
         featuredPhotoUrl: data.featured_photo_url || undefined,
         featuredPhotoId: data.featured_photo_id || undefined,
+        coverPhotoUrl: data.cover_photo_url || undefined,
+        coverPhotoId: data.cover_photo_id || undefined,
+        accentColor: data.accent_color || undefined,
         category: data.category || undefined,
         folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined,
         instructions: normalizeInstructions(data.instructions)
@@ -716,6 +725,9 @@ class GalleryService {
         if (updates.allowFavorites !== undefined) supabaseUpdates.allow_favorites = updates.allowFavorites;
         if (updates.featuredPhotoUrl !== undefined) supabaseUpdates.featured_photo_url = updates.featuredPhotoUrl || null;
         if (updates.featuredPhotoId !== undefined) supabaseUpdates.featured_photo_id = updates.featuredPhotoId || null;
+        if (updates.coverPhotoUrl !== undefined) supabaseUpdates.cover_photo_url = updates.coverPhotoUrl || null;
+        if (updates.coverPhotoId !== undefined) supabaseUpdates.cover_photo_id = updates.coverPhotoId || null;
+        if (updates.accentColor !== undefined) supabaseUpdates.accent_color = updates.accentColor || null;
         if (updates.category !== undefined) supabaseUpdates.category = updates.category || null;
         if (updates.folderTree !== undefined) {
           const tree = sanitizeFolderTree(updates.folderTree);
@@ -755,6 +767,9 @@ class GalleryService {
           allowFavorites: data.allow_favorites !== false,
           featuredPhotoUrl: data.featured_photo_url || undefined,
           featuredPhotoId: data.featured_photo_id || undefined,
+        coverPhotoUrl: data.cover_photo_url || undefined,
+        coverPhotoId: data.cover_photo_id || undefined,
+        accentColor: data.accent_color || undefined,
           category: data.category || undefined,
           folderTree: data.folder_tree ? sanitizeFolderTree(data.folder_tree) : undefined,
         instructions: normalizeInstructions(data.instructions)
@@ -1457,6 +1472,20 @@ class GalleryService {
       console.error('Error removing featured photo:', error);
       return false;
     }
+  }
+
+  // Banner photo shown in the gallery header
+  async setCoverPhoto(galleryId: string, photoId: string): Promise<boolean> {
+    const photos = await this.getPhotos(galleryId);
+    const photo = photos.find(p => p.id === photoId);
+    if (!photo) return false;
+    const updated = await this.updateGallery(galleryId, { coverPhotoUrl: photo.url, coverPhotoId: photoId });
+    return !!updated;
+  }
+
+  async removeCoverPhoto(galleryId: string): Promise<boolean> {
+    const updated = await this.updateGallery(galleryId, { coverPhotoUrl: '', coverPhotoId: '' });
+    return !!updated;
   }
 
   // Reassign photos to a different subfolder

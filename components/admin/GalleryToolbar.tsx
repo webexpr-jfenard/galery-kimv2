@@ -125,7 +125,7 @@ export function GalleryToolbar({
             onClick={() => onViewModeChange("list")}
             className={`h-full px-2.5 flex items-center transition-colors cursor-pointer ${
               viewMode === "list"
-                ? "bg-gray-900 text-white"
+                ? "bg-[#1F2A44] text-white"
                 : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
             }`}
             aria-label="Vue liste"
@@ -136,7 +136,7 @@ export function GalleryToolbar({
             onClick={() => onViewModeChange("grid")}
             className={`h-full px-2.5 flex items-center transition-colors cursor-pointer ${
               viewMode === "grid"
-                ? "bg-gray-900 text-white"
+                ? "bg-[#1F2A44] text-white"
                 : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
             }`}
             aria-label="Vue grille"

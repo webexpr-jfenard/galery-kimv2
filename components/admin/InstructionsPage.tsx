@@ -98,7 +98,7 @@ export function InstructionsPage() {
         <button
           type="button"
           onClick={() => handleCreate()}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-gray-900 text-white text-[14px] font-medium hover:bg-gray-800"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[#1F2A44] text-white text-[14px] font-medium hover:bg-[#2B3A5C]"
         >
           <Plus className="h-4 w-4" /> Nouveau modèle
         </button>
@@ -115,7 +115,7 @@ export function InstructionsPage() {
                 type="button"
                 onClick={() => select(template)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-[14px] transition-colors ${
-                  template.id === selectedId ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
+                  template.id === selectedId ? "bg-[#1F2A44] text-white" : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 <div className="font-medium truncate">{template.name}</div>
@@ -157,7 +157,7 @@ export function InstructionsPage() {
                     type="button"
                     onClick={handleSave}
                     disabled={!isDirty || isSaving}
-                    className={`h-10 px-4 rounded-lg text-[14px] font-medium inline-flex items-center gap-2 ${!isDirty || isSaving ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-900 text-white hover:bg-gray-800"}`}
+                    className={`h-10 px-4 rounded-lg text-[14px] font-medium inline-flex items-center gap-2 ${!isDirty || isSaving ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1F2A44] text-white hover:bg-[#2B3A5C]"}`}
                   >
                     {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer le modèle
                   </button>
