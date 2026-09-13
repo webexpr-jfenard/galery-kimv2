@@ -8,6 +8,7 @@ import {
   Cloud,
   HardDrive,
 } from "lucide-react";
+import { PhotographerSettings } from "./PhotographerSettings";
 
 interface SettingsPageProps {
   connectionStatus: {
@@ -39,6 +40,9 @@ export function SettingsPage({
           Configuration du stockage et des services
         </p>
       </div>
+
+      {/* Photographer contact (shown in gallery headers) */}
+      <PhotographerSettings />
 
       {/* Supabase section */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">

@@ -34,7 +34,8 @@ import { galleryService, SubfolderInfo, flattenFolderSections, buildFolderSectio
 import { photoSrc } from "../services/imageService";
 import { InstructionsPanel } from "./InstructionsPanel";
 import { accentStyle, normalizeHex } from "../services/colorUtils";
-import { PHOTOGRAPHER } from "../services/siteConfig";
+import { PHOTOGRAPHER as DEFAULT_PHOTOGRAPHER } from "../services/siteConfig";
+import { siteSettingsService, withLinks, type PhotographerLinks } from "../services/siteSettingsService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import type { Gallery, Photo, FolderSection } from "../services/galleryService";
@@ -56,6 +57,7 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
   const [folderSections, setFolderSections] = useState<FolderSection[]>([]); // hierarchy (groups + subfolders)
   const [showInstructions, setShowInstructions] = useState(false); // selection instructions panel
   const [visitorName, setVisitorName] = useState<string | null>(userService.getCurrentUserName());
+  const [photographer, setPhotographer] = useState<PhotographerLinks>(withLinks(DEFAULT_PHOTOGRAPHER));
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | undefined>(undefined);
   const [showSubfolderFilter, setShowSubfolderFilter] = useState(false);
   
@@ -139,6 +141,13 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
       buildFolderSections(sectionNames.map(name => ({ name, photoCount: 0 })), gallery?.folderTree)
     );
   };
+
+  // Contact details shown in the hero (editable in the admin settings)
+  useEffect(() => {
+    let cancelled = false;
+    siteSettingsService.getPhotographer().then(p => { if (!cancelled) setPhotographer(withLinks(p)); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Follow the visitor identity (name shown in the header, "ce n'est pas moi")
   useEffect(() => userService.onChange(session => setVisitorName(session?.userName || null)), []);
@@ -670,18 +679,18 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
 
           {/* Photographer contact */}
           <address className="not-italic shrink-0 flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-[13px] text-white/80">
-            <span className="w-full md:w-auto text-[11px] uppercase tracking-[0.14em] text-white/60 md:mb-0.5">{PHOTOGRAPHER.name}</span>
-            <a href={`mailto:${PHOTOGRAPHER.email}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <span className="w-full md:w-auto text-[11px] uppercase tracking-[0.14em] text-white/60 md:mb-0.5">{photographer.name}</span>
+            <a href={`mailto:${photographer.email}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Mail className="h-3.5 w-3.5" />
-              {PHOTOGRAPHER.email}
+              {photographer.email}
             </a>
-            <a href={PHOTOGRAPHER.phoneHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href={photographer.phoneHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Phone className="h-3.5 w-3.5" />
-              {PHOTOGRAPHER.phone}
+              {photographer.phone}
             </a>
-            <a href={PHOTOGRAPHER.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+            <a href={photographer.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
               <Instagram className="h-3.5 w-3.5" />
-              {PHOTOGRAPHER.instagramHandle}
+              {photographer.instagramHandle}
             </a>
           </address>
           </div>
