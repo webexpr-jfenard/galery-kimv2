@@ -445,11 +445,10 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
 
       {/* Header - Responsive */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col space-y-4 lg:space-y-0">
-            {/* Top row */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Summary */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 shrink-0">
                 <Heart className="h-4 w-4 text-red-500 fill-current shrink-0" />
                 <span className="font-medium text-foreground">{filteredFavoritePhotos.length} photo{filteredFavoritePhotos.length > 1 ? 's' : ''}</span>
                 {folderNames.length > 1 && (
@@ -460,8 +459,21 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                 )}
               </div>
 
+              {/* Search, on the same line (wraps under on small screens) */}
+              {favorites.length > 0 && (
+                <div className="relative order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-md">
+                  <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher dans la sélection..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+              )}
+
               {/* Action buttons - responsive */}
-              <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+              <div className="flex items-center gap-2 lg:gap-3 shrink-0 ml-auto">
                 {favorites.length > 0 && (
                   <>
                     {isAdmin && (
@@ -512,20 +524,6 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
                   </>
                 )}
               </div>
-            </div>
-
-            {/* Search row */}
-            {favorites.length > 0 && (
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher dans la sélection..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
