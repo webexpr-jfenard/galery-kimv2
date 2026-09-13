@@ -24,6 +24,10 @@ import { toast } from "sonner";
 import { galleryService } from "../services/galleryService";
 import { buildFolderSections, flattenFolderSections } from "../services/galleryService";
 import { photoSrc } from "../services/imageService";
+import { accentStyle } from "../services/colorUtils";
+import { PHOTOGRAPHER as DEFAULT_PHOTOGRAPHER } from "../services/siteConfig";
+import { siteSettingsService, withLinks, type PhotographerLinks } from "../services/siteSettingsService";
+import { GalleryHero } from "./GalleryHero";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
 import { authService } from "../services/authService";
@@ -37,6 +41,8 @@ interface FavoritesPageProps {
 export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   // State
   const [gallery, setGallery] = useState<Gallery | null>(null);
+  const [photographer, setPhotographer] = useState<PhotographerLinks>(withLinks(DEFAULT_PHOTOGRAPHER));
+  const [visitorName, setVisitorName] = useState<string | null>(userService.getCurrentUserName());
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
   const [favorites, setFavorites] = useState<FavoritePhoto[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -350,6 +356,14 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
       .map(fav => fav.photoId)
   );
 
+  // Contact details (admin settings) and visitor identity for the hero
+  useEffect(() => {
+    let cancelled = false;
+    siteSettingsService.getPhotographer().then(p => { if (!cancelled) setPhotographer(withLinks(p)); });
+    const unsubscribe = userService.onChange(session => setVisitorName(session?.userName || null));
+    return () => { cancelled = true; unsubscribe(); };
+  }, []);
+
   // Get display name for photo (prioritize original name)
   const getPhotoDisplayName = (photo: Photo) => {
     return photo.originalName || photo.name;
@@ -411,39 +425,41 @@ export function FavoritesPage({ galleryId }: FavoritesPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={accentStyle(gallery.accentColor)}>
+      <GalleryHero
+        gallery={gallery}
+        photographer={photographer}
+        eyebrow={`Sélection${gallery.category ? ` · ${gallery.category}` : ''}`}
+        backLabel="Retour à la galerie"
+        onBack={() => window.appRouter.navigateTo(`/gallery/${galleryId}`)}
+        visitorName={visitorName}
+        subtitle={
+          <>
+            <Heart className="h-4 w-4 fill-current" />
+            <span>{filteredFavoritePhotos.length} photo{filteredFavoritePhotos.length > 1 ? 's' : ''} sélectionnée{filteredFavoritePhotos.length > 1 ? 's' : ''}</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">partagée entre tous les appareils</span>
+          </>
+        }
+      />
+
       {/* Header - Responsive */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col space-y-4 lg:space-y-0">
             {/* Top row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 lg:gap-4 min-w-0 flex-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.appRouter.navigateTo(`/gallery/${galleryId}`)}
-                  className="shrink-0"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-1 lg:mr-2" />
-                  <span className="hidden sm:inline">Retour à la galerie</span>
-                  <span className="sm:hidden">Galerie</span>
-                </Button>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-lg lg:text-2xl font-bold flex items-center gap-2">
-                    <Heart className="h-5 w-5 lg:h-6 lg:w-6 text-red-500 fill-current shrink-0" />
-                    <span className="truncate">Sélection</span>
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-1 lg:gap-2 text-xs lg:text-sm text-muted-foreground">
-                    <span className="truncate max-w-[200px]">{gallery.name}</span>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                <Heart className="h-4 w-4 text-red-500 fill-current shrink-0" />
+                <span className="font-medium text-foreground">{filteredFavoritePhotos.length} photo{filteredFavoritePhotos.length > 1 ? 's' : ''}</span>
+                {folderNames.length > 1 && (
+                  <>
                     <span>•</span>
-                    <span>{filteredFavoritePhotos.length} photos sélectionnées</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span className="hidden sm:inline">Partagée entre tous les appareils</span>
-                  </div>
-                </div>
+                    <span>{folderNames.length} dossiers</span>
+                  </>
+                )}
               </div>
-              
+
               {/* Action buttons - responsive */}
               <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                 {favorites.length > 0 && (

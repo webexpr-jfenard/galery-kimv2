@@ -33,9 +33,9 @@ import { toast } from "sonner";
 import { galleryService, SubfolderInfo, flattenFolderSections, buildFolderSections, findFolderSection, folderFilterNames } from "../services/galleryService";
 import { photoSrc } from "../services/imageService";
 import { InstructionsPanel } from "./InstructionsPanel";
-import { accentStyle, normalizeHex } from "../services/colorUtils";
+import { accentStyle } from "../services/colorUtils";
 import { PHOTOGRAPHER as DEFAULT_PHOTOGRAPHER } from "../services/siteConfig";
-import { ContactQr } from "./ContactQr";
+import { GalleryHero } from "./GalleryHero";
 import { siteSettingsService, withLinks, type PhotographerLinks } from "../services/siteSettingsService";
 import { favoritesService } from "../services/favoritesService";
 import { userService } from "../services/userService";
@@ -613,93 +613,30 @@ export function PhotoGallery({ galleryId }: PhotoGalleryProps) {
     );
   }
 
-  const accent = normalizeHex(gallery.accentColor);
-
   return (
     <div className="min-h-screen bg-background" style={accentStyle(gallery.accentColor)}>
-      {/* Hero: banner photo (or the accent color) carrying the gallery identity */}
-      <div className="relative overflow-hidden text-white" style={{ backgroundColor: accent }}>
-        {gallery.coverPhotoUrl && (
-          <img src={gallery.coverPhotoUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-        )}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: gallery.coverPhotoUrl
-              ? `linear-gradient(180deg, ${accent}33 0%, ${accent}D9 100%)`
-              : `linear-gradient(135deg, ${accent} 0%, ${accent}CC 100%)`
-          }}
-        />
-        <div className="relative container mx-auto px-4 pt-4 pb-6 md:pt-5 md:pb-8 min-h-[190px] md:min-h-[260px] flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => window.appRouter.navigateTo('/')}
-              className="inline-flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur px-3 py-1.5 text-sm transition-colors"
-              aria-label="Retour à l'accueil"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Accueil
-            </button>
-            {visitorName && (
-              <span className="text-xs md:text-sm text-white/80 text-right">
-                Bonjour {visitorName}
-                <button
-                  type="button"
-                  onClick={forgetVisitor}
-                  className="ml-1 underline underline-offset-2 hover:text-white"
-                  aria-label="Ce n'est pas moi, changer de prénom"
-                >
-                  (ce n'est pas moi)
-                </button>
-              </span>
+      <GalleryHero
+        gallery={gallery}
+        photographer={photographer}
+        backLabel="Accueil"
+        onBack={() => window.appRouter.navigateTo('/')}
+        visitorName={visitorName}
+        onForgetVisitor={forgetVisitor}
+        subtitle={
+          <>
+            <span>{photos.length} photos</span>
+            {selectedSubfolder && (
+              <>
+                <span>•</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs">
+                  <Folder className="h-3 w-3" />
+                  {selectedSubfolder}
+                </span>
+              </>
             )}
-          </div>
-          <div className="mt-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div className="min-w-0">
-            {gallery.category && (
-              <div className="text-[11px] md:text-xs uppercase tracking-[0.14em] text-white/70 mb-1">{gallery.category}</div>
-            )}
-            <h1 className="text-2xl md:text-4xl font-bold tracking-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.25)]">{gallery.name}</h1>
-            {gallery.description && (
-              <p className="mt-1.5 text-sm md:text-[15px] text-white/85 max-w-2xl">{gallery.description}</p>
-            )}
-            <div className="mt-2 flex items-center gap-2 text-sm text-white/80">
-              <span>{photos.length} photos</span>
-              {selectedSubfolder && (
-                <>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs">
-                    <Folder className="h-3 w-3" />
-                    {selectedSubfolder}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Photographer contact */}
-          <address className="not-italic shrink-0 flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-[13px] text-white/80">
-            <div className="w-full md:w-auto flex items-center gap-3 md:flex-col md:items-end md:gap-1.5 md:mb-0.5">
-              <ContactQr photographer={photographer} color={accent} />
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/60">{photographer.name}</span>
-            </div>
-            <a href={`mailto:${photographer.email}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-              <Mail className="h-3.5 w-3.5" />
-              {photographer.email}
-            </a>
-            <a href={photographer.phoneHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-              <Phone className="h-3.5 w-3.5" />
-              {photographer.phone}
-            </a>
-            <a href={photographer.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-              <Instagram className="h-3.5 w-3.5" />
-              {photographer.instagramHandle}
-            </a>
-          </address>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Header - Desktop Layout */}
       <div className="border-b backdrop-blur-sm sticky top-0 z-40 hidden md:block" style={{backgroundColor: '#f8f9fa'}}>
